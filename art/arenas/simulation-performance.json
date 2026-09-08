@@ -1,0 +1,84 @@
+{
+  "simulatedSeconds": 180,
+  "totalMilliseconds": 595,
+  "meanStepMilliseconds": 0.0275,
+  "p95StepMilliseconds": 0.0436,
+  "p99StepMilliseconds": 0.0702,
+  "score": [0, 3],
+  "contacts": 14987,
+  "shots": 33,
+  "players": [
+    {
+      "id": 0,
+      "mode": "playing",
+      "air": 60,
+      "position": [0, 0.36, 11.9]
+    },
+    {
+      "id": 1,
+      "mode": "recovering",
+      "air": 63,
+      "position": [-0.5, 2.31, 3.49]
+    },
+    {
+      "id": 2,
+      "mode": "diving",
+      "air": 67,
+      "position": [2.3, 1.12, 2.69]
+    },
+    {
+      "id": 3,
+      "mode": "playing",
+      "air": 31,
+      "position": [2.36, 0.36, 3.36]
+    },
+    {
+      "id": 4,
+      "mode": "playing",
+      "air": 22,
+      "position": [1.47, 0.36, 6.77]
+    },
+    {
+      "id": 5,
+      "mode": "playing",
+      "air": 64,
+      "position": [1.87, 0.36, 4.09]
+    },
+    {
+      "id": 6,
+      "mode": "playing",
+      "air": 61,
+      "position": [2.53, 0.36, 4.62]
+    },
+    {
+      "id": 7,
+      "mode": "diving",
+      "air": 67,
+      "position": [1.48, 0.53, 5.11]
+    },
+    {
+      "id": 8,
+      "mode": "playing",
+      "air": 48,
+      "position": [1.8, 0.36, 2.46]
+    },
+    {
+      "id": 9,
+      "mode": "recovering",
+      "air": 44,
+      "position": [1.15, 2.31, 2.44]
+    },
+    {
+      "id": 10,
+      "mode": "recovering",
+      "air": 99,
+      "position": [-0.05, 2.31, 1.82]
+    },
+    {
+      "id": 11,
+      "mode": "recovering",
+      "air": 100,
+      "position": [1.55, 2.31, 0.92]
+    }
+  ]
+}

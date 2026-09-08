@@ -1,0 +1,19 @@
+{
+  "score": 91,
+  "verdict": "pass",
+  "category_match": true,
+  "differences": [
+    "Bounded acceptance: repaired shoulders, tail attachment, cheek cleanup, stronger tinted visors, fuller lower beaver torso, and supplied dolphin-swim pose samples. This does not establish uninterrupted runtime cadence, runtime lighting, transitions or actual gameplay quality.",
+    "Both shoulder roots read as broad continuous forms in the early-bank and late-dive poses. The former pinches and beaver tail-to-hind-leg webs are absent.",
+    "The beaver stem now rises more gradually into its paddle, retains an independent silhouette and clears both legs. Its lower body remains intentionally fuller than the otter while the limbs keep their approved rounded shape.",
+    "The regenerated eight-frame otter swim sequence shows paired fin strokes and an intact tapered tail. Actual exported bone-axis and world-phase measurements confirm a downstream tail wave instead of the previous reversed pitch direction.",
+    "Strong visor highlights overlap part of one eye under the frontal studio lights. The requested stronger tint is present; this is a runtime-lighting monitoring item, not a reason to undo the requested opacity change.",
+    "A few localized edge-strain warnings remain in the diagnostic without corresponding visible pinches in the supplied views. Preserve their exact poses as targeted runtime checks."
+  ],
+  "suggestions": [
+    "Keep this bounded asset revision and its repeatable Blender/GLB sources.",
+    "Review an uninterrupted runtime capture for cadence, clip transitions and the dolphin kick in actual gameplay lighting and camera.",
+    "Include beaver BankRight at 25% and otter Sprint at 75% in the next close-up check; these contain the remaining localized numeric strain warnings."
+  ],
+  "reasoning": "The latest assets resolve the identified joint, tail-wave and attachment defects while preserving the approved playful proportions and requested visor/body changes. This bounded asset and sampled-pose pass clears the 90-point threshold; continuous runtime quality remains unverified."
+}

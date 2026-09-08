@@ -1,0 +1,27 @@
+{
+  "name": "otterpuck",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun run server.ts",
+    "build": "bun run build.ts",
+    "start": "bun run server.ts --production",
+    "start:lan": "HOST=0.0.0.0 PORT=3204 bun run server.ts --production",
+    "check": "bun x biome check . && bun x tsc --noEmit",
+    "test": "bun test",
+    "benchmark": "bun run tests/benchmark.ts",
+    "assets:characters": "bun art/characters/export.ts",
+    "assets:arenas": "bun art/arenas/export.ts"
+  },
+  "dependencies": {
+    "three": "0.185.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.12",
+    "@types/bun": "1.4.1",
+    "@types/three": "0.185.4",
+    "typescript": "7.0.2"
+  },
+  "description": "A stylized underwater hockey game built with Three.js and Blender."
+}

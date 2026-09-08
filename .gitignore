@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.DS_Store
+.env
+.env.*
+!.env.example
+*.log
+*.blend[0-9]*
+art/**/*-authoring.txt
+art/**/game-captures/
+art/**/runtime-review/
+art/**/motion-review/
+art/**/review-rounds/
+.codex/
+.omc/

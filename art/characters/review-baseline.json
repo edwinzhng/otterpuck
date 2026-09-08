@@ -1,0 +1,26 @@
+{
+  "score": 48,
+  "verdict": "revise",
+  "category_match": false,
+  "differences": [
+    "Critical: the heads dominate the characters and read as wide, shallow mascot helmets. In the lineup, cap-to-chin height is roughly 40% of fin-to-cap height; the reference is closer to 28–32%, with a fuller rounded cranium and a compact projecting muzzle.",
+    "Critical: the cream area is a broad continuous jaw band, the nose sits low, and the mouth is a long drawn-on curve. The reference uses a small soft muzzle around the nose and mouth, distinct rounded cheeks, and a much shorter smile.",
+    "The mask is an oversized heavy black outline around two large circular black eyes. The reference has a more fitted mask, visible tinted lens, smaller eyes with eyelid shape, and a compact nose pocket; its expression feels lively rather than blank.",
+    "The nearly spherical torso, pinched or knobbly knees, thin bent arms, and separate ball paws produce a jointed toy impression. The reference has a continuous tapered animal body, short soft limbs, and smoother transitions into the paws and fins.",
+    "The fins are broad blunt rectangles with oversized exposed foot pockets. The reference fins are slimmer and more tapered, with restrained blade ridges and cleaner rounded tips.",
+    "The visible fur details read as isolated cones or pimples on the back, not small directional fur clumps following the silhouette. The reference uses a few broad, shallow tapered tufts integrated into cheeks and body edges.",
+    "The bank still shows a largely straight torso with the whole character tilted together. A still cannot establish animation quality; delayed spine, hip, and tail motion remains unverified until sequential frames are supplied.",
+    "The present render uses simple smooth plastic-like surfaces and a dark gray studio backdrop. The reference combines clean color fields, gentle shaped light/shadow planes, warmer face colors, and soft cool fill; the current shading does not compensate for the mismatched geometry."
+  ],
+  "suggestions": [
+    "P1: establish the head silhouette before adding effects. Reduce head width and overall size relative to the torso, give the cranium more rounded height/depth, and target cap-to-chin height near 28–32% of the standing character including fins. Judge front, side, and three-quarter views together so the head cannot become a flattened football from another angle.",
+    "P1: sculpt a short forward muzzle with subtle paired cheek fullness integrated into one face surface. Raise the nose into the middle of that muzzle, shorten the mouth substantially, and confine the cream marking to the muzzle/cheeks rather than a uniform strip across the whole jaw.",
+    "P1: fit the mask to the smaller face, reduce its rim thickness by roughly a third, make the nose pocket compact, and show a restrained blue lens tint. Reduce eye size, introduce a gentle upper eyelid contour, and retain one small highlight per eye.",
+    "P2: use a smooth pear-like torso and continuous shoulder/hip transitions, soften the knees into simple uninterrupted curves, and blend the short limbs into paddle-shaped paws. Avoid spherical hands appearing attached by narrow wrists.",
+    "P2: narrow fin blades and foot pockets, round the blade corners, and keep a subtle center ridge. Preserve the slim beaver body; identify it with its small teeth and flat paddle tail, not added belly volume.",
+    "P2: replace the isolated spikes with a very small number of broad shallow fur wedges that emerge smoothly from the surface, point with the fur direction, and remain almost invisible at gameplay distance.",
+    "P3: supply a six-to-eight-frame swim/turn sequence with a fixed camera. Show chest anticipation, a continuous spine curve, later hip motion, and delayed tail settling; evaluate silhouette continuity and equipment intersections in every frame.",
+    "P3: use a pale neutral/cool review backdrop and broad soft key/fill lighting. Add restrained material color planes only after head and body proportions match; shader polish alone cannot resolve these structural differences."
+  ],
+  "reasoning": "The assets communicate equipped otter and beaver teams, but the defining proportions, facial construction, and integrated animal silhouette still differ substantially from the reference. This is a recognizable draft rather than a close style match, and motion quality is unverified."
+}

@@ -1,0 +1,25 @@
+{
+  "scope": "CPU posing of twelve third-person characters; excludes renderer and GPU",
+  "framesPerTrial": 600,
+  "trials": [
+    {
+      "baseline": 0.3875206250000001,
+      "optimized": 0.24687085333333347
+    },
+    {
+      "optimized": 0.2396077900000006,
+      "baseline": 0.3455381833333314
+    },
+    {
+      "baseline": 0.34986009166666426,
+      "optimized": 0.23383475333333423
+    },
+    {
+      "optimized": 0.23477289333332957,
+      "baseline": 0.3422348083333346
+    }
+  ],
+  "baselineMs": 0.35628842708333264,
+  "optimizedMs": 0.23877157249999947,
+  "reductionPercent": 32.98362945587537
+}

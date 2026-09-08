@@ -1,0 +1,9 @@
+# Island rock paint
+
+Generated with the built-in image generation tool on September 8, 2026. Original: `/Users/edwin/.codex/generated_images/01a07a48-38bd-76a1-8fad-4b06d456695e/exec-bbbd2cef-aab5-4657-b661-0bde172ad5b7.png`.
+
+The project copy is `public/art/arenas/island-rock-painted.png`. It is packed as an image reference in the tropical Blender source. Vertex colors carry the authored rock/moss regions through GLB. The runtime applies the image's luminance using triplanar world mapping at .085 repeats per metre, blended by surface normal, so steep cliffs retain the same paint scale without UV stretch. The texture is shared and disposed with the arena.
+
+## Generation prompt
+
+Create a seamless tileable game albedo texture, square, 1024x1024. This is a PAINTED TEXTURE asset for a soft stylized tropical volcanic island cliff in a high quality toon shaded 3D sports game, not a scene or a photograph. Fill the entire frame edge to edge with broad irregular layered warm grey sandstone / weathered volcanic rock faces, gently sweeping near-vertical fissures and horizontal weathering ledges, occasional muted sage-green moss along ledges covering no more than 15 percent. Soft hand painted gouache-like gradients with clearly designed angular planes softened at their edges, moderate medium-scale detail, broad calm color areas, subtle muted blue shadows and warm cream edges. All material color values should be medium-light, low to moderate contrast, suitable to multiply beneath realtime shading. Flat evenly lit orthographic texture with no perspective, no horizon, no sky, no objects, no text, no outlines, no cast shadow, no directional lighting baked in, no realistic gritty fine noise, no tiny cracks everywhere. Tile seamlessly on all edges. Think carefully designed hand-painted environment texture, crisp at its intended scale but soft and inviting.

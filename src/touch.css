@@ -1,0 +1,367 @@
+.touch-controls,
+.touch-help {
+  display: none;
+}
+.touch-mode .touch-help {
+  display: grid;
+}
+.touch-mode .keyboard-help {
+  display: none;
+}
+.touch-sensitivity output {
+  float: right;
+  color: #2875a0;
+}
+.touch-sensitivity input {
+  width: 100%;
+  min-height: 44px;
+  accent-color: #1687bd;
+}
+.touch-mode {
+  overscroll-behavior: none;
+}
+.touch-playing #pool {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.touch-mode .touch-controls:not([hidden]) {
+  display: block;
+}
+.touch-controls {
+  position: fixed;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  --touch-size: clamp(48px, 13vh, 60px);
+  --touch-gap: 8px;
+  --touch-bottom: max(16px, env(safe-area-inset-bottom));
+  color: #16496a;
+}
+.touch-left {
+  position: absolute;
+  bottom: var(--touch-bottom);
+  left: max(20px, env(safe-area-inset-left));
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+}
+.touch-depth {
+  display: flex;
+  gap: 10px;
+}
+.touch-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  width: var(--touch-size);
+  height: var(--touch-size);
+  padding: 3px;
+  border: 2px solid #f1fcffeb;
+  border-radius: 18px;
+  background: #e5f7ffe3;
+  box-shadow:
+    0 3px 0 #30638999,
+    0 4px 12px #0a38552b;
+  color: #174665;
+  font: inherit;
+  cursor: pointer;
+}
+.touch-button,
+.touch-joystick {
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.touch-button > span {
+  font-size: 23px;
+  font-weight: 850;
+  line-height: 1;
+}
+.touch-button > strong {
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+.touch-button[aria-pressed="true"] {
+  background: #9bdcf0;
+  border-color: #fff5ac;
+  box-shadow: 0 1px 0 #30638999;
+}
+.touch-button[aria-disabled="true"] {
+  opacity: 0.38;
+}
+.touch-button:focus-visible {
+  outline: 3px solid #ffef79;
+  outline-offset: 3px;
+}
+.touch-skills {
+  position: absolute;
+  bottom: var(--touch-bottom);
+  right: max(20px, env(safe-area-inset-right));
+  display: grid;
+  gap: var(--touch-gap);
+  grid-template-columns: repeat(4, var(--touch-size));
+  grid-template-rows: repeat(3, var(--touch-size));
+}
+.touch-react {
+  grid-column: 3 / 5;
+  width: auto;
+  flex-direction: row;
+  gap: 7px;
+}
+.touch-react.ready {
+  background: #fff1a3;
+  border-color: #fff;
+  box-shadow:
+    0 3px 0 #b98b35,
+    0 0 12px #ffe99570;
+}
+.touch-shot {
+  grid-column: 3 / 5;
+  grid-row: 2 / 4;
+  width: auto;
+  height: auto;
+  border-radius: 50%;
+  background: linear-gradient(
+    0deg,
+    #ffd35f var(--touch-charge, 0%),
+    #fff1a3 var(--touch-charge, 0%)
+  );
+  border: 3px solid #fffbea;
+  box-shadow:
+    0 4px 0 #b99348aa,
+    0 7px 15px #17456130;
+}
+.touch-shot > span {
+  font-size: 36px;
+}
+.touch-shot > strong {
+  font-size: 16px;
+}
+.touch-shot[aria-pressed="true"] {
+  background: linear-gradient(
+    0deg,
+    #ffc547 var(--touch-charge, 0%),
+    #fff1a3 var(--touch-charge, 0%)
+  );
+}
+.touch-backhand {
+  grid-column: 1 / 3;
+  width: auto;
+  flex-direction: row;
+  gap: 8px;
+}
+.touch-joystick {
+  width: clamp(124px, 35vh, 156px);
+  height: clamp(124px, 35vh, 156px);
+  border-radius: 50%;
+  border: 2px solid #ddf9ffd4;
+  background: #23577842;
+  box-shadow: inset 0 0 0 6px #b8e5ed35;
+  position: relative;
+}
+.touch-stick-ring {
+  position: absolute;
+  inset: 26%;
+  border: 1px solid #def7ff73;
+  border-radius: 50%;
+}
+.touch-thumb {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  left: calc(50% - 22px);
+  top: calc(50% - 22px);
+  background: #e1f6fce6;
+  border: 2px solid white;
+  box-shadow: 0 3px 0 #507f9e80;
+}
+.touch-sprint-label,
+.touch-brake-label {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font: 800 8px system-ui;
+  letter-spacing: 1px;
+  color: #effcff;
+  text-shadow: 0 1px 2px #123c51;
+}
+.touch-sprint-label {
+  top: 9px;
+}
+.touch-brake-label {
+  bottom: 9px;
+}
+.touch-joystick.sprinting {
+  border-color: #ffe981;
+  box-shadow: inset 0 0 0 6px #ffe98150;
+}
+.touch-mode .hud-top {
+  inset: max(10px, env(safe-area-inset-top))
+    max(16px, env(safe-area-inset-right)) auto
+    max(16px, env(safe-area-inset-left));
+}
+.touch-mode #pause-button {
+  min-width: 48px;
+  min-height: 48px;
+}
+.touch-mode .scoreboard {
+  padding: 7px 13px;
+  gap: 12px;
+}
+.touch-mode .score-team span {
+  display: none;
+}
+.touch-mode .score-team strong {
+  font-size: 23px;
+}
+.touch-mode .scoreboard time {
+  font-size: 16px;
+}
+.touch-mode .hud-bottom {
+  inset: 0;
+  display: block;
+}
+.touch-mode .vitals {
+  position: absolute;
+  left: max(76px, calc(env(safe-area-inset-left) + 60px));
+  top: max(10px, env(safe-area-inset-top));
+  width: 112px;
+  padding: 8px 10px;
+  border-radius: 12px;
+}
+.touch-mode .air-value,
+.touch-mode .speed-value {
+  display: none;
+}
+.touch-mode .air-track {
+  margin-top: 7px;
+  height: 7px;
+}
+.touch-mode .vitals-header {
+  gap: 5px;
+  font-size: 10px;
+}
+.touch-mode .map-wrap {
+  position: absolute;
+  right: max(16px, env(safe-area-inset-right));
+  top: max(10px, env(safe-area-inset-top));
+  width: 70px;
+  padding: 5px;
+  border-radius: 10px;
+  opacity: 0.9;
+}
+.touch-mode .map-title {
+  justify-content: center;
+}
+.touch-mode .hud kbd,
+.touch-mode .reaction,
+.touch-mode .bottom-guidance #descend-cue,
+.touch-mode #handling-mode {
+  display: none;
+}
+.touch-mode .handling {
+  bottom: max(14px, env(safe-area-inset-bottom));
+  max-width: 200px;
+}
+.touch-mode .bottom-guidance {
+  display: block;
+  padding: 8px 11px;
+  font-size: 10px;
+  max-width: 180px;
+}
+.touch-mode .shot-charge {
+  display: none;
+}
+.touch-mode .performance {
+  position: absolute;
+  right: 84px;
+  top: 0;
+  font-size: 9px;
+  padding: 7px;
+}
+.touch-mode .announcement {
+  font-size: clamp(24px, 5vw, 44px);
+  top: 23%;
+}
+.touch-mode .menu {
+  padding: max(12px, env(safe-area-inset-top))
+    max(20px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom))
+    max(20px, env(safe-area-inset-left));
+}
+.touch-mode .button,
+.touch-mode .field select,
+.touch-mode .team-choice button,
+.touch-mode .menu-header .button {
+  min-height: 48px;
+}
+.touch-mode .menu-header .button {
+  min-width: 48px;
+}
+.touch-mode .lobby-screen {
+  left: max(20px, env(safe-area-inset-left));
+  right: max(20px, env(safe-area-inset-right));
+  bottom: max(14px, env(safe-area-inset-bottom));
+}
+.touch-mode .setup-panel {
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.touch-mode .pause-card {
+  max-height: 90dvh;
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  .touch-mode .lobby-screen {
+    top: 70px;
+  }
+  .touch-mode .setup-screen {
+    grid-template-columns: 1fr minmax(260px, 42%);
+  }
+  .touch-mode .setup-panel {
+    padding: 15px;
+    gap: 12px;
+  }
+  .touch-mode .selected-map {
+    min-height: 0;
+    height: 100%;
+  }
+  .touch-mode .map-cards {
+    height: 100%;
+  }
+  .touch-mode .mode-list {
+    gap: 12px;
+  }
+  .touch-mode .mode-card {
+    min-height: 80px;
+  }
+}
+@media (max-width: 740px) and (orientation: landscape) {
+  .touch-controls {
+    --touch-gap: 5px;
+    --touch-size: 48px;
+  }
+  .touch-skills {
+    right: max(12px, env(safe-area-inset-right));
+  }
+  .touch-left {
+    left: max(12px, env(safe-area-inset-left));
+  }
+  .touch-mode .handling {
+    left: 44%;
+    max-width: 140px;
+  }
+  .touch-mode .bottom-guidance {
+    max-width: 140px;
+  }
+  .touch-mode .map-wrap {
+    width: 58px;
+  }
+}

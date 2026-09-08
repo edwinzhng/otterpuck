@@ -1,0 +1,1141 @@
+{
+  "pass": true,
+  "status": "bounded_asset_and_export_checks_pass_with_monitoring_items",
+  "scope": "Actual GLB CPU skinning, topology, rest-relative paired-kick rotations, exported tail axes and sampled world-space phase. This is not a continuous-runtime, shading, frame-pacing or gameplay acceptance.",
+  "exports": {
+    "otter": "2026-09-07 23:46:39",
+    "beaver": "2026-09-07 23:46:41"
+  },
+  "shoulderRepair": {
+    "pass": true,
+    "otterMaximum": 2.46115734846106,
+    "beaverMaximum": 2.639518993422323,
+    "otterWarningEdges": 0,
+    "beaverWarningEdges": 4,
+    "note": "Local roots are continuous in the supplied poses. Four beaver edges exceed the diagnostic heuristic in BankRight at 25%; monitor this exact pose during runtime review rather than treating the heuristic as proof of a visible defect."
+  },
+  "topology": {
+    "pass": true,
+    "otter": {
+      "vertices": 18043,
+      "edges": 54123,
+      "faces": 36082,
+      "eulerCharacteristic": 2,
+      "connectedComponents": 1,
+      "boundaryEdges": 0,
+      "nonManifoldEdges": 0
+    },
+    "beaver": {
+      "vertices": 19869,
+      "edges": 59601,
+      "faces": 39734,
+      "eulerCharacteristic": 2,
+      "connectedComponents": 1,
+      "boundaryEdges": 0,
+      "nonManifoldEdges": 0
+    }
+  },
+  "tailAxis": {
+    "pass": true,
+    "otterWorldX": [1, 1, 1, 1, 1],
+    "beaverWorldX": [1, 1, 1, 1, 1],
+    "otterSwimWorldPhase": {
+      "pelvis": 3.1999998,
+      "tail01": 3.4008111,
+      "tail03": 3.7422791,
+      "tail05": 4.0563865
+    },
+    "beaverSwimWorldPhase": {
+      "pelvis": 3.1999998,
+      "tail01": 3.3191705,
+      "tail03": 3.570745,
+      "tail05": 3.8300982
+    },
+    "note": "All tail bones map local positive X to world positive X within floating-point tolerance; phase progresses downstream for both species."
+  },
+  "tailSeparation": {
+    "beaverPass": true,
+    "beaverDistalMixedLegTailVertices": 0,
+    "beaverMaximumEdgeRatio": 2.1693396388999937,
+    "beaverWarningEdges": 0,
+    "otterMonitoringNote": "Otter natural tail-root ROI contains mixed leg/pelvis/tail weights and two sampled warning edges, maximum 2.705x. No topology handle or visible strand bridge occurs in the reviewed samples."
+  },
+  "tests": {
+    "passed": 3,
+    "failed": 0
+  },
+  "measurements": [
+    {
+      "species": "otter",
+      "vertexCount": 18043,
+      "shoulderBoneWeightedVertices": 3919,
+      "distalTailLegMixedVertices": 53,
+      "shoulderArmTorsoMixedVertices": 600,
+      "worst": {
+        "shoulder": {
+          "ratio": 2.46115734846106,
+          "clip": "BankRight",
+          "fraction": 0.25,
+          "restLength": 0.007638799824441436,
+          "posedLength": 0.018800288321347097,
+          "vertices": [
+            {
+              "index": 9900,
+              "rest": {
+                "x": -0.09151965379714966,
+                "y": -0.021261142566800117,
+                "z": -0.1387501060962677
+              },
+              "weights": [
+                {
+                  "bone": "head",
+                  "weight": 0.4466506540775299
+                },
+                {
+                  "bone": "shoulderL",
+                  "weight": 0.35416898131370544
+                },
+                {
+                  "bone": "forearmL",
+                  "weight": 0.16805897653102875
+                },
+                {
+                  "bone": "armL",
+                  "weight": 0.031121406704187393
+                }
+              ],
+              "tail": 0,
+              "leg": 0,
+              "arm": 0.19918038323521614,
+              "shoulder": 0.35416898131370544,
+              "torso": 0,
+              "head": 0.4466506540775299
+            },
+            {
+              "index": 9908,
+              "rest": {
+                "x": -0.08858601748943329,
+                "y": -0.018215585500001907,
+                "z": -0.14511168003082275
+              },
+              "weights": [
+                {
+                  "bone": "head",
+                  "weight": 0.7367868423461914
+                },
+                {
+                  "bone": "shoulderL",
+                  "weight": 0.18727539479732513
+                },
+                {
+                  "bone": "forearmL",
+                  "weight": 0.0734441727399826
+                },
+                {
+                  "bone": "armL",
+                  "weight": 0.0024935889523476362
+                }
+              ],
+              "tail": 0,
+              "leg": 0,
+              "arm": 0.07593776169233024,
+              "shoulder": 0.18727539479732513,
+              "torso": 0,
+              "head": 0.7367868423461914
+            }
+          ]
+        },
+        "tail": {
+          "ratio": 2.7048998282842356,
+          "clip": "Sprint",
+          "fraction": 0.75,
+          "restLength": 0.0058189828029008165,
+          "posedLength": 0.015739765584355338,
+          "vertices": [
+            {
+              "index": 16891,
+              "rest": {
+                "x": -0.028534838929772377,
+                "y": -0.0023939358070492744,
+                "z": 0.17764343321323395
+              },
+              "weights": [
+                {
+                  "bone": "thighL",
+                  "weight": 0.65899658203125
+                },
+                {
+                  "bone": "pelvis",
+                  "weight": 0.2270893007516861
+                },
+                {
+                  "bone": "shinL",
+                  "weight": 0.084584541618824
+                },
+                {
+                  "bone": "tail01",
+                  "weight": 0.029329601675271988
+                }
+              ],
+              "tail": 0.029329601675271988,
+              "leg": 0.743581123650074,
+              "arm": 0,
+              "shoulder": 0,
+              "torso": 0,
+              "head": 0
+            },
+            {
+              "index": 16898,
+              "rest": {
+                "x": -0.024804774671792984,
+                "y": -0.0018411735072731972,
+                "z": 0.17321154475212097
+              },
+              "weights": [
+                {
+                  "bone": "pelvis",
+                  "weight": 0.5537022948265076
+                },
+                {
+                  "bone": "thighL",
+                  "weight": 0.3337419331073761
+                },
+                {
+                  "bone": "tail01",
+                  "weight": 0.06229601055383682
+                },
+                {
+                  "bone": "tail02",
+                  "weight": 0.05025976896286011
+                }
+              ],
+              "tail": 0.11255577951669693,
+              "leg": 0.3337419331073761,
+              "arm": 0,
+              "shoulder": 0,
+              "torso": 0,
+              "head": 0
+            }
+          ]
+        },
+        "shoulderWithoutHead": {
+          "ratio": 2.075451337777539,
+          "clip": "Dive",
+          "fraction": 0.999,
+          "restLength": 0.006352459644557671,
+          "posedLength": 0.013184220867475048,
+          "vertices": [
+            {
+              "index": 10516,
+              "rest": {
+                "x": -0.10855842381715775,
+                "y": 0.0033632079139351845,
+                "z": -0.12023469805717468
+              },
+              "weights": [
+                {
+                  "bone": "armL",
+                  "weight": 0.5743580460548401
+                },
+                {
+                  "bone": "shoulderL",
+                  "weight": 0.21681079268455505
+                },
+                {
+                  "bone": "forearmL",
+                  "weight": 0.20840226113796234
+                },
+                {
+                  "bone": "head",
+                  "weight": 0.0004288757045287639
+                }
+              ],
+              "tail": 0,
+              "leg": 0,
+              "arm": 0.7827603071928024,
+              "shoulder": 0.21681079268455505,
+              "torso": 0,
+              "head": 0.0004288757045287639
+            },
+            {
+              "index": 10519,
+              "rest": {
+                "x": -0.10341668128967285,
+                "y": 0.000978756695985794,
+                "z": -0.12310360372066498
+              },
+              "weights": [
+                {
+                  "bone": "armL",
+                  "weight": 0.41015514731407166
+                },
+                {
+                  "bone": "shoulderL",
+                  "weight": 0.32303667068481445
+                },
+                {
+                  "bone": "forearmL",
+                  "weight": 0.2260584533214569
+                },
+                {
+                  "bone": "head",
+                  "weight": 0.04074972867965698
+                }
+              ],
+              "tail": 0,
+              "leg": 0,
+              "arm": 0.6362136006355286,
+              "shoulder": 0.32303667068481445,
+              "torso": 0,
+              "head": 0.04074972867965698
+            }
+          ]
+        }
+      },
+      "maximumStretchedEdges": {
+        "shoulder": 0,
+        "tail": 2
+      },
+      "runs": []
+    },
+    {
+      "species": "beaver",
+      "vertexCount": 19869,
+      "shoulderBoneWeightedVertices": 3909,
+      "distalTailLegMixedVertices": 0,
+      "shoulderArmTorsoMixedVertices": 641,
+      "worst": {
+        "shoulder": {
+          "ratio": 2.639518993422323,
+          "clip": "BankRight",
+          "fraction": 0.25,
+          "restLength": 0.007544254480822257,
+          "posedLength": 0.019913202993341813,
+          "vertices": [
+            {
+              "index": 10645,
+              "rest": {
+                "x": -0.09692712873220444,
+                "y": -0.010135333053767681,
+                "z": -0.13446921110153198
+              },
+              "weights": [
+                {
+                  "bone": "head",
+                  "weight": 0.33581534028053284
+                },
+                {
+                  "bone": "shoulderL",
+                  "weight": 0.333344042301178
+                },
+                {
+                  "bone": "forearmL",
+                  "weight": 0.2398190200328827
+                },
+                {
+                  "bone": "armL",
+                  "weight": 0.0910215899348259
+                }
+              ],
+              "tail": 0,
+              "leg": 0,
+              "arm": 0.3308406099677086,
+              "shoulder": 0.333344042301178,
+              "torso": 0,
+              "head": 0.33581534028053284
+            },
+            {
+              "index": 10650,
+              "rest": {
+                "x": -0.09262068569660187,
+                "y": -0.008888388983905315,
+                "z": -0.14053678512573242
+              },
+              "weights": [
+                {
+                  "bone": "head",
+                  "weight": 0.628974199295044
+                },
+                {
+                  "bone": "shoulderL",
+                  "weight": 0.22721517086029053
+                },
+                {
+                  "bone": "forearmL",
+                  "weight": 0.12740609049797058
+                },
+                {
+                  "bone": "armL",
+                  "weight": 0.016404546797275543
+                }
+              ],
+              "tail": 0,
+              "leg": 0,
+              "arm": 0.14381063729524612,
+              "shoulder": 0.22721517086029053,
+              "torso": 0,
+              "head": 0.628974199295044
+            }
+          ]
+        },
+        "tail": {
+          "ratio": 2.1693396388999937,
+          "clip": "Sprint",
+          "fraction": 0.75,
+          "restLength": 0.005700192198853245,
+          "posedLength": 0.01236565288632086,
+          "vertices": [
+            {
+              "index": 17477,
+              "rest": {
+                "x": 0.034693192690610886,
+                "y": 0.017787104472517967,
+                "z": 0.1724635660648346
+              },
+              "weights": [
+                {
+                  "bone": "thighR",
+                  "weight": 0.6076788902282715
+                },
+                {
+                  "bone": "pelvis",
+                  "weight": 0.34045761823654175
+                },
+                {
+                  "bone": "shinR",
+                  "weight": 0.03584817796945572
+                },
+                {
+                  "bone": "tail01",
+                  "weight": 0.016015274450182915
+                }
+              ],
+              "tail": 0.016015274450182915,
+              "leg": 0.6435270681977272,
+              "arm": 0,
+              "shoulder": 0,
+              "torso": 0,
+              "head": 0
+            },
+            {
+              "index": 17459,
+              "rest": {
+                "x": 0.029236778616905212,
+                "y": 0.017874471843242645,
+                "z": 0.17081671953201294
+              },
+              "weights": [
+                {
+                  "bone": "pelvis",
+                  "weight": 0.6263442039489746
+                },
+                {
+                  "bone": "thighR",
+                  "weight": 0.27596285939216614
+                },
+                {
+                  "bone": "tail01",
+                  "weight": 0.07804015278816223
+                },
+                {
+                  "bone": "tail02",
+                  "weight": 0.019652806222438812
+                }
+              ],
+              "tail": 0.09769295901060104,
+              "leg": 0.27596285939216614,
+              "arm": 0,
+              "shoulder": 0,
+              "torso": 0,
+              "head": 0
+            }
+          ]
+        },
+        "shoulderWithoutHead": {
+          "ratio": 2.3510929806500553,
+          "clip": "BankLeft",
+          "fraction": 0.25,
+          "restLength": 0.003228711879856312,
+          "posedLength": 0.007591001837271619,
+          "vertices": [
+            {
+              "index": 8325,
+              "rest": {
+                "x": 0.10877665132284164,
+                "y": -0.00818570889532566,
+                "z": -0.02838611602783203
+              },
+              "weights": [
+                {
+                  "bone": "spineMid",
+                  "weight": 0.7560437917709351
+                },
+                {
+                  "bone": "chest",
+                  "weight": 0.10259562730789185
+                },
+                {
+                  "bone": "shoulderR",
+                  "weight": 0.09958626329898834
+                },
+                {
+                  "bone": "armR",
+                  "weight": 0.041774339973926544
+                }
+              ],
+              "tail": 0,
+              "leg": 0,
+              "arm": 0.041774339973926544,
+              "shoulder": 0.09958626329898834,
+              "torso": 0.8586394190788269,
+              "head": 0
+            },
+            {
+              "index": 8319,
+              "rest": {
+                "x": 0.109469935297966,
+                "y": -0.006923862267285585,
+                "z": -0.025496188551187515
+              },
+              "weights": [
+                {
+                  "bone": "spineMid",
+                  "weight": 0.8790407776832581
+                },
+                {
+                  "bone": "chest",
+                  "weight": 0.07052982598543167
+                },
+                {
+                  "bone": "shoulderR",
+                  "weight": 0.032264821231365204
+                },
+                {
+                  "bone": "armR",
+                  "weight": 0.01816459372639656
+                }
+              ],
+              "tail": 0,
+              "leg": 0,
+              "arm": 0.01816459372639656,
+              "shoulder": 0.032264821231365204,
+              "torso": 0.9495706036686897,
+              "head": 0
+            }
+          ]
+        }
+      },
+      "maximumStretchedEdges": {
+        "shoulder": 4,
+        "tail": 0
+      },
+      "runs": []
+    }
+  ],
+  "kick": [
+    {
+      "species": "otter",
+      "clips": [
+        {
+          "name": "Float",
+          "maximumPairAngles": {
+            "thigh": 0.0005802920598321367,
+            "shin": 0,
+            "foot": 0,
+            "finTip": 0
+          },
+          "quarterPairAngles": {
+            "thigh": 0.0005802919526921286,
+            "shin": 0,
+            "foot": 0,
+            "finTip": 0
+          }
+        },
+        {
+          "name": "Glide",
+          "maximumPairAngles": {
+            "thigh": 0.0005802920521792796,
+            "shin": 0,
+            "foot": 0,
+            "finTip": 0
+          },
+          "quarterPairAngles": {
+            "thigh": 0.0005802919572838436,
+            "shin": 0,
+            "foot": 0,
+            "finTip": 0
+          }
+        },
+        {
+          "name": "Swim",
+          "maximumPairAngles": {
+            "thigh": 0.0005956647626518907,
+            "shin": 0,
+            "foot": 0,
+            "finTip": 0.0003143855382547011
+          },
+          "pitchCycle": {
+            "head": {
+              "rangeRadians": 0.03200037612248675,
+              "harmonicLagRadians": 6.283179085111806
+            },
+            "chest": {
+              "rangeRadians": 0.14954740973123193,
+              "harmonicLagRadians": 1.2799977602188823
+            },
+            "spineMid": {
+              "rangeRadians": 0.2586380342704445,
+              "harmonicLagRadians": 1.9199990531244033
+            },
+            "spine": {
+              "rangeRadians": 0.29913901323241476,
+              "harmonicLagRadians": 2.559999675235039
+            },
+            "pelvis": {
+              "rangeRadians": 0.23959043975314176,
+              "harmonicLagRadians": 3.199999818549601
+            },
+            "thighL": {
+              "rangeRadians": 0.1922061668758553,
+              "harmonicLagRadians": 0.9781659534568465
+            },
+            "thighR": {
+              "rangeRadians": 0.1922061668758553,
+              "harmonicLagRadians": 0.9781659534568465
+            },
+            "shinL": {
+              "rangeRadians": 0.12018617287581096,
+              "harmonicLagRadians": 4.432978506354818
+            },
+            "shinR": {
+              "rangeRadians": 0.12018617287581096,
+              "harmonicLagRadians": 4.432978506354818
+            },
+            "footL": {
+              "rangeRadians": 0.5375535774077758,
+              "harmonicLagRadians": 4.643795517748341
+            },
+            "footR": {
+              "rangeRadians": 0.5375535774077758,
+              "harmonicLagRadians": 4.643795517748341
+            },
+            "finTipL": {
+              "rangeRadians": 0.35579848711478756,
+              "harmonicLagRadians": 4.2891196127180695
+            },
+            "finTipR": {
+              "rangeRadians": 0.35579848711478756,
+              "harmonicLagRadians": 4.2891196127180695
+            },
+            "tail01": {
+              "rangeRadians": 0.32229904962203104,
+              "harmonicLagRadians": 3.4008110900487116
+            },
+            "tail03": {
+              "rangeRadians": 0.4684202574593408,
+              "harmonicLagRadians": 3.7422790673902067
+            },
+            "tail05": {
+              "rangeRadians": 0.5769441034883642,
+              "harmonicLagRadians": 4.056386463943319
+            }
+          },
+          "quarterPairAngles": {
+            "thigh": 0.0005802920774337076,
+            "shin": 0,
+            "foot": 0,
+            "finTip": 0
+          }
+        },
+        {
+          "name": "Sprint",
+          "maximumPairAngles": {
+            "thigh": 0.0008403696575215881,
+            "shin": 0,
+            "foot": 0,
+            "finTip": 0
+          },
+          "pitchCycle": {
+            "head": {
+              "rangeRadians": 0.045695787249061814,
+              "harmonicLagRadians": 0.000003985567044395566
+            },
+            "chest": {
+              "rangeRadians": 0.21699415980935666,
+              "harmonicLagRadians": 1.2800349439315513
+            },
+            "spineMid": {
+              "rangeRadians": 0.37664487725608264,
+              "harmonicLagRadians": 1.9199579222185648
+            },
+            "spine": {
+              "rangeRadians": 0.43344542953193094,
+              "harmonicLagRadians": 2.5599403765781332
+            },
+            "pelvis": {
+              "rangeRadians": 0.3451053490166033,
+              "harmonicLagRadians": 3.200007377363269
+            },
+            "thighL": {
+              "rangeRadians": 0.29273562042610746,
+              "harmonicLagRadians": 0.9565570752771508
+            },
+            "thighR": {
+              "rangeRadians": 0.29273562042610746,
+              "harmonicLagRadians": 0.9565570752771508
+            },
+            "shinL": {
+              "rangeRadians": 0.18141444043845484,
+              "harmonicLagRadians": 4.459321937452275
+            },
+            "shinR": {
+              "rangeRadians": 0.18141444043845484,
+              "harmonicLagRadians": 4.459321937452275
+            },
+            "footL": {
+              "rangeRadians": 0.77390928703593,
+              "harmonicLagRadians": 4.6486547821836695
+            },
+            "footR": {
+              "rangeRadians": 0.77390928703593,
+              "harmonicLagRadians": 4.6486547821836695
+            },
+            "finTipL": {
+              "rangeRadians": 0.5171096181522181,
+              "harmonicLagRadians": 4.293820407684551
+            },
+            "finTipR": {
+              "rangeRadians": 0.5171096181522181,
+              "harmonicLagRadians": 4.293820407684551
+            },
+            "tail01": {
+              "rangeRadians": 0.46572279212705536,
+              "harmonicLagRadians": 3.400842814690781
+            },
+            "tail03": {
+              "rangeRadians": 0.678728243677988,
+              "harmonicLagRadians": 3.742338800685224
+            },
+            "tail05": {
+              "rangeRadians": 0.8416640797720014,
+              "harmonicLagRadians": 4.056448573282383
+            }
+          },
+          "quarterPairAngles": {
+            "thigh": 0.0002698377401196271,
+            "shin": 0,
+            "foot": 0,
+            "finTip": 0
+          }
+        },
+        {
+          "name": "SwimUp",
+          "maximumPairAngles": {
+            "thigh": 0.0005892122049339143,
+            "shin": 0,
+            "foot": 0,
+            "finTip": 0.0003077584021031065
+          },
+          "quarterPairAngles": {
+            "thigh": 0.0005802920468222796,
+            "shin": 0,
+            "foot": 0,
+            "finTip": 0
+          }
+        },
+        {
+          "name": "SwimDown",
+          "maximumPairAngles": {
+            "thigh": 0.0005956647626518907,
+            "shin": 0,
+            "foot": 0,
+            "finTip": 0
+          },
+          "quarterPairAngles": {
+            "thigh": 0.0005802920889129926,
+            "shin": 0,
+            "foot": 0,
+            "finTip": 0
+          }
+        },
+        {
+          "name": "Dive",
+          "maximumPairAngles": {
+            "thigh": 0.0006911025962274409,
+            "shin": 0,
+            "foot": 0,
+            "finTip": 0
+          },
+          "quarterPairAngles": {
+            "thigh": 0.000580292031516565,
+            "shin": 0,
+            "foot": 0,
+            "finTip": 0
+          }
+        },
+        {
+          "name": "BankLeft",
+          "maximumPairAngles": {
+            "thigh": 0.24019794163291633,
+            "shin": 0.15173774055365777,
+            "foot": 0.18372270643006924,
+            "finTip": 0.09595852093267934
+          },
+          "quarterPairAngles": {
+            "thigh": 0.23976703803784719,
+            "shin": 0.12058350395605559,
+            "foot": 0.08315830866007991,
+            "finTip": 0.0027809806397432564
+          }
+        },
+        {
+          "name": "BankRight",
+          "maximumPairAngles": {
+            "thigh": 0.24019794163291633,
+            "shin": 0.15173774113320054,
+            "foot": 0.18372271412539082,
+            "finTip": 0.09595852093267934
+          },
+          "quarterPairAngles": {
+            "thigh": 0.23976704333433868,
+            "shin": 0.12058350720666482,
+            "foot": 0.08315830978540494,
+            "finTip": 0.002780980639583568
+          }
+        },
+        {
+          "name": "Brake",
+          "maximumPairAngles": {
+            "thigh": 0.4377674851196579,
+            "shin": 0,
+            "foot": 0.2586798142437911,
+            "finTip": 0
+          },
+          "quarterPairAngles": {
+            "thigh": 0.25693985414913256,
+            "shin": 0,
+            "foot": 0.1518249693591908,
+            "finTip": 0
+          }
+        },
+        {
+          "name": "Reach",
+          "maximumPairAngles": {
+            "thigh": 0.0005802919924869911,
+            "shin": 0,
+            "foot": 0,
+            "finTip": 0
+          },
+          "quarterPairAngles": {
+            "thigh": 0.0005802919557532719,
+            "shin": 0,
+            "foot": 0,
+            "finTip": 0
+          }
+        }
+      ]
+    },
+    {
+      "species": "beaver",
+      "clips": [
+        {
+          "name": "Float",
+          "maximumPairAngles": {
+            "thigh": 0.0005802920598321367,
+            "shin": 0,
+            "foot": 0,
+            "finTip": 0
+          },
+          "quarterPairAngles": {
+            "thigh": 0.0005802919526921286,
+            "shin": 0,
+            "foot": 0,
+            "finTip": 0
+          }
+        },
+        {
+          "name": "Glide",
+          "maximumPairAngles": {
+            "thigh": 0.0005802920521792796,
+            "shin": 0,
+            "foot": 0,
+            "finTip": 0
+          },
+          "quarterPairAngles": {
+            "thigh": 0.0005802919572838436,
+            "shin": 0,
+            "foot": 0,
+            "finTip": 0
+          }
+        },
+        {
+          "name": "Swim",
+          "maximumPairAngles": {
+            "thigh": 0.0005956647626518907,
+            "shin": 0,
+            "foot": 0,
+            "finTip": 0.0003143855382547011
+          },
+          "pitchCycle": {
+            "head": {
+              "rangeRadians": 0.03200037612248675,
+              "harmonicLagRadians": 6.283179085111806
+            },
+            "chest": {
+              "rangeRadians": 0.14954740973123193,
+              "harmonicLagRadians": 1.2799977602188823
+            },
+            "spineMid": {
+              "rangeRadians": 0.2586380342704445,
+              "harmonicLagRadians": 1.9199990531244033
+            },
+            "spine": {
+              "rangeRadians": 0.29913901323241476,
+              "harmonicLagRadians": 2.559999675235039
+            },
+            "pelvis": {
+              "rangeRadians": 0.23959043975314176,
+              "harmonicLagRadians": 3.199999818549601
+            },
+            "thighL": {
+              "rangeRadians": 0.1922061668758553,
+              "harmonicLagRadians": 0.9781659534568465
+            },
+            "thighR": {
+              "rangeRadians": 0.1922061668758553,
+              "harmonicLagRadians": 0.9781659534568465
+            },
+            "shinL": {
+              "rangeRadians": 0.12018617287581096,
+              "harmonicLagRadians": 4.432978506354818
+            },
+            "shinR": {
+              "rangeRadians": 0.12018617287581096,
+              "harmonicLagRadians": 4.432978506354818
+            },
+            "footL": {
+              "rangeRadians": 0.5375535774077758,
+              "harmonicLagRadians": 4.643795517748341
+            },
+            "footR": {
+              "rangeRadians": 0.5375535774077758,
+              "harmonicLagRadians": 4.643795517748341
+            },
+            "finTipL": {
+              "rangeRadians": 0.35579848711478756,
+              "harmonicLagRadians": 4.2891196127180695
+            },
+            "finTipR": {
+              "rangeRadians": 0.35579848711478756,
+              "harmonicLagRadians": 4.2891196127180695
+            },
+            "tail01": {
+              "rangeRadians": 0.28055722478501355,
+              "harmonicLagRadians": 3.3191704555936687
+            },
+            "tail03": {
+              "rangeRadians": 0.34633677153153064,
+              "harmonicLagRadians": 3.570745026455441
+            },
+            "tail05": {
+              "rangeRadians": 0.3860851751143969,
+              "harmonicLagRadians": 3.8300981772569074
+            }
+          },
+          "quarterPairAngles": {
+            "thigh": 0.0005802920774337076,
+            "shin": 0,
+            "foot": 0,
+            "finTip": 0
+          }
+        },
+        {
+          "name": "Sprint",
+          "maximumPairAngles": {
+            "thigh": 0.0008403696575215881,
+            "shin": 0,
+            "foot": 0,
+            "finTip": 0
+          },
+          "pitchCycle": {
+            "head": {
+              "rangeRadians": 0.045695787249061814,
+              "harmonicLagRadians": 0.000003985567044395566
+            },
+            "chest": {
+              "rangeRadians": 0.21699415980935666,
+              "harmonicLagRadians": 1.2800349439315513
+            },
+            "spineMid": {
+              "rangeRadians": 0.37664487725608264,
+              "harmonicLagRadians": 1.9199579222185648
+            },
+            "spine": {
+              "rangeRadians": 0.43344542953193094,
+              "harmonicLagRadians": 2.5599403765781332
+            },
+            "pelvis": {
+              "rangeRadians": 0.3451053490166033,
+              "harmonicLagRadians": 3.200007377363269
+            },
+            "thighL": {
+              "rangeRadians": 0.29273562042610746,
+              "harmonicLagRadians": 0.9565570752771508
+            },
+            "thighR": {
+              "rangeRadians": 0.29273562042610746,
+              "harmonicLagRadians": 0.9565570752771508
+            },
+            "shinL": {
+              "rangeRadians": 0.18141444043845484,
+              "harmonicLagRadians": 4.459321937452275
+            },
+            "shinR": {
+              "rangeRadians": 0.18141444043845484,
+              "harmonicLagRadians": 4.459321937452275
+            },
+            "footL": {
+              "rangeRadians": 0.77390928703593,
+              "harmonicLagRadians": 4.6486547821836695
+            },
+            "footR": {
+              "rangeRadians": 0.77390928703593,
+              "harmonicLagRadians": 4.6486547821836695
+            },
+            "finTipL": {
+              "rangeRadians": 0.5171096181522181,
+              "harmonicLagRadians": 4.293820407684551
+            },
+            "finTipR": {
+              "rangeRadians": 0.5171096181522181,
+              "harmonicLagRadians": 4.293820407684551
+            },
+            "tail01": {
+              "rangeRadians": 0.4070518373976745,
+              "harmonicLagRadians": 3.3191927063159348
+            },
+            "tail03": {
+              "rangeRadians": 0.5014739778354691,
+              "harmonicLagRadians": 3.5707930880780108
+            },
+            "tail05": {
+              "rangeRadians": 0.5547433948447853,
+              "harmonicLagRadians": 3.8301606063308897
+            }
+          },
+          "quarterPairAngles": {
+            "thigh": 0.0002698377401196271,
+            "shin": 0,
+            "foot": 0,
+            "finTip": 0
+          }
+        },
+        {
+          "name": "SwimUp",
+          "maximumPairAngles": {
+            "thigh": 0.0005892122049339143,
+            "shin": 0,
+            "foot": 0,
+            "finTip": 0.0003077584021031065
+          },
+          "quarterPairAngles": {
+            "thigh": 0.0005802920468222796,
+            "shin": 0,
+            "foot": 0,
+            "finTip": 0
+          }
+        },
+        {
+          "name": "SwimDown",
+          "maximumPairAngles": {
+            "thigh": 0.0005956647626518907,
+            "shin": 0,
+            "foot": 0,
+            "finTip": 0
+          },
+          "quarterPairAngles": {
+            "thigh": 0.0005802920889129926,
+            "shin": 0,
+            "foot": 0,
+            "finTip": 0
+          }
+        },
+        {
+          "name": "Dive",
+          "maximumPairAngles": {
+            "thigh": 0.0006911025962274409,
+            "shin": 0,
+            "foot": 0,
+            "finTip": 0
+          },
+          "quarterPairAngles": {
+            "thigh": 0.000580292031516565,
+            "shin": 0,
+            "foot": 0,
+            "finTip": 0
+          }
+        },
+        {
+          "name": "BankLeft",
+          "maximumPairAngles": {
+            "thigh": 0.24019794163291633,
+            "shin": 0.15173774055365777,
+            "foot": 0.18372270643006924,
+            "finTip": 0.09595852093267934
+          },
+          "quarterPairAngles": {
+            "thigh": 0.23976703803784719,
+            "shin": 0.12058350395605559,
+            "foot": 0.08315830866007991,
+            "finTip": 0.0027809806397432564
+          }
+        },
+        {
+          "name": "BankRight",
+          "maximumPairAngles": {
+            "thigh": 0.24019794163291633,
+            "shin": 0.15173774113320054,
+            "foot": 0.18372271412539082,
+            "finTip": 0.09595852093267934
+          },
+          "quarterPairAngles": {
+            "thigh": 0.23976704333433868,
+            "shin": 0.12058350720666482,
+            "foot": 0.08315830978540494,
+            "finTip": 0.002780980639583568
+          }
+        },
+        {
+          "name": "Brake",
+          "maximumPairAngles": {
+            "thigh": 0.4377674851196579,
+            "shin": 0,
+            "foot": 0.2586798142437911,
+            "finTip": 0
+          },
+          "quarterPairAngles": {
+            "thigh": 0.25693985414913256,
+            "shin": 0,
+            "foot": 0.1518249693591908,
+            "finTip": 0
+          }
+        },
+        {
+          "name": "Reach",
+          "maximumPairAngles": {
+            "thigh": 0.0005802919924869911,
+            "shin": 0,
+            "foot": 0,
+            "finTip": 0
+          },
+          "quarterPairAngles": {
+            "thigh": 0.0005802919557532719,
+            "shin": 0,
+            "foot": 0,
+            "finTip": 0
+          }
+        }
+      ]
+    }
+  ]
+}
