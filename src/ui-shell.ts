@@ -69,6 +69,6 @@ export const uiShell = (): string => `
     <output id="lab-readout" class="lab-readout panel hidden"></output>
   </section>
   ${touchMarkup()}
-  <section id="pause" class="overlay hidden" aria-label="Paused"><div class="pause-card panel"><h1 id="pause-title">Paused</h1><p id="pause-description" role="status"></p>${button("resume", "Resume", "primary")}${button("restart", "Restart")}${button("return-menu", "Menu")}${button("pause-settings", "Settings")}
+  <section id="pause" class="overlay hidden" aria-label="Paused">${goalConfettiMarkup()}<div class="pause-card panel"><h1 id="pause-title">Paused</h1><p id="pause-description" role="status"></p>${button("resume", "Resume", "primary")}${button("restart", "Restart")}${button("return-menu", "Menu")}${button("pause-settings", "Settings")}
     <details><summary>Controls</summary>${controlsMarkup()}</details>
   </div></section>`;

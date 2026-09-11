@@ -2,6 +2,7 @@ import { createAudio, type PoolAudio } from "./audio";
 import { createAudioEventTracker } from "./audio-events";
 import { createInput } from "./input";
 import { createLearning } from "./learning";
+import { matchResult } from "./match-result";
 import { createFrameMeter } from "./performance";
 import {
   createSimulation,
@@ -327,14 +328,16 @@ const boot = async (): Promise<void> => {
     input.setActive(false);
     if (document.pointerLockElement) document.exitPointerLock();
     ui.pause.classList.remove("hidden");
-    getElement("#pause-title", HTMLElement).textContent =
-      app.state.scores[0] === app.state.scores[1]
-        ? "Draw"
-        : app.state.scores[0] > app.state.scores[1]
-          ? "Otters win"
-          : "Beavers win";
-    getElement("#pause-description", HTMLElement).textContent =
-      `${app.state.scores[0]} — ${app.state.scores[1]}`;
+    const result = matchResult(
+      app.state.scores,
+      app.state.players.at(0)?.team ?? 0,
+    );
+    ui.pause.dataset.outcome = result.outcome;
+    ui.pause.dataset.team =
+      app.state.players.at(0)?.team === 1 ? "beavers" : "otters";
+    getElement("#pause-title", HTMLElement).textContent = result.title;
+    getElement("#pause-description", HTMLElement).textContent = result.score;
+    getElement("#pause-description", HTMLElement).dataset.teams = result.teams;
     getElement("#resume", HTMLButtonElement).classList.add("hidden");
   };
   const frame = (now: number): void => {

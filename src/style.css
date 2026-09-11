@@ -1371,3 +1371,93 @@ legend {
   transform: rotate(45deg);
   filter: drop-shadow(1px 1px 1px #174a70);
 }
+
+#pause > .goal-confetti {
+  display: none;
+}
+#pause.match-result[data-outcome="win"] > .goal-confetti {
+  display: block;
+}
+.match-result[data-team="beavers"] > .goal-confetti {
+  --confetti-team: #ff7e91;
+}
+.match-result[data-outcome="win"] > .goal-confetti .sea-confetti {
+  animation: sea-confetti-burst 2400ms var(--delay)
+    cubic-bezier(0.15, 0.6, 0.25, 1) both;
+}
+.match-result .pause-card {
+  position: relative;
+  border: 3px solid #b6dbe7;
+  border-radius: 32px;
+  box-shadow:
+    0 10px 0 #103d5c,
+    0 24px 60px #08293a55;
+  padding: clamp(24px, 5vw, 40px);
+  width: min(440px, 100%);
+}
+.match-result .pause-card::before {
+  content: "FULL TIME";
+  font-size: 13px;
+  font-weight: 850;
+  letter-spacing: 0.2em;
+  color: #527288;
+}
+.match-result[data-outcome="win"] .pause-card {
+  border-color: #ffe46c;
+  background: linear-gradient(155deg, #fffbdc, #effaff 65%);
+  animation: result-arrive 450ms ease-out both;
+}
+.match-result[data-outcome="win"] .pause-card::before {
+  content: "★";
+  color: #ffcb38;
+  font-size: 54px;
+  line-height: 1;
+  text-shadow: 0 3px 0 #b47c17;
+}
+.match-result[data-outcome="win"] #pause-title {
+  color: #165d87;
+}
+.match-result[data-outcome="loss"] #pause-title {
+  color: #536877;
+}
+.match-result .pause-card h1 {
+  font-size: clamp(32px, 6vw, 48px);
+  font-weight: 950;
+}
+.match-result #pause-description::after {
+  content: attr(data-teams);
+  display: block;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  color: #527288;
+  margin-top: 12px;
+  line-height: 1.5;
+}
+.match-result #restart {
+  background: #ffe46c;
+  border-color: #fff5b4;
+  box-shadow: 0 5px 0 #c8a740;
+}
+.match-result #return-menu {
+  background: transparent;
+  box-shadow: none;
+  border-color: transparent;
+}
+@keyframes result-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #pause.match-result[data-outcome="win"] > .goal-confetti {
+    display: none;
+  }
+  .match-result[data-outcome="win"] .pause-card {
+    animation: none;
+  }
+}
