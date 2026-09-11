@@ -1196,3 +1196,66 @@ legend {
   color: var(--ink);
   background: var(--panel);
 }
+
+.announcement.goal-celebration {
+  --goal-color: #54cfff;
+  top: 19%;
+  text-align: center;
+  font-size: clamp(64px, 12vw, 144px);
+  line-height: 1;
+  color: #fff18c;
+  -webkit-text-stroke: 2px #174a70;
+  text-shadow:
+    0 6px 0 #174a70,
+    0 10px 0 var(--goal-color);
+  pointer-events: none;
+  animation: goal-pop 550ms cubic-bezier(0.2, 0.8, 0.3, 1.2) both;
+}
+.announcement.goal-celebration.beaver-goal {
+  --goal-color: #ff7e91;
+}
+.announcement.goal-celebration::before {
+  content: attr(data-team);
+  display: block;
+  margin-bottom: 14px;
+  font-size: clamp(16px, 3vw, 24px);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--goal-color);
+  -webkit-text-stroke: 0;
+  text-shadow: 0 2px 0 #174a70;
+}
+.announcement.goal-celebration::after {
+  content: attr(data-score);
+  display: block;
+  width: fit-content;
+  margin: 22px auto 0;
+  padding: 10px 26px;
+  border: 3px solid var(--goal-color);
+  border-radius: 22px;
+  background: #123c60e8;
+  color: white;
+  font-size: clamp(28px, 5vw, 44px);
+  -webkit-text-stroke: 0;
+  text-shadow: none;
+  box-shadow: 0 5px 0 #0b2948;
+}
+@keyframes goal-pop {
+  0% {
+    transform: translateX(-50%) scale(0.45) rotate(-9deg);
+    opacity: 0;
+  }
+  65% {
+    transform: translateX(-50%) scale(1.12) rotate(3deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-50%) scale(1) rotate(-2deg);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .announcement.goal-celebration {
+    animation: none;
+  }
+}

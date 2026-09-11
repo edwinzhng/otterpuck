@@ -1805,6 +1805,9 @@ export const stepSimulation = (
   state.time += dt;
   state.eventTime = Math.max(0, state.eventTime - dt);
   if (state.restartTime > 0) {
+    for (const player of state.players) {
+      if (player.human) player.yaw += controls.yawDelta * 1.3;
+    }
     state.restartTime = Math.max(0, state.restartTime - dt);
     if (state.restartTime === 0) resetPositions(state);
     syncInterpolation(state);

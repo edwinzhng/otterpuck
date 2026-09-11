@@ -36,6 +36,8 @@ export const puckInKnockdownBox = (
 };
 
 export const canKnockdown = (state: Simulation, player: Player): boolean =>
+  state.restartTime === 0 &&
+  !state.finished &&
   !player.wallReady &&
   !player.emergency &&
   player.shotTime <= 0 &&

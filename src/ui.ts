@@ -231,8 +231,25 @@ export const updateUI = (
           : guidance.detail;
     ui.elements.descendCue.classList.toggle("hidden", !guidance.descend);
   }
-  ui.elements.event.textContent = state.eventTime > 0 ? state.event : "";
-  const reaction = puckReaction(state, player, input.controls.pitch);
+  const celebrating = state.restartTime > 0 && state.eventTime > 0;
+  ui.elements.event.textContent = celebrating
+    ? "GOAL!"
+    : state.eventTime > 0
+      ? state.event
+      : "";
+  ui.elements.event.classList.toggle("goal-celebration", celebrating);
+  ui.elements.event.classList.toggle(
+    "beaver-goal",
+    celebrating && state.event === "Beavers score",
+  );
+  ui.elements.event.dataset.score = celebrating
+    ? `${state.scores.at(0)} — ${state.scores.at(1)}`
+    : "";
+  ui.elements.event.dataset.team = celebrating ? state.event : "";
+  const reaction =
+    state.restartTime > 0
+      ? undefined
+      : puckReaction(state, player, input.controls.pitch);
   ui.elements.knockdown.classList.toggle("hidden", reaction === undefined);
   ui.elements.reactionLabel.textContent =
     reaction === "grab" ? "Grab" : "Knock down";
