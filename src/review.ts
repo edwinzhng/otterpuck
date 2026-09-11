@@ -17,7 +17,7 @@ import {
 export const bootReview = async (): Promise<void> => {
   document.body.innerHTML = `<canvas id="pool" aria-label="Otterpuck gameplay movement review"></canvas>
     <div class="review-toolbar"><a href="/">OTTERPUCK</a>
-    <label>Arena <select id="review-arena"><option value="tropical">Tropical Cove</option><option value="city">Neon Rooftop</option></select></label><label>Movement <select id="movement"><option>Swim</option><option>Sprint</option><option>Floor swim</option><option>Floor sprint</option><option>Floor bank left</option><option>Floor bank right</option><option>Swim up</option><option>Dive down</option><option>Bank left</option><option>Bank right</option><option>Glide</option><option>Brake</option><option>Reach</option><option>Puck</option><option>Goal</option><option>Curl</option><option>Reverse curl</option></select></label>
+    <label>Arena <select id="review-arena"><option value="tropical">Tropical Cove</option><option value="city">Neon Rooftop</option></select></label><label>Movement <select id="movement"><option>Swim</option><option>Sprint</option><option>Floor swim</option><option>Floor sprint</option><option>Floor bank left</option><option>Floor bank right</option><option>Swim up</option><option>Dive down</option><option>Bank left</option><option>Bank right</option><option>Glide</option><option>Brake</option><option>Reach</option><option>Puck</option><option>Goal</option><option>Curl</option><option>Reverse curl</option><option>Swerve left</option><option>Swerve right</option></select></label>
     <label>Species <select id="review-species"><option value="otter">Otter</option><option value="beaver">Beaver</option></select></label>
     <label>Camera <select id="camera"><option>Side</option><option>Three quarter</option><option>Toward</option><option>Away</option><option>Above</option><option>Below</option><option>Gameplay</option><option>Surface</option><option>Arena</option><option>Trough</option><option>End wall</option><option>Opposite wall</option></select></label>
     <button id="freeze">Pause motion</button><button id="reset">Restart movement</button><button id="capture">Capture frame</button><a id="frame-download" hidden>Save PNG</a><output id="review-status">Loading the game assets…</output></div>`;
@@ -37,7 +37,14 @@ export const bootReview = async (): Promise<void> => {
   )
     throw new Error("Movement review controls missing");
   const world = createWorld(canvas);
-  const floorMoves = ["Puck", "Goal", "Curl", "Reverse curl"];
+  const floorMoves = [
+    "Puck",
+    "Goal",
+    "Curl",
+    "Reverse curl",
+    "Swerve left",
+    "Swerve right",
+  ];
   world.renderScale = 1.35;
   resizeWorld(world);
   const review = {
@@ -161,6 +168,16 @@ export const bootReview = async (): Promise<void> => {
             : movement.value === "Reverse curl"
               ? -1
               : 0;
+        if (movement.value.startsWith("Swerve ")) {
+          controls.forward = review.elapsed < 1.7 ? 0.5 : 0;
+          controls.dummy =
+            review.elapsed >= 0.2 && review.elapsed < 1.1
+              ? movement.value === "Swerve left"
+                ? -1
+                : 1
+              : 0;
+          controls.lateral = controls.dummy;
+        }
         stepSimulation(review.state, controls, STEP);
         review.elapsed += STEP;
         review.accumulator -= STEP;

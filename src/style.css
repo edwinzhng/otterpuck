@@ -867,8 +867,8 @@ legend {
 .speed-lines i {
   position: absolute;
   top: 50%;
-  width: 16vw;
-  height: 2px;
+  width: 19vw;
+  height: 4px;
   border-radius: 100%;
   background: linear-gradient(90deg, transparent, #d7faff 65%, transparent);
   transform-origin: center;
@@ -1137,4 +1137,62 @@ legend {
   .speed-lines {
     display: none;
   }
+}
+
+.volume-setting {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.5rem;
+  margin: 1rem 0;
+  font-weight: 700;
+}
+.volume-setting input {
+  grid-column: 1 / -1;
+  width: 100%;
+  accent-color: #258cda;
+}
+
+.match-result .pause-card {
+  text-align: center;
+  width: min(400px, 100%);
+  padding: 32px;
+  gap: 14px;
+}
+.match-result .pause-card h1 {
+  font-size: clamp(28px, 5vw, 38px);
+  margin: 0;
+}
+.match-result .pause-card > #pause-description {
+  font-size: clamp(48px, 9vw, 72px);
+  font-weight: 850;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  margin: 4px 0 18px;
+  color: var(--ink);
+}
+.match-result .pause-card > details,
+.match-result .pause-card > .field,
+.match-result #pause-settings {
+  display: none;
+}
+
+.desktop-shortcuts,
+.lesson-shortcuts {
+  display: none;
+}
+.pointer-captured .hud-actions > button,
+.pointer-captured .lesson-tools {
+  display: none;
+}
+.pointer-captured .desktop-shortcuts,
+.pointer-captured .lesson-shortcuts {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+}
+.pointer-captured .desktop-shortcuts {
+  padding: 8px 12px;
+  border-radius: 12px;
+  color: var(--ink);
+  background: var(--panel);
 }

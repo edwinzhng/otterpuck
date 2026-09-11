@@ -41,6 +41,7 @@ export type Avatar = {
   motion: SwimMotion;
   firstPersonArms: Map<string, SkinnedMesh[]>;
   finClearance: FinClearance;
+  visibility: string;
 };
 
 export const createAvatar = (
@@ -88,6 +89,7 @@ export const createAvatar = (
     motion: createSwimMotion(model, clips),
     finClearance: createFinClearance(model, bones),
     firstPersonArms: createFirstPersonArms(model),
+    visibility: "",
   };
 };
 
@@ -157,7 +159,9 @@ export const poseAvatar = (
 ): void => {
   const { root, model, bones, motion } = avatar;
   root.position.lerpVectors(player.previous, player.position, alpha);
-  root.rotation.set(0, player.yaw, 0);
+  const viewYaw =
+    player.previousYaw + (player.yaw - player.previousYaw) * alpha;
+  root.rotation.set(0, viewYaw, 0);
   model.position.set(0, 0, 0);
   for (const arm of avatar.arms.values()) {
     arm.upper.scale.set(1, 1, 1);
@@ -181,13 +185,18 @@ export const poseAvatar = (
   );
   root.position.y += floorApproach * 0.02 - bottom * 0.26;
   const side = player.handedness === "right" ? "R" : "L";
-  model.traverse((object): void => {
-    if (!(object instanceof Mesh)) return;
-    const equipment = /^GripPaw([LR])(?:Mitten|Cuff)$/.exec(object.name);
-    if (object.name.startsWith("FirstPersonArm")) {
-      object.visible = firstPerson && object.name === `FirstPersonArm${side}`;
-    } else object.visible = equipment ? equipment.at(1) === side : !firstPerson;
-  });
+  const visibility = `${side}:${firstPerson}`;
+  if (avatar.visibility !== visibility) {
+    model.traverse((object): void => {
+      if (!(object instanceof Mesh)) return;
+      const equipment = /^GripPaw([LR])(?:Mitten|Cuff)$/.exec(object.name);
+      if (object.name.startsWith("FirstPersonArm")) {
+        object.visible = firstPerson && object.name === `FirstPersonArm${side}`;
+      } else
+        object.visible = equipment ? equipment.at(1) === side : !firstPerson;
+    });
+    avatar.visibility = visibility;
+  }
   root.updateMatrixWorld(true);
   const arm = avatar.arms.get(side);
   if (!arm) return;
@@ -205,17 +214,17 @@ export const poseAvatar = (
       delta.setY(0).multiplyScalar(1 - horizontalReach / horizontalDistance),
     );
   root.updateMatrixWorld(true);
-  keepFinsAboveFloor(avatar.finClearance, player.yaw);
-  reach(arm, target, side === "R" ? 1 : -1, player.yaw);
+  keepFinsAboveFloor(avatar.finClearance, viewYaw);
+  reach(arm, target, side === "R" ? 1 : -1, viewYaw);
   const freeArm = avatar.arms.get(side === "R" ? "L" : "R");
   if (freeArm && bottom > 0.001) {
     const restingPaw = new Vector3(side === "R" ? -0.15 : 0.15, 0, -0.26)
-      .applyAxisAngle(new Vector3(0, 1, 0), player.yaw)
+      .applyAxisAngle(new Vector3(0, 1, 0), viewYaw)
       .add(root.position)
       .setY(0.055);
     const freeTarget = freeArm.paw
       .getWorldPosition(new Vector3())
       .lerp(restingPaw, bottom);
-    reach(freeArm, freeTarget, side === "R" ? -1 : 1, player.yaw);
+    reach(freeArm, freeTarget, side === "R" ? -1 : 1, viewYaw);
   }
 };

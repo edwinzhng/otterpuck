@@ -22,7 +22,7 @@ for obj in objects:
 batches={}
 for obj in objects:
     surface=obj.data.materials[0].name
-    key=surface if surface.startswith('Pool ') else 'Wind' if obj.get('wind_weight') else 'Architecture'
+    key=obj.name if obj.name.startswith(('TroughGoal','GoalAccent')) else surface if surface.startswith('Pool ') else 'Wind' if obj.get('wind_weight') else 'Architecture'
     batches.setdefault(key,[]).append(obj)
 for key,batch in batches.items():
     bpy.ops.object.select_all(action='DESELECT')

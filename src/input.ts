@@ -62,6 +62,7 @@ export const createInput = (
   };
   document.addEventListener("pointerlockchange", (): void => {
     const held = document.pointerLockElement === canvas;
+    document.body.classList.toggle("pointer-captured", held);
     if (capture.held && !held) {
       input.clear();
       onPause();
@@ -84,6 +85,7 @@ export const createInput = (
       if (event.code === "Escape") onPause();
       return;
     }
+    if (event.code === "KeyF" && event.ctrlKey) return;
     event.preventDefault();
     keys.add(event.code);
     if (event.repeat) return;
@@ -112,6 +114,11 @@ export const createInput = (
   });
   window.addEventListener("mousedown", (event: MouseEvent): void => {
     if (!input.locked || touch.enabled) return;
+    if (
+      event.target instanceof Element &&
+      event.target.closest("button, dialog")
+    )
+      return;
     if (event.button === 2) controls.dummyMode = true;
     if (event.button === 0) {
       input.charging = true;

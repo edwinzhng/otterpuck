@@ -69,7 +69,7 @@ test("every swimmer waits at their own wall until the strike signal", (): void =
 test("goals reset both teams to the wall and restore the central puck", (): void => {
   const state = createSimulation();
   state.faceoff = undefined;
-  state.puck.position.set(0, PUCK_HEIGHT, -12.3);
+  state.puck.position.set(0, PUCK_HEIGHT, -12.385);
   advance(state, 3.1);
   expect(state.scores.at(0)).toBe(1);
   expect(state).toMatchObject({ faceoff: { phase: "ready" } });
@@ -81,13 +81,13 @@ test("goals reset both teams to the wall and restore the central puck", (): void
   expect(state.puck.position.z).toBe(0);
 });
 
-test("active handling exhausts air within twenty seconds while cruising lasts longer", (): void => {
+test("active handling exhausts air within fifteen seconds while cruising lasts longer", (): void => {
   const active = createSimulation("3-3", "3-3", "practice");
   const cruise = createSimulation("3-3", "3-3", "practice");
   active.puck.position.x = 5;
   cruise.puck.position.x = 5;
-  advance(active, 19.4, { ...freshControls(), forward: 1, dummy: 1 });
-  advance(cruise, 19.4, { ...freshControls(), forward: 1 });
+  advance(active, 14.55, { ...freshControls(), forward: 1, dummy: 1 });
+  advance(cruise, 14.55, { ...freshControls(), forward: 1 });
   expect(active.players.at(0)?.emergency).toBe(true);
   expect(cruise.players.at(0)?.air).toBeGreaterThan(40);
   expect(cruise.players.at(0)?.emergency).toBe(false);

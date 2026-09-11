@@ -9,7 +9,8 @@
       "!art/**/*.png",
       "!art/**/*.py",
       "!bun.lock",
-      "!art/**/*evidence.json"
+      "!art/**/*evidence.json",
+      "!.vercel"
     ]
   },
   "formatter": {

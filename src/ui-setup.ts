@@ -42,8 +42,6 @@ export const createUI = (): UI => {
       awayScore: element("away-score"),
       air: element("air"),
       airLabel: element("air-label"),
-      speed: element("speed"),
-      depth: element("depth"),
       event: element("announcement"),
       role: element("role"),
       handling: element("handling-mode"),
@@ -60,13 +58,13 @@ export const createUI = (): UI => {
     },
   };
   bindLobby(ui);
-  for (const id of ["handedness", "pause-handedness"]) {
+  for (const id of ["handedness"]) {
     const select = getElement(`#${id}`, HTMLSelectElement);
     select.value = ui.handedness;
     select.addEventListener("change", (): void => {
       ui.handedness = select.value === "left" ? "left" : "right";
       localStorage.setItem("otter-hockey-handedness", ui.handedness);
-      for (const target of ["handedness", "pause-handedness"])
+      for (const target of ["handedness"])
         getElement(`#${target}`, HTMLSelectElement).value = ui.handedness;
     });
   }

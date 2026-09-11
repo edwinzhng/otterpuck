@@ -94,8 +94,11 @@ describe("Physical puck", (): void => {
       .setY(PUCK_HEIGHT);
     state.puck.lastTouch = 6;
     const origin = state.puck.position.clone();
-    advance(state, 0.18, { ...freshControls(), dummy: 1 });
+    const controls = { ...freshControls(), dummy: 1 };
+    advance(state, 0.12, controls);
     expect(state.puck.lastTouch).toBe(player.id);
+    expect(state.puck.position.z - origin.z).toBeGreaterThan(0.09);
+    advance(state, 0.3, controls);
     expect(state.puck.position.x - origin.x).toBeGreaterThan(0.15);
     expect(state.contacts).toBeGreaterThan(0);
   });
@@ -112,7 +115,7 @@ describe("Physical puck", (): void => {
   test("only entering the low goal trough counts", (): void => {
     const goal = createSimulation();
     goal.faceoff = undefined;
-    goal.puck.position.set(0, PUCK_HEIGHT, -12.3);
+    goal.puck.position.set(0, PUCK_HEIGHT, -12.385);
     stepSimulation(goal, freshControls(), STEP);
     expect(goal.scores.at(0)).toBe(1);
     advance(goal, 0.5);
@@ -153,6 +156,22 @@ describe("Movement and breath", (): void => {
     advance(state, 8);
     expect(player.air).toBeGreaterThan(86);
     expect(player.emergency).toBe(false);
+  });
+  test("emergency recovery unlocks diving at 80 percent air", (): void => {
+    const state = createSimulation("3-3", "3-3", "practice");
+    const player = state.players.at(0);
+    if (!player) throw new Error("Player missing");
+    player.position.y = SURFACE_HEIGHT;
+    player.mode = "recovering";
+    player.emergency = true;
+    player.air = 79;
+    stepSimulation(state, freshControls(), STEP);
+    expect(player.emergency).toBe(true);
+    player.air = 80;
+    stepSimulation(state, freshControls(), STEP);
+    expect(player.emergency).toBe(false);
+    advance(state, 3, { ...freshControls(), dive: true });
+    expect(player.position.y).toBeCloseTo(FLOOR_HEIGHT);
   });
   test("a stationary duck dive returns to the floor", (): void => {
     const state = createSimulation("3-3", "3-3", "practice");

@@ -1,6 +1,11 @@
 import { expect, test } from "bun:test";
 import { PerspectiveCamera, Vector3 } from "three";
-import { canKnockdown, handlingPitch, pollMovement } from "../src/handling";
+import {
+  canKnockdown,
+  KNOCKDOWN_DURATION,
+  KNOCKDOWN_HIT_TIME,
+  pollMovement,
+} from "../src/handling";
 import {
   createSimulation,
   feedPracticePuck,
@@ -104,7 +109,7 @@ test("both dummies swerve the puck while the swimmer turns without taking a dist
 test("regular and reverse curls stay visible through a full turn and leave a shootable puck in front", (): void => {
   for (const direction of [-1, 1]) {
     const { state, player } = setup();
-    const controls = { ...freshControls(), curl: direction, pitch: 0.8 };
+    const controls = { ...freshControls(), curl: direction, pitch: -0.6 };
     const camera = new PerspectiveCamera(77, 1, 0.025, 90);
     advance(state, 0.25, controls);
     for (const unused of Array.from({ length: 360 })) {
@@ -119,11 +124,7 @@ test("regular and reverse curls stay visible through a full turn and leave a sho
           ),
         );
       camera.rotation.order = "YXZ";
-      camera.rotation.set(
-        handlingPitch(player, state, controls.pitch),
-        player.yaw,
-        0,
-      );
+      camera.rotation.set(controls.pitch, player.yaw, 0);
       camera.updateMatrixWorld(true);
       const projected = state.puck.position.clone().project(camera);
       expect(Math.abs(projected.x)).toBeLessThan(0.7);
@@ -201,7 +202,7 @@ test("a knockdown needs a new press, respects cooldown, and misses if the puck l
   const controls = { ...freshControls(), knockdown: true };
   stepSimulation(state, controls, STEP);
   expect(controls.knockdown).toBe(false);
-  advance(state, 0.1);
+  advance(state, KNOCKDOWN_HIT_TIME + STEP);
   expect(state.puck.velocity.y).toBeLessThan(-2);
   expect(state.puck.lastTouch).toBe(0);
   expect(canKnockdown(state, player)).toBe(false);
@@ -249,4 +250,29 @@ test("full flicks stop between two and three metres and a flat push dies quickly
   advance(state, 2);
   expect(Math.abs(state.puck.position.z)).toBeLessThan(0.6);
   expect(state.puck.velocity.length()).toBeLessThan(0.01);
+});
+
+test("knockdowns stay in front of the face and return smoothly", (): void => {
+  for (const handedness of ["left", "right"] as const) {
+    const { state, player } = setup();
+    player.handedness = handedness;
+    advance(state, 0.5);
+    const resting = player.stickOffset.clone();
+    state.puck.position.copy(player.position).add(new Vector3(0, 0.7, -0.7));
+    stepSimulation(state, { ...freshControls(), knockdown: true }, STEP);
+    const motion = { peak: 0 };
+    for (const unused of Array.from({
+      length: Math.ceil((KNOCKDOWN_DURATION + 0.4) / STEP),
+    })) {
+      void unused;
+      const previous = player.stickOffset.clone();
+      stepSimulation(state, freshControls(), STEP);
+      expect(player.stickOffset.distanceTo(previous)).toBeLessThan(0.035);
+      expect(player.stickOffset.y).toBeLessThanOrEqual(0.28);
+      expect(player.stickOffset.z).toBeGreaterThanOrEqual(-0.52);
+      motion.peak = Math.max(motion.peak, player.stickOffset.y);
+    }
+    expect(motion.peak).toBeGreaterThan(0.15);
+    expect(player.stickOffset.distanceTo(resting)).toBeLessThan(0.01);
+  }
 });

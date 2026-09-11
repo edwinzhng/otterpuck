@@ -1,6 +1,7 @@
 import { createAudio, type PoolAudio } from "./audio";
 import { createAudioEventTracker } from "./audio-events";
 import { createInput } from "./input";
+import { createLearning } from "./learning";
 import { createFrameMeter } from "./performance";
 import {
   createSimulation,
@@ -29,12 +30,13 @@ const boot = async (): Promise<void> => {
   const audioEvents = createAudioEventTracker();
   const vignette = getElement(".water-vignette", HTMLElement);
   const app: {
-    phase: "menu" | "playing" | "paused" | "finished";
+    phase: "menu" | "playing" | "paused" | "finished" | "learning";
     state: ReturnType<typeof createSimulation>;
     accumulator: number;
     previousTime: number;
     renderTime: number;
     uiTime: number;
+    metricsTime: number;
     audio: PoolAudio | undefined;
   } = {
     phase: "menu",
@@ -43,11 +45,15 @@ const boot = async (): Promise<void> => {
     previousTime: 0,
     renderTime: 0,
     uiTime: 0,
+    metricsTime: 0,
     audio: undefined,
   };
   const pause = (): void => {
     if (app.phase !== "playing") return;
     app.phase = "paused";
+    ui.pause.classList.remove("match-result");
+    ui.pause.setAttribute("aria-label", "Paused");
+    getElement("#restart", HTMLButtonElement).textContent = "Restart";
     app.audio?.setPlaying(false);
     input.setActive(false);
     const player = app.state.players.at(0);
@@ -57,10 +63,7 @@ const boot = async (): Promise<void> => {
     }
     ui.pause.classList.remove("hidden");
     getElement("#pause-title", HTMLElement).textContent = "Paused";
-    getElement("#pause-description", HTMLElement).textContent =
-      input.touch.enabled && innerHeight > innerWidth
-        ? "Turn your phone sideways to play."
-        : "";
+    getElement("#pause-description", HTMLElement).textContent = "";
     getElement("#resume", HTMLButtonElement).classList.remove("hidden");
     if (document.pointerLockElement) document.exitPointerLock();
   };
@@ -71,7 +74,8 @@ const boot = async (): Promise<void> => {
       ui.tactics = !ui.tactics;
       ui.hud.classList.toggle("tactics", ui.tactics);
     },
-    (): void => resetPracticePuck(app.state),
+    (): void =>
+      learning.active() ? learning.retry() : resetPracticePuck(app.state),
     (action): void => {
       if (app.state.mode !== "playground") return;
       if (action === "feed") feedPracticePuck(app.state);
@@ -86,28 +90,49 @@ const boot = async (): Promise<void> => {
   const graphics = { chosen: localStorage.getItem("otterpuck-quality") };
   const applyQuality = (): void => {
     quality.value =
-      ["0.85", "1", "1.35", "1.7"].find(
+      ["0.85", "1", "1.35", "1.7", "2"].find(
         (value): boolean => value === graphics.chosen,
-      ) ?? (input.touch.enabled ? "0.85" : "1.35");
+      ) ?? (input.touch.enabled ? "1.7" : "1.35");
     world.renderScale = Number(quality.value);
     resizeWorld(world);
   };
   applyQuality();
   window.addEventListener("input-mode-change", applyQuality);
+  const volumes = { music: 0.5, effects: 1 };
+  const applyVolumes = (): void => {
+    for (const kind of ["music", "effects"] as const)
+      app.audio?.setVolume(kind, volumes[kind]);
+  };
+  for (const kind of ["music", "effects"] as const) {
+    const saved = localStorage.getItem(`otterpuck-volume-${kind}`);
+    const parsed = saved === null ? volumes[kind] : Number(saved);
+    volumes[kind] = Number.isFinite(parsed)
+      ? Math.max(0, Math.min(1, parsed))
+      : volumes[kind];
+    const slider = getElement(`#${kind}-volume`, HTMLInputElement);
+    const output = getElement(`#${kind}-volume-value`, HTMLOutputElement);
+    slider.value = String(Math.round(volumes[kind] * 100));
+    output.value = slider.value + "%";
+    slider.addEventListener("input", (): void => {
+      volumes[kind] = Number(slider.value) / 100;
+      output.value = slider.value + "%";
+      localStorage.setItem(`otterpuck-volume-${kind}`, String(volumes[kind]));
+      applyVolumes();
+    });
+  }
+  getElement("#pause-settings", HTMLButtonElement).addEventListener(
+    "click",
+    (): void => getElement("#settings-dialog", HTMLDialogElement).showModal(),
+  );
   const enter = async (fresh: boolean): Promise<void> => {
     if (!world.loaded) return;
-    if (input.touch.enabled && innerHeight > innerWidth) {
-      ui.status.textContent = "Turn your phone sideways to play.";
-      getElement("#pause-description", HTMLElement).textContent =
-        "Turn your phone sideways to play.";
-      return;
-    }
     ui.status.textContent = "";
     if (ui.sound) {
       if (!app.audio) app.audio = createAudio();
       app.audio.context.resume().catch(console.error);
       app.audio.setEnabled(true);
       app.audio.setMusicEnabled(ui.music);
+      applyVolumes();
       app.audio.setPlaying(true);
     }
     if (!input.touch.enabled && ui.canvas.requestPointerLock)
@@ -143,15 +168,6 @@ const boot = async (): Promise<void> => {
     ui.hud.classList.toggle("playground-hud", playground);
     ui.hud.classList.toggle("practice-hud", app.state.mode !== "match");
     getElement("#lab-readout", HTMLElement).classList.toggle("hidden", true);
-    getElement("#lab-settings", HTMLElement).classList.toggle(
-      "hidden",
-      !playground,
-    );
-    if (fresh)
-      for (const key of ["drag", "lift"] as const) {
-        getElement(`#lab-${key}`, HTMLInputElement).value = "1";
-        getElement(`#${key}-value`, HTMLOutputElement).value = "1×";
-      }
     ui.elements.matchLabel.textContent =
       ui.mode !== "match" ? "FREE SWIM" : `${ui.formation} / ${ui.opposition}`;
   };
@@ -183,8 +199,28 @@ const boot = async (): Promise<void> => {
           ". Choose an arena to retry.";
       });
   });
+  const learning = createLearning({
+    state: () => app.state,
+    touch: () => input.touch.enabled,
+    suspend: (): void => {
+      app.phase = "learning";
+      input.setActive(false);
+      app.audio?.setPlaying(false);
+      if (document.pointerLockElement) document.exitPointerLock();
+    },
+    resume: (): void => enterWithFeedback(false),
+    start: async (): Promise<void> => {
+      ui.mode = "playground";
+      await enter(true);
+    },
+    exit: (): void => getElement("#return-menu", HTMLButtonElement).click(),
+  });
+  getElement("#learn-button", HTMLButtonElement).addEventListener(
+    "click",
+    learning.open,
+  );
   ui.start.addEventListener("click", (): void => enterWithFeedback(true));
-  for (const id of ["handedness", "pause-handedness"])
+  for (const id of ["handedness"])
     getElement(`#${id}`, HTMLSelectElement).addEventListener(
       "change",
       (): void => {
@@ -192,40 +228,17 @@ const boot = async (): Promise<void> => {
         setPlayerHandedness(app.state, ui.handedness);
       },
     );
-  for (const key of ["drag", "lift"] as const)
-    getElement(`#lab-${key}`, HTMLInputElement).addEventListener(
-      "input",
-      (event: Event): void => {
-        if (!(event.target instanceof HTMLInputElement)) return;
-        app.state.physics[key] = Number(event.target.value);
-        getElement(`#${key}-value`, HTMLOutputElement).value =
-          `${event.target.value}×`;
-      },
-    );
-  getElement("#lab-reset", HTMLButtonElement).addEventListener(
-    "click",
-    (): void => resetPracticePuck(app.state),
-  );
-  getElement("#lab-feed", HTMLButtonElement).addEventListener(
-    "click",
-    (): void => feedPracticePuck(app.state),
-  );
-  getElement("#lab-defaults", HTMLButtonElement).addEventListener(
-    "click",
-    (): void => {
-      for (const key of ["drag", "lift"] as const) {
-        app.state.physics[key] = 1;
-        getElement(`#lab-${key}`, HTMLInputElement).value = "1";
-        getElement(`#${key}-value`, HTMLOutputElement).value = "1×";
-      }
-    },
-  );
   getElement("#resume", HTMLButtonElement).addEventListener("click", (): void =>
     enterWithFeedback(false),
   );
   getElement("#restart", HTMLButtonElement).addEventListener(
     "click",
-    (): void => enterWithFeedback(true),
+    (): void => {
+      if (learning.active()) {
+        learning.retry();
+        enterWithFeedback(false);
+      } else enterWithFeedback(true);
+    },
   );
   getElement("#pause-button", HTMLButtonElement).addEventListener(
     "click",
@@ -234,6 +247,7 @@ const boot = async (): Promise<void> => {
   getElement("#return-menu", HTMLButtonElement).addEventListener(
     "click",
     (): void => {
+      learning.stop();
       app.phase = "menu";
       input.setActive(false);
       input.clear();
@@ -264,6 +278,7 @@ const boot = async (): Promise<void> => {
       button.setAttribute("aria-pressed", String(ui.sound));
       if (!app.audio) app.audio = createAudio();
       app.audio.setMusicEnabled(ui.music);
+      applyVolumes();
       app.audio.setPlaying(app.phase === "playing");
       app.audio.context
         .resume()
@@ -281,7 +296,13 @@ const boot = async (): Promise<void> => {
       app.audio?.setMusicEnabled(ui.music);
     },
   );
-  window.addEventListener("resize", (): void => resizeWorld(world));
+  const resize = (): void => resizeWorld(world);
+  window.addEventListener("resize", resize);
+  window.visualViewport?.addEventListener("resize", resize);
+  document.addEventListener("fullscreenchange", (): void => {
+    resize();
+    requestAnimationFrame(resize);
+  });
   window.addEventListener("pagehide", (event: PageTransitionEvent): void => {
     if (event.persisted) {
       pause();
@@ -299,6 +320,9 @@ const boot = async (): Promise<void> => {
   });
   const finish = (): void => {
     app.phase = "finished";
+    ui.pause.classList.add("match-result");
+    ui.pause.setAttribute("aria-label", "Match result");
+    getElement("#restart", HTMLButtonElement).textContent = "Play again";
     app.audio?.setPlaying(false);
     input.setActive(false);
     if (document.pointerLockElement) document.exitPointerLock();
@@ -335,7 +359,10 @@ const boot = async (): Promise<void> => {
         (_: unknown, i: number): number => i,
       )) {
         void unused;
+        if (app.phase !== "playing") break;
+        const attemptedGrab = input.controls.knockdown;
         stepSimulation(app.state, input.controls, STEP);
+        learning.tick(attemptedGrab);
       }
       app.accumulator -= steps * STEP;
       for (const cue of audioEvents.sample(app.state)) app.audio?.play(cue);
@@ -358,13 +385,13 @@ const boot = async (): Promise<void> => {
       app.phase === "playing" ? app.accumulator / STEP : 1,
       app.phase === "playing" && input.controls.vertical > 0,
     );
-    const metrics = meter.sample(
-      renderDt * 1000,
-      performance.now() - frameStart,
-      world.renderer.info.render,
-      world.renderer.info.memory,
-    );
-    ui.elements.fps.dataset.metrics = JSON.stringify(metrics);
+    meter.sample(renderDt * 1000, performance.now() - frameStart);
+    if (now - app.metricsTime > 100) {
+      ui.elements.fps.dataset.metrics = JSON.stringify(
+        meter.read(world.renderer.info.render, world.renderer.info.memory),
+      );
+      app.metricsTime = now;
+    }
     const human = app.state.players.at(0);
     speedLines(
       human ? Math.hypot(human.velocity.x, human.velocity.z) : 0,
@@ -400,6 +427,10 @@ const boot = async (): Promise<void> => {
   ))
     button.disabled = false;
   ui.status.textContent = "";
+  getElement("#learn-button", HTMLButtonElement).disabled = false;
+  getElement("#boot-cover", HTMLElement).classList.add("ready");
+  setTimeout((): void => getElement("#boot-cover", HTMLElement).remove(), 400);
+  learning.offer();
 };
 
 const start = new URLSearchParams(window.location.search).has("review")
@@ -407,6 +438,7 @@ const start = new URLSearchParams(window.location.search).has("review")
   : boot();
 start.catch((error: Error): void => {
   console.error(error);
+  document.querySelector("#boot-cover")?.remove();
   const status = document.querySelector("#load-status");
   if (status)
     status.textContent = `The pool could not load: ${error.message}. Reload to try again.`;

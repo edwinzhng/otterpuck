@@ -1,6 +1,5 @@
 import { expect, test } from "bun:test";
 import { PerspectiveCamera } from "three";
-import { handlingPitch } from "../src/handling";
 import {
   createSimulation,
   resetPracticePuck,
@@ -98,7 +97,7 @@ test("holding left click smoothly draws an owned puck back into view without sho
         previous.distanceTo(state.puck.position),
       );
       camera.position.copy(player.position).add(CAMERA_OFFSET);
-      camera.rotation.x = handlingPitch(player, state, controls.pitch);
+      camera.rotation.x = controls.pitch;
       camera.updateMatrixWorld(true);
       const projected = state.puck.position.clone().project(camera);
       expect(Math.abs(projected.x)).toBeLessThan(0.8);

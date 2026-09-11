@@ -296,8 +296,6 @@ test("mobile shell exposes every action, settings and contextual help once", asy
       "curl",
       "reverse",
       "dummy",
-      "pull",
-      "backhand",
     ].sort(),
   );
   expect(ids).toContain("touch-sensitivity");

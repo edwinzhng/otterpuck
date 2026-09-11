@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { Vector3 } from "three";
-import { canGrabPuck, puckReaction } from "../src/handling";
+import { canGrabPuck, KNOCKDOWN_HIT_TIME, puckReaction } from "../src/handling";
 import {
   createSimulation,
   resetPracticePuck,
@@ -173,7 +173,7 @@ test("X still selects knockdown for an airborne puck", (): void => {
   );
   expect(player.grab).toBeUndefined();
   expect(player.knockdownTime).toBeGreaterThan(0);
-  advance(state, 12);
+  advance(state, Math.ceil(KNOCKDOWN_HIT_TIME / STEP) + 1);
   expect(state.puck.lastTouch).toBe(player.id);
   expect(state.puck.velocity.y).toBeLessThan(-1);
 });

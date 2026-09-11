@@ -66,6 +66,16 @@ export const defendingZone = (state: Simulation, player: Player): boolean => {
 export const safeAirReserve = (player: Player): number =>
   12 + Math.max(0, 2.31 - player.position.y) * 3;
 
+export const followingAttack = (state: Simulation, player: Player): boolean =>
+  !player.emergency &&
+  player.air > safeAirReserve(player) + 8 &&
+  player.position.y < 0.8 &&
+  (state.puck.controlOwner === player.id ||
+    state.puck.shotOwner === player.id ||
+    (state.puck.lastTouch === player.id &&
+      state.time - state.puck.touchTime < 3 &&
+      player.position.distanceToSquared(state.puck.position) < 25));
+
 export const teamPuckCarrier = (
   state: Simulation,
   team: Team,
@@ -134,7 +144,8 @@ export const coordinatePuckPursuit = (state: Simulation, team: Team): void => {
         (keeper ? 2.3 : 0) +
         (player.duty === "pressure" ? -0.35 : 0);
     return (
-      horizontal +
+      horizontal -
+      (followingAttack(state, player) ? 1.5 : 0) +
       Math.max(0, player.position.y - 0.4) * 1.5 -
       (player.human && horizontal < 1 ? 0.4 : 0) +
       roleCost +

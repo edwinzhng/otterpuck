@@ -56,6 +56,6 @@ test("the reduced sprint stays athletic and speed cues remain quiet below sprint
   expect(player.velocity.length()).toBeGreaterThan(2.8);
   expect(player.velocity.length()).toBeLessThanOrEqual(2.91);
   expect(speedLineIntensity(1.55)).toBe(0);
-  expect(speedLineIntensity(2.9)).toBeCloseTo(0.25);
-  expect(speedLineIntensity(8)).toBe(0.25);
+  expect(speedLineIntensity(2.9)).toBeCloseTo(0.5);
+  expect(speedLineIntensity(8)).toBe(0.5);
 });

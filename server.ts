@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import homepage from "./index.html";
+import { serveAsset } from "./src/static-assets";
 
 const production = process.argv.includes("--production");
 const root = join(import.meta.dir, production ? "dist" : "public");
@@ -8,15 +9,6 @@ const server = Bun.serve({
   port: Number(process.env.PORT ?? 3200),
   development: false,
   routes: production ? undefined : { "/": homepage },
-  fetch: async (request: Request): Promise<Response> => {
-    const pathname = new URL(request.url).pathname;
-    const safePath = pathname === "/" ? "index.html" : pathname.slice(1);
-    if (safePath.includes(".."))
-      return new Response("Not found", { status: 404 });
-    const file = Bun.file(join(root, safePath));
-    if (!(await file.exists()))
-      return new Response("Not found", { status: 404 });
-    return new Response(file, { headers: { "Cache-Control": "no-cache" } });
-  },
+  fetch: (request: Request): Promise<Response> => serveAsset(root, request),
 });
 console.info(`Otter Hockey is ready at ${server.url}`);

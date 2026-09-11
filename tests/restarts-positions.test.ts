@@ -13,7 +13,7 @@ test("a goal holds one stable pose and resets every interpolation transform at t
   human.position.set(0, 0.36, 1);
   human.velocity.set(0.6, 0, -1.5);
   human.bodyPitch = -0.2;
-  state.puck.position.set(0, PUCK_HEIGHT, -12.3);
+  state.puck.position.set(0, PUCK_HEIGHT, -12.385);
   state.puck.velocity.set(0, 0, -2);
   const controls = freshControls();
   stepSimulation(state, controls, STEP);

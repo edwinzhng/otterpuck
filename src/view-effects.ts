@@ -11,7 +11,7 @@ export const approachHeadLift = (
   current + (target - current) * (1 - Math.exp(-Math.max(0, dt) * 9));
 
 export const speedLineIntensity = (speed: number): number =>
-  clamp((speed - 1.55) / 1.35, 0, 1) * 0.25;
+  clamp((speed - 1.55) / 1.35, 0, 1) * 0.5;
 
 export const createSpeedLines = (): ((
   speed: number,

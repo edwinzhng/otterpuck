@@ -365,3 +365,253 @@
     width: 58px;
   }
 }
+
+.touch-skills {
+  grid-template-columns: repeat(3, var(--touch-size));
+  grid-template-rows: repeat(3, var(--touch-size));
+  gap: 6px;
+}
+.touch-skills .touch-button {
+  width: var(--touch-size);
+  height: var(--touch-size);
+  border-radius: 50%;
+}
+.touch-reverse {
+  grid-column: 1;
+  grid-row: 1;
+  transform: translateY(18px);
+}
+.touch-curl {
+  grid-column: 3;
+  grid-row: 1;
+  transform: translateY(18px);
+}
+.touch-skills .touch-shot {
+  grid-column: 2;
+  grid-row: 2;
+  transform: scale(1.12);
+}
+.touch-shot > span {
+  font-size: 26px;
+}
+.touch-shot > strong {
+  font-size: 11px;
+}
+.touch-dummy {
+  grid-column: 1;
+  grid-row: 3;
+  transform: translateY(-10px);
+}
+.touch-skills .touch-react {
+  grid-column: 3;
+  grid-row: 3;
+  flex-direction: column;
+  gap: 1px;
+  transform: translateY(-10px);
+}
+.touch-fullscreen {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top));
+  left: max(76px, calc(env(safe-area-inset-left) + 60px));
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+}
+.touch-mode .vitals {
+  left: auto;
+  right: max(16px, env(safe-area-inset-right));
+  width: 100px;
+}
+.touch-mode .air-value {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  margin: 0;
+}
+.touch-mode .air-value strong {
+  font-size: 23px;
+  line-height: 1.1;
+}
+.touch-mode .air-value > span {
+  font-size: 11px;
+}
+.touch-mode .map-wrap {
+  top: max(98px, calc(env(safe-area-inset-top) + 86px));
+  right: max(16px, env(safe-area-inset-right));
+}
+.fullscreen-help {
+  max-width: min(340px, 85vw);
+  padding: 24px;
+  border: 2px solid #fff;
+  border-radius: 22px;
+  background: #e5f7ff;
+  color: #174665;
+  font: inherit;
+}
+.fullscreen-help::backdrop {
+  background: #073b4b99;
+}
+.fullscreen-help button {
+  min-height: 44px;
+  padding: 8px 24px;
+  border-radius: 14px;
+  border: 2px solid white;
+  background: #fff1a3;
+  color: #174665;
+  font: inherit;
+}
+
+.touch-skills .touch-button {
+  padding: 6px 3px;
+  gap: 3px;
+  overflow: hidden;
+}
+.touch-button > span {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  font-size: 24px;
+  line-height: 1;
+}
+.touch-button > span > svg {
+  width: 24px;
+  height: 24px;
+  display: block;
+}
+.touch-skills .touch-button > strong {
+  display: block;
+  width: 100%;
+  text-align: center;
+  font-size: 10px;
+  line-height: 12px;
+}
+.touch-skills .touch-shot {
+  transform: none;
+}
+.touch-skills .touch-react {
+  gap: 3px;
+}
+
+.touch-depth .touch-button {
+  border-radius: 50%;
+  transform: none;
+}
+.touch-skills .touch-rise {
+  grid-column: 1;
+  grid-row: 1;
+  transform: translateY(18px);
+}
+.touch-skills .touch-descend {
+  grid-column: 3;
+  grid-row: 1;
+  transform: translateY(18px);
+}
+.touch-skills .touch-shot {
+  width: calc(var(--touch-size) + 8px);
+  height: calc(var(--touch-size) + 8px);
+  margin: -4px;
+}
+
+.touch-reverse > span,
+.touch-reverse > strong,
+.touch-curl > span,
+.touch-curl > strong,
+.touch-dummy > span,
+.touch-dummy > strong {
+  transform: translateY(-2px);
+}
+.touch-depth .touch-button {
+  gap: 3px;
+  padding: 6px 3px;
+}
+.touch-depth .touch-button > strong {
+  font-size: 10px;
+  line-height: 12px;
+}
+
+.hud-actions {
+  display: flex;
+  gap: 10px;
+}
+.hud-actions .button {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+@media (orientation: portrait) and (max-width: 700px) {
+  .touch-controls {
+    --touch-size: 54px;
+    --touch-bottom: max(22px, env(safe-area-inset-bottom));
+  }
+  .touch-left {
+    left: max(14px, env(safe-area-inset-left));
+    gap: 14px;
+  }
+  .touch-joystick {
+    width: 128px;
+    height: 128px;
+  }
+  .touch-skills {
+    right: max(14px, env(safe-area-inset-right));
+    grid-template-columns: repeat(2, var(--touch-size));
+    grid-template-rows: repeat(3, var(--touch-size));
+    gap: 12px;
+  }
+  .touch-skills .touch-rise {
+    grid-area: 1 / 1;
+    transform: none;
+  }
+  .touch-skills .touch-descend {
+    grid-area: 1 / 2;
+    transform: none;
+  }
+  .touch-skills .touch-shot {
+    grid-area: 2 / 1 / 3 / 3;
+    justify-self: center;
+  }
+  .touch-skills .touch-dummy {
+    grid-area: 3 / 1;
+    transform: none;
+  }
+  .touch-skills .touch-react {
+    grid-area: 3 / 2;
+    transform: none;
+  }
+  .touch-mode .scoreboard {
+    position: absolute;
+    top: 66px;
+    left: 50%;
+    transform: translateX(-50%);
+    gap: 12px;
+    padding: 6px 12px;
+  }
+  .touch-mode .map-wrap {
+    top: max(128px, calc(env(safe-area-inset-top) + 116px));
+    width: 62px;
+  }
+  .touch-mode .handling {
+    bottom: calc(var(--touch-bottom, 22px) + 218px);
+    left: 50%;
+    max-width: 210px;
+  }
+  .touch-mode .announcement {
+    top: 28%;
+  }
+  .touch-mode .lobby-screen {
+    top: max(88px, calc(env(safe-area-inset-top) + 76px));
+  }
+  .touch-mode .setup-panel {
+    flex: 0 0 auto;
+    max-height: none;
+  }
+  .touch-mode .selected-map {
+    flex: 0 0 140px;
+  }
+}

@@ -49,7 +49,6 @@ import {
   createCharacterVisorReflection,
 } from "./character-visor";
 import { atPlayingDepth } from "./depth";
-import { handlingPitch } from "./handling";
 import { createSwimMotion, type SwimMotion, updateSwimMotion } from "./motion";
 import { createShadowTexture } from "./shadows";
 import { shareCharacterSkeleton } from "./skeletons";
@@ -177,7 +176,7 @@ const makeStick = (): Mesh => {
   });
   inset.rotateX(-Math.PI / 2);
   inset.translate(0, 0.0105, 0);
-  stick.add(new Mesh(inset, material(0x080c14, 0.65)));
+  stick.add(new Mesh(inset, stick.material));
   return stick;
 };
 
@@ -652,12 +651,16 @@ export const renderWorld = (
   }
   const human = state.players.at(0);
   if (active && human) {
+    const viewYaw = human.previousYaw + (human.yaw - human.previousYaw) * alpha;
+    const viewBodyPitch =
+      human.previousBodyPitch +
+      (human.bodyPitch - human.previousBodyPitch) * alpha;
     world.camera.position
       .lerpVectors(human.previous, human.position, alpha)
       .add(
         CAMERA_OFFSET.clone()
-          .applyAxisAngle(new Vector3(1, 0, 0), human.bodyPitch)
-          .applyAxisAngle(new Vector3(0, 1, 0), human.yaw),
+          .applyAxisAngle(new Vector3(1, 0, 0), viewBodyPitch)
+          .applyAxisAngle(new Vector3(0, 1, 0), viewYaw),
       );
     world.headLift = approachHeadLift(
       world.headLift,
@@ -666,9 +669,14 @@ export const renderWorld = (
     );
     world.camera.position.y += world.headLift;
     world.camera.rotation.order = "YXZ";
-    world.camera.rotation.set(handlingPitch(human, state, pitch), human.yaw, 0);
+    world.camera.rotation.set(pitch, viewYaw, 0);
     world.camera.fov +=
-      ((human.sprint ? 81 : 77) - world.camera.fov) * Math.min(1, dt * 4);
+      (Math.min(
+        110,
+        (human.sprint ? 81 : 77) + Math.max(0, 1 - world.camera.aspect) * 60,
+      ) -
+        world.camera.fov) *
+      Math.min(1, dt * 4);
     world.camera.updateProjectionMatrix();
     if (state.mode === "playground" && state.playground.camera === "side") {
       const target = world.puck.position.clone().lerp(human.stick, 0.3);

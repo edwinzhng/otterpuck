@@ -14,8 +14,8 @@ import {
   STICK_REACH,
 } from "./types";
 
-export const KNOCKDOWN_DURATION = 0.28;
-export const KNOCKDOWN_HIT_TIME = 0.09;
+export const KNOCKDOWN_DURATION = 0.48;
+export const KNOCKDOWN_HIT_TIME = 0.12;
 
 export const puckInKnockdownBox = (
   state: Simulation,
@@ -237,19 +237,6 @@ export const pollMovement = (controls: Controls, keys: Set<string>): void => {
   controls.sprint = keys.has("ShiftLeft") || keys.has("ShiftRight");
   controls.curl = Number(keys.has("KeyE")) - Number(keys.has("KeyQ"));
 };
-
-export const handlingPitch = (
-  player: Player,
-  state: Simulation,
-  pitch: number,
-): number =>
-  player.puckMove !== undefined || player.charging || player.shotDraw > 0.1
-    ? clamp(pitch, -1, -0.6)
-    : player.curl !== 0 ||
-        (state.puck.controlOwner === player.id &&
-          state.puck.controlKind === "settling")
-      ? clamp(pitch, -0.82, -0.4)
-      : pitch;
 
 export const handlingLabel = (state: Simulation, player: Player): string => {
   if (player.grab) return "GRAB PUCK";

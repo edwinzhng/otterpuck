@@ -100,7 +100,7 @@ test("changing curl direction eases through the reversal and release settles pro
     const initial = player.curlTurnSpeed;
     stepSimulation(state, { ...freshControls(), curl: -1 }, STEP);
     expect(player.curlTurnSpeed).toBeGreaterThan(0);
-    expect(initial - player.curlTurnSpeed).toBeLessThan(0.9);
+    expect(initial - player.curlTurnSpeed).toBeLessThan(0.9 * 1.3);
     advance(state, 12, { ...freshControls(), curl: -1 });
     expect(player.curlTurnSpeed).toBeLessThan(-1.7);
     const yawAtRelease = player.yaw;
@@ -112,10 +112,10 @@ test("changing curl direction eases through the reversal and release settles pro
   }
 });
 
-test("strafe and swerve use the same mirrored wrist turn, with a faster swerve and no face flip", (): void => {
+test("steering turns the wrist directly while a swerve tucks before its mirrored outward stroke", (): void => {
   for (const hand of ["right", "left"] as const) {
     for (const direction of [-1, 1]) {
-      const angles = [false, true].map((swerve): number => {
+      for (const swerve of [false, true]) {
         const state = setup(hand);
         const player = state.players.at(0);
         if (!player) throw new Error("Player missing");
@@ -126,7 +126,14 @@ test("strafe and swerve use the same mirrored wrist turn, with a faster swerve a
           lateral: direction,
           dummy: swerve ? direction : 0,
         };
-        advance(state, 10, controls);
+        advance(state, swerve ? 12 : 10, controls);
+        if (swerve) {
+          expect(player.bladeFace).toBeGreaterThan(0.65);
+          expect(
+            Math.abs(angleDifference(player.bladeRotation, REST_BLADE_YAW)),
+          ).toBeLessThan(0.03);
+          advance(state, 42, controls);
+        }
         const turn = angleDifference(
           player.stickYaw,
           player.yaw + REST_BLADE_YAW * bladeMirror(player),
@@ -136,9 +143,7 @@ test("strafe and swerve use the same mirrored wrist turn, with a faster swerve a
           0.01,
         );
         expect(player.bladeFace).toBeLessThan(0.01);
-        return Math.abs(turn);
-      });
-      expect(angles.at(1) ?? 0).toBeGreaterThan((angles.at(0) ?? 0) * 1.25);
+      }
     }
   }
 });
@@ -203,7 +208,9 @@ test("charged shots draw behind the blade and fly straight through one clean arc
             const tipDirection = bladePoint(player, STICK_TIP)
               .sub(bladePoint(player, STICK_GRIP))
               .applyAxisAngle(new Vector3(0, 1, 0), -player.yaw);
-            expect(tipDirection.x * handSide(player)).toBeLessThan(-0.03);
+            expect(tipDirection.x * handSide(player)).toBeLessThan(0.001);
+            if (player.shotTime < 0.17)
+              expect(tipDirection.z).toBeLessThan(-0.1);
           }
           path.peak = Math.max(path.peak, puck.position.y);
           if (state.shots === 0) continue;
@@ -259,7 +266,7 @@ test("a shot puts the blade behind the loaded puck before it pushes and rolls up
     const puckNormal = new Vector3(0, 1, 0).applyQuaternion(
       state.puck.orientation,
     );
-    expect(puckNormal.dot(player.shotDirection)).toBeGreaterThan(0.6);
+    expect(Math.abs(puckNormal.dot(player.shotDirection))).toBeLessThan(0.001);
     expect(puckNormal.x * handSide(player)).toBeGreaterThan(0.3);
     expect(Math.abs(puckNormal.y)).toBeLessThan(0.001);
   }

@@ -7,16 +7,14 @@ export { createUI } from "./ui-setup";
 import { handlingLabel, puckReaction } from "./handling";
 import type { Input } from "./input";
 import { playerPosition, projectPlayerLabel } from "./positions";
-import {
-  type BotDifficulty,
-  CAMERA_OFFSET,
-  type Formation,
-  type GameMode,
-  type Handedness,
-  type Player,
-  POOL,
-  type Simulation,
-  type Species,
+import type {
+  BotDifficulty,
+  Formation,
+  GameMode,
+  Handedness,
+  Player,
+  Simulation,
+  Species,
 } from "./types";
 import type { World } from "./world";
 
@@ -47,8 +45,6 @@ export type UI = {
     awayScore: HTMLElement;
     air: HTMLElement;
     airLabel: HTMLElement;
-    speed: HTMLElement;
-    depth: HTMLElement;
     event: HTMLElement;
     role: HTMLElement;
     handling: HTMLElement;
@@ -135,7 +131,10 @@ const drawMap = (ui: UI, state: Simulation): void => {
     context.textAlign = "center";
     context.lineWidth = 4;
     context.strokeStyle = "#071827";
-    const code = playerPosition(state, player).code;
+    const code =
+      player.team === state.players.at(0)?.team
+        ? playerPosition(state, player).code
+        : "";
     const labelY = player.position.z < -11 ? y + 25 : y - 12;
     context.strokeText(code, x, labelY);
     context.fillStyle = player.team === 0 ? "#d5ffff" : "#ffd2bb";
@@ -163,13 +162,16 @@ export const renderPlayerLabels = (
   for (const [id, label] of ui.playerLabels.entries()) {
     const player = state.players.at(id);
     const point =
-      state.mode === "match" && player && !player.human
+      state.mode === "match" &&
+      player &&
+      !player.human &&
+      player.team === state.players.at(0)?.team
         ? projectPlayerLabel(player, world.camera, alpha)
         : undefined;
     label.classList.toggle("hidden", !point);
     if (!point || !player) continue;
     const position = playerPosition(state, player);
-    if (label.textContent !== position.code) label.textContent = position.code;
+    if (label.textContent !== position.name) label.textContent = position.name;
     label.title = position.name;
     label.classList.toggle("beaver", player.team === 1);
     label.style.left = `${(point.x + 1) * 50}%`;
@@ -203,11 +205,6 @@ export const updateUI = (
       : "Air";
   ui.hud.style.setProperty("--air", `${player.air}%`);
   ui.hud.classList.toggle("low-air", player.air < 26);
-  const eyeDepth =
-    POOL.depth - player.position.y - CAMERA_OFFSET.y - world.headLift;
-  ui.elements.depth.textContent =
-    eyeDepth < 0 ? "ABOVE WATER" : `${eyeDepth.toFixed(1)} m`;
-  ui.elements.speed.textContent = `${Math.hypot(player.velocity.x, player.velocity.z).toFixed(1)} m/s`;
   ui.elements.role.textContent =
     state.mode !== "match" ? "PRACTICE" : playerPosition(state, player).code;
   ui.elements.role.title = player.role;

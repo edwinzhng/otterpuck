@@ -1,8 +1,14 @@
 import { Quaternion, Vector3 } from "three";
 import {
+  nearOwnGoal,
+  protectGoalApproach,
+  safeGoalTurn,
+} from "./bot-goal-safety";
+import {
   botProfiles,
   coordinatePuckPursuit,
   defendingZone,
+  followingAttack,
   safeAirReserve,
   shouldSprintToPuck,
   steerThroughTraffic,
@@ -12,6 +18,7 @@ import {
 import { avoidBodies, resolveBodies } from "./collisions";
 import { wallLane } from "./formation-layout";
 import { planTeam } from "./formations";
+import { GOAL_BACK, goalContact } from "./goal-profile";
 import {
   availablePuckMove,
   canGrabPuck,
@@ -41,11 +48,13 @@ import {
   SHOT_DURATION,
   SHOT_RELEASE,
   STICK_GRIP,
+  SWERVE_PULL_DURATION,
   shotProgress,
   shotPuckOrientation,
   shotPuckPosition,
   shotTranslation,
   smoothMotion,
+  swerveExtension,
   updateBladePose,
 } from "./stick";
 import {
@@ -97,6 +106,9 @@ const makePlayer = (
     handedness,
     position,
     previous: position.clone(),
+    previousYaw: team === 0 ? 0 : Math.PI,
+    previousBodyPitch: 0,
+    dummyBurstUntil: 0,
     velocity: new Vector3(),
     yaw: team === 0 ? 0 : Math.PI,
     aimYaw: undefined,
@@ -154,6 +166,7 @@ const makePlayer = (
     charge: 0,
     shotDraw: 0,
     shotPower: 0,
+    shotLoft: 1,
     shotFired: false,
     shotDirection: new Vector3(),
     shotOrigin: undefined,
@@ -299,8 +312,10 @@ export const requestShot = (
   player: Player,
   power: number,
   direction: Vector3,
+  loft = 1,
 ): boolean => {
   if (
+    (nearOwnGoal(player) && direction.z * attackDirection(player.team) <= 0) ||
     player.cooldown > 0 ||
     player.emergency ||
     player.position.y > 1.4 ||
@@ -310,6 +325,7 @@ export const requestShot = (
     return false;
   player.shotTime = SHOT_DURATION;
   player.shotPower = clamp(power, 0, 1);
+  player.shotLoft = clamp(loft, 0, 1);
   player.shotDirection.copy(direction).setY(0).normalize();
   player.shotFired = false;
   player.shotOrigin = undefined;
@@ -322,18 +338,27 @@ const updateCradle = (state: Simulation, player: Player, dt: number): void => {
     !canCarryPuck(state, player) ||
     player.puckMove ||
     (state.puck.controlOwner !== player.id &&
-      (player.curl === 0 ||
-        player.stick.distanceTo(state.puck.position) > 0.65))
+      ((player.curl === 0 && player.dummy === 0) ||
+        player.stick.distanceTo(state.puck.position) >
+          (player.curl !== 0 ? 0.65 : 0.27)))
   ) {
     player.cradle = undefined;
     return;
   }
   const kind =
-    player.curl !== 0 ? "curl" : player.charging ? "charge" : "settling";
+    player.curl !== 0
+      ? "curl"
+      : player.charging
+        ? "charge"
+        : player.dummy !== 0
+          ? "dummy"
+          : "settling";
+  const direction = kind === "dummy" ? Math.sign(player.dummy) : player.curl;
   if (!player.cradle && kind === "settling") return;
   if (
     player.cradle?.kind !== kind ||
-    (kind === "curl" && player.cradle.turnDirection !== player.curl)
+    ((kind === "curl" || kind === "dummy") &&
+      player.cradle.turnDirection !== direction)
   ) {
     const origin = state.puck.position
       .clone()
@@ -345,7 +370,8 @@ const updateCradle = (state: Simulation, player: Player, dt: number): void => {
       elapsed: 0,
       origin,
       target: origin.clone(),
-      turnDirection: player.curl,
+      turnDirection: direction,
+      originFace: player.bladeFace,
     };
   }
   const cradle = player.cradle;
@@ -354,7 +380,24 @@ const updateCradle = (state: Simulation, player: Player, dt: number): void => {
     (cradle.elapsed - (kind === "curl" ? CURL_APPROACH : CRADLE_APPROACH)) /
       (kind === "curl" ? 0.18 : 0.2),
   );
-  if (kind === "charge") {
+  if (kind === "dummy") {
+    if (
+      cradle.elapsed >= SWERVE_PULL_DURATION &&
+      cradle.elapsed - dt < SWERVE_PULL_DURATION
+    )
+      player.dummyBurstUntil = state.time + 0.7;
+    const pulled = cradle.origin
+      .clone()
+      .setX(cradle.origin.x * 0.55)
+      .setZ(Math.min(-0.32, cradle.origin.z + 0.16));
+    const extended = restPuckOffset(player).add(
+      new Vector3(cradle.turnDirection * 0.3, 0, -0.05),
+    );
+    cradle.target
+      .copy(cradle.origin)
+      .lerp(pulled, smoothMotion(cradle.elapsed / SWERVE_PULL_DURATION))
+      .lerp(extended, swerveExtension(player));
+  } else if (kind === "charge") {
     cradle.target.copy(cradle.origin);
     cradle.target.z = Math.min(
       -0.3,
@@ -401,58 +444,78 @@ const updateHuman = (
   controls: Controls,
   dt: number,
 ): void => {
-  player.yaw += controls.yawDelta;
+  const locomotion =
+    controls.curl === 0
+      ? controls
+      : {
+          ...controls,
+          forward: 0,
+          lateral: 0,
+          vertical: 0,
+          dive: false,
+          sprint: false,
+        };
+  player.yaw += controls.yawDelta * 1.3;
   player.yaw -=
-    controls.lateral *
-    (controls.sprint && controls.forward > 0 ? 1.6 : 1.9) *
+    locomotion.lateral *
+    (locomotion.sprint && locomotion.forward > 0 ? 2.08 : 2.47) *
     dt;
   player.curl = controls.curl;
   player.dummy = player.curl === 0 ? controls.dummy : 0;
-  player.lateral = controls.lateral;
+  player.lateral = locomotion.lateral;
   player.curlTurnSpeed +=
-    (controls.curl * 2.15 - player.curlTurnSpeed) *
+    (controls.curl * 2.795 - player.curlTurnSpeed) *
     (1 - Math.exp(-(controls.curl === 0 ? 34 : 24) * dt));
   if (Math.abs(player.curlTurnSpeed) < 0.01) player.curlTurnSpeed = 0;
   player.yaw += player.curlTurnSpeed * bladeMirror(player) * dt;
-  player.sprint = controls.sprint && controls.forward > 0;
+  player.sprint =
+    (locomotion.sprint && locomotion.forward > 0) ||
+    (state.time < player.dummyBurstUntil &&
+      locomotion.forward >= 0 &&
+      (locomotion.forward > 0 || locomotion.lateral !== 0));
+  if (controls.curl !== 0) player.sprint = false;
   player.backhand = controls.backhand || controls.curl < 0;
   const forward = forwardVector(player.yaw);
   const throttle =
-    controls.forward < 0
+    locomotion.forward < 0
       ? 0
-      : Math.max(controls.forward, Math.abs(controls.lateral));
+      : Math.max(locomotion.forward, Math.abs(locomotion.lateral));
   const speed = player.sprint ? 2.9 : 1.55;
-  const braking = controls.forward < 0;
-  const forwardSpeed = approachSwimVelocity(
-    Math.max(0, player.velocity.dot(forward)),
-    throttle * speed,
-    braking,
-    dt,
-  );
+  const braking = locomotion.forward < 0;
+  const forwardSpeed =
+    controls.curl !== 0
+      ? 0
+      : approachSwimVelocity(
+          Math.max(0, player.velocity.dot(forward)),
+          throttle * speed,
+          braking,
+          dt,
+        );
   player.velocity.x = forward.x * forwardSpeed;
   player.velocity.z = forward.z * forwardSpeed;
   player.kick = clamp(
     throttle +
-      Math.abs(controls.lateral) * 0.5 +
-      Math.abs(controls.vertical) * 0.5,
+      Math.abs(locomotion.lateral) * 0.5 +
+      Math.abs(locomotion.vertical) * 0.5,
     0,
     player.sprint ? 1.5 : 1,
   );
   const underwater = player.position.y < SURFACE_HEIGHT - 0.07;
-  if (controls.vertical > 0 && !player.emergency) player.mode = "ascending";
-  if (controls.vertical < 0 && player.air > 8 && !player.emergency)
+  if (locomotion.vertical > 0 && !player.emergency) player.mode = "ascending";
+  if (locomotion.vertical < 0 && player.air > 8 && !player.emergency)
     player.mode = "diving";
-  if (controls.dive && !player.emergency && player.air > 12) {
+  if (locomotion.dive && !player.emergency && player.air > 12) {
     player.mode = "diving";
     player.velocity.y = -1.4;
     if (throttle) player.velocity.addScaledVector(forward, 0.9);
   }
   if (player.emergency) player.velocity.y += 3.1 * dt;
-  else if (controls.vertical !== 0)
-    player.velocity.y += controls.vertical * 3.0 * dt;
+  else if (locomotion.vertical !== 0)
+    player.velocity.y += locomotion.vertical * 3.0 * dt;
   else if (player.mode === "diving" && underwater)
     player.velocity.y -= 1.5 * dt;
   else player.velocity.y *= Math.exp(-2.8 * dt);
+  if (controls.curl !== 0 && !player.emergency) player.velocity.y = 0;
   player.charging =
     controls.charging &&
     !player.emergency &&
@@ -532,22 +595,19 @@ const updateHuman = (
   }
   if (player.knockdownTime > 0) {
     const elapsed = KNOCKDOWN_DURATION - player.knockdownTime;
-    if (elapsed < KNOCKDOWN_HIT_TIME)
-      player.knockdownTarget
-        .copy(state.puck.position)
-        .addScaledVector(
-          state.puck.velocity,
-          Math.max(0, KNOCKDOWN_HIT_TIME - elapsed),
-        );
     const target = player.knockdownTarget
       .clone()
       .sub(player.position)
       .applyAxisAngle(new Vector3(0, 1, 0), -player.yaw);
-    const followThrough = elapsed < KNOCKDOWN_HIT_TIME ? 0.12 : -0.14;
-    const returnBlend = clamp((elapsed - 0.16) / 0.12, 0, 1);
-    target.y += player.position.y - STICK_HEIGHT + followThrough;
-    target.x += 0.04;
-    offset.copy(target.lerp(offset, returnBlend));
+    target.x = handSide(player) * 0.13;
+    target.z = -0.52;
+    target.y = clamp(target.y + FLOOR_HEIGHT - STICK_HEIGHT, 0.12, 0.28);
+    const lift = smoothMotion(elapsed / KNOCKDOWN_HIT_TIME);
+    const settle = smoothMotion(
+      (elapsed - KNOCKDOWN_HIT_TIME) /
+        (KNOCKDOWN_DURATION - KNOCKDOWN_HIT_TIME),
+    );
+    offset.lerp(target, lift * (1 - settle));
   }
   player.stickOffset.lerp(
     offset,
@@ -623,7 +683,12 @@ const prepareAI = (state: Simulation, player: Player): void => {
       )
       .at(0);
     if (distanceToGoal < 3.9 && player.cooldown <= 0)
-      requestShot(player, 0.82, travel);
+      requestShot(
+        player,
+        clamp(distanceToGoal * 0.16, 0.18, 0.62),
+        travel,
+        0.04,
+      );
     else if (
       receiver &&
       (player.air < 48 || (player.cooldown <= 0 && state.time % 2 < 0.2))
@@ -673,6 +738,7 @@ const prepareAI = (state: Simulation, player: Player): void => {
 const updateAI = (state: Simulation, player: Player, dt: number): void => {
   const profile = botProfiles[state.difficulty];
   const defending = defendingZone(state, player);
+  const followThrough = followingAttack(state, player);
   const reserve = safeAirReserve(player);
   const airRotation = state.airRotations[player.team].find(
     (active): boolean =>
@@ -680,7 +746,7 @@ const updateAI = (state: Simulation, player: Player, dt: number): void => {
   );
   const cycling = airRotation?.outgoing === player.id;
   if (
-    defending &&
+    (defending || followThrough) &&
     !player.emergency &&
     !cycling &&
     player.mode === "ascending" &&
@@ -690,6 +756,7 @@ const updateAI = (state: Simulation, player: Player, dt: number): void => {
   const nearSurface = player.position.y > SURFACE_HEIGHT - 0.065;
   if (
     player.mode === "playing" &&
+    !followThrough &&
     (player.air <
       ((cycling && airRotation.phase === "handoff") ||
       airRotation?.incoming === player.id
@@ -705,13 +772,33 @@ const updateAI = (state: Simulation, player: Player, dt: number): void => {
   if (nearSurface && player.mode === "ascending") player.mode = "recovering";
   if (
     player.mode === "recovering" &&
-    player.air > (defending ? 68 : 87) &&
+    player.air >= (defending ? 68 : 80) &&
     player.wantDown &&
     state.time >= player.cycleUntil
   )
     player.mode = "diving";
   if (player.position.y < FLOOR_HEIGHT + 0.05 && player.mode === "diving")
     player.mode = "playing";
+  const pursuing =
+    state.puck.controlOwner === undefined &&
+    state.puck.shotOwner === undefined &&
+    state.puckChasers[player.team] === player.id;
+  const closePursuit =
+    pursuing && player.position.distanceToSquared(state.puck.position) < 2.25;
+  const grabbing = pursuing && canGrabPuck(state, player, -0.45);
+  if (grabbing)
+    player.grab = { elapsed: 0, target: state.puck.position.clone() };
+  else if (player.grab) {
+    player.grab.elapsed += dt;
+    player.grab.target.copy(state.puck.position);
+    if (
+      !pursuing ||
+      player.grab.elapsed > 0.55 ||
+      !puckInGrabReach(state, player, -0.45)
+    )
+      player.grab = undefined;
+  }
+  protectGoalApproach(state, player);
   const travel = player.target.clone().sub(player.position).setY(0);
   const distance = travel.length();
   const resting = player.mode === "recovering" && distance < 0.7;
@@ -726,22 +813,29 @@ const updateAI = (state: Simulation, player: Player, dt: number): void => {
   avoidBodies(player, state.players, desired);
   const desiredSpeed = desired.length();
   const arriving = distance < 0.07 && desiredSpeed < 0.2;
-  const targetYaw =
-    !arriving && desiredSpeed > 0.05
+  const targetYaw = player.grab
+    ? player.yaw
+    : !arriving && desiredSpeed > 0.05
       ? directionYaw(desired.x, desired.z)
       : (player.aimYaw ?? player.yaw);
+  const turnSpeed = profile.turnSpeed * (closePursuit ? 1.85 : 1.2);
   player.yaw += clamp(
-    angleDifference(targetYaw, player.yaw),
-    -profile.turnSpeed * dt,
-    profile.turnSpeed * dt,
+    safeGoalTurn(player, desired, targetYaw),
+    -turnSpeed * dt,
+    turnSpeed * dt,
   );
   const forward = forwardVector(player.yaw);
   const alignment =
     desiredSpeed > 0.001 ? Math.max(0, desired.dot(forward) / desiredSpeed) : 0;
-  const propulsion = arriving ? 0 : desiredSpeed * alignment ** 2;
+  const propulsion =
+    arriving || player.grab ? 0 : desiredSpeed * alignment ** 2;
   const currentSpeed = Math.max(0, player.velocity.dot(forward));
   const blend = 1 - Math.exp(-profile.response * dt);
-  const forwardSpeed = currentSpeed + (propulsion - currentSpeed) * blend;
+  const unsafeGoalHeading =
+    nearOwnGoal(player) && forward.z * attackDirection(player.team) < 0;
+  const forwardSpeed = unsafeGoalHeading
+    ? 0
+    : currentSpeed + (propulsion - currentSpeed) * blend;
   player.velocity.x = forward.x * forwardSpeed;
   player.velocity.z = forward.z * forwardSpeed;
   player.kick = resting ? 0.1 : Math.min(1.5, forwardSpeed / 1.4);
@@ -775,7 +869,17 @@ const updateAI = (state: Simulation, player: Player, dt: number): void => {
       -STICK_REACH,
     );
   }
-  player.stickOffset.lerp(targetOffset, 1 - Math.exp(-14 * dt));
+  if (player.grab) {
+    const seat = puckSeat(player).sub(player.stick);
+    targetOffset
+      .copy(player.grab.target)
+      .sub(seat)
+      .sub(player.position)
+      .applyAxisAngle(new Vector3(0, 1, 0), -player.yaw)
+      .setY(0);
+  }
+  player.stickOffset.lerp(targetOffset, 1 - Math.exp(-24 * dt));
+  updateCradle(state, player, dt);
 };
 
 const updateAir = (state: Simulation, player: Player, dt: number): void => {
@@ -784,7 +888,7 @@ const updateAir = (state: Simulation, player: Player, dt: number): void => {
     player.air = clamp(player.air + dt * (13 - player.fatigue * 3), 0, 100);
     player.fatigue = Math.max(0, player.fatigue - dt * 0.1);
     if (player.mode !== "diving") player.mode = "recovering";
-    if (player.emergency && player.air > 86) {
+    if (player.emergency && player.air >= 80) {
       player.emergency = false;
       if (player.human) announce(state, "Ready", 2);
     }
@@ -802,7 +906,10 @@ const updateAir = (state: Simulation, player: Player, dt: number): void => {
       : player.sprint
         ? 6.2
         : 1.5 + Math.min(1, player.kick) * 1.3;
-    player.air = Math.max(0, player.air - dt * (drain + player.fatigue * 0.3));
+    player.air = Math.max(
+      0,
+      player.air - (dt * (drain + player.fatigue * 0.3)) / 0.75,
+    );
     player.fatigue = clamp(
       player.fatigue + dt * (player.sprint ? 0.015 : 0.002),
       0,
@@ -879,7 +986,7 @@ export const updateStick = (player: Player, dt: number): void => {
   if (player.shotOrigin && player.shotTime > 0 && swimming === 0) {
     const target = shotPuckPosition(player).addScaledVector(
       player.shotDirection,
-      -0.032 + 0.1 * smoothMotion((progress - SHOT_RELEASE) / 0.21),
+      -0.032 + 0.26 * smoothMotion((progress - SHOT_RELEASE) / 0.21),
     );
     const contactOffset = mirrorBladePoint(
       player,
@@ -977,10 +1084,16 @@ const fireShot = (state: Simulation, player: Player): void => {
     .multiplyScalar(2.2 + player.shotPower * 2.8)
     .addScaledVector(player.velocity, 0.65);
   puck.velocity.y = 0.75 + player.shotPower * 0.85;
-  puck.velocity.y *= state.physics.lift;
+  puck.velocity.y *= state.physics.lift * player.shotLoft;
   puck.spin = 0;
   puck.angularVelocity.set(0, 0, 0);
   puck.orientation.copy(shotPuckOrientation(player));
+  const releaseNormal = new Vector3(0, 1, 0)
+    .applyQuaternion(puck.orientation)
+    .setY(0)
+    .normalize();
+  if (player.shotLoft > 0.5)
+    puck.orientation.setFromUnitVectors(new Vector3(0, 1, 0), releaseNormal);
   puck.flightOrientation = puck.orientation.clone();
   puck.shotOwner = undefined;
   releaseControl(state);
@@ -1411,6 +1524,8 @@ const resetPositions = (state: Simulation): void => {
 const syncInterpolation = (state: Simulation): void => {
   for (const player of state.players) {
     player.previous.copy(player.position);
+    player.previousYaw = player.yaw;
+    player.previousBodyPitch = player.bodyPitch;
     player.previousStick.copy(player.stick);
     player.previousStickYaw = player.stickYaw;
     player.previousStickOrientation.copy(player.stickOrientation);
@@ -1423,6 +1538,7 @@ const syncInterpolation = (state: Simulation): void => {
 export const resetPracticePuck = (state: Simulation): void => {
   const human = state.players.at(0);
   if (!human || state.mode === "match") return;
+  human.dummyBurstUntil = 0;
   human.shotTime = 0;
   human.shotOrigin = undefined;
   human.shotFired = false;
@@ -1478,11 +1594,33 @@ export const feedPracticePuck = (state: Simulation): void => {
   state.playground.origin.copy(state.puck.position);
 };
 
+export const goalSurfaceHeight = (x: number, z: number): number =>
+  goalContact(x, z).height;
+
 export const puckFloorHeight = (state: Simulation): number => {
   const normal = new Vector3(0, 1, 0).applyQuaternion(state.puck.orientation);
   return (
+    goalSurfaceHeight(state.puck.position.x, state.puck.position.z) +
     Math.abs(normal.y) * PUCK_HEIGHT +
     Math.sqrt(Math.max(0, 1 - normal.y * normal.y)) * PUCK_RADIUS
+  );
+};
+
+export const puckInsideGoal = (state: Simulation): boolean => {
+  const { position, orientation } = state.puck;
+  const normal = new Vector3(0, 1, 0).applyQuaternion(orientation);
+  const extent = (component: number): number =>
+    Math.abs(component) * PUCK_HEIGHT +
+    Math.sqrt(Math.max(0, 1 - component * component)) * PUCK_RADIUS;
+  const x = extent(normal.x);
+  const y = extent(normal.y);
+  const z = extent(normal.z);
+  return (
+    Math.abs(position.x) + x <= 1.125 &&
+    Math.abs(position.z) - z >= GOAL_BACK - 0.14 &&
+    Math.abs(position.z) + z <= GOAL_BACK - 0.035 + 0.000001 &&
+    position.y - y >= 0.006 &&
+    position.y + y <= 0.145
   );
 };
 
@@ -1527,14 +1665,37 @@ const advancePuck = (state: Simulation, dt: number): void => {
         1 - Math.exp(-12 * dt),
       );
   }
+  if (
+    Math.abs(puck.position.x) < 1.125 &&
+    Math.abs(puck.position.z) > GOAL_BACK - 0.035 - PUCK_RADIUS &&
+    puck.position.y < 0.145 + PUCK_RADIUS
+  ) {
+    puck.position.z =
+      Math.sign(puck.position.z) * (GOAL_BACK - 0.035 - PUCK_RADIUS);
+    puck.velocity.z =
+      -Math.sign(puck.position.z) * Math.abs(puck.velocity.z) * 0.15;
+  }
   const supportHeight = puckFloorHeight(state);
+  const contact = goalContact(puck.position.x, puck.position.z);
+  if (
+    puck.controlOwner === undefined &&
+    puck.shotOwner === undefined &&
+    puck.position.y <= supportHeight + 0.006
+  ) {
+    puck.velocity.x -=
+      ((3.6 * contact.lateralSlope) / (1 + contact.lateralSlope ** 2)) * dt;
+    puck.velocity.z +=
+      ((Math.sign(puck.position.z) * 3.6 * contact.slope) /
+        (1 + contact.slope * contact.slope)) *
+      dt;
+  }
   if (puck.position.y < supportHeight) {
     puck.position.y = supportHeight;
     puck.velocity.y = 0;
     if (puck.flightOrientation) {
       puck.flightOrientation = undefined;
       puck.orientation.identity();
-      puck.position.y = PUCK_HEIGHT;
+      puck.position.y = puckFloorHeight(state);
     }
   }
   if (Math.abs(puck.position.x) > POOL.width / 2 - PUCK_RADIUS) {
@@ -1546,12 +1707,8 @@ const advancePuck = (state: Simulation, dt: number): void => {
     puck.position.y = POOL.depth - PUCK_HEIGHT;
     puck.velocity.y = -Math.abs(puck.velocity.y) * 0.25;
   }
-  if (Math.abs(puck.position.z) > POOL.length / 2 - 0.23) {
-    if (
-      Math.abs(puck.position.x) < POOL.goal / 2 - PUCK_RADIUS &&
-      puck.position.y < 0.2 &&
-      state.mode !== "playground"
-    ) {
+  if (Math.abs(puck.position.z) > GOAL_BACK - 0.14) {
+    if (puckInsideGoal(state) && state.mode !== "playground") {
       const scoring: Team = puck.position.z < 0 ? 0 : 1;
       state.scores[scoring] += 1;
       state.restartTime = 3;
@@ -1610,6 +1767,8 @@ const updateWallStart = (
     player.role = player.slot === 0 ? "Striker · at the wall" : "At the wall";
     player.air = 100;
     player.previous.copy(player.position);
+    player.previousYaw = player.yaw;
+    player.previousBodyPitch = player.bodyPitch;
     player.previousStick.copy(player.stick);
     if (player.human) player.yaw += controls.yawDelta;
     updateStick(player, dt);
@@ -1678,6 +1837,8 @@ export const stepSimulation = (
   }
   for (const player of state.players) {
     player.previous.copy(player.position);
+    player.previousYaw = player.yaw;
+    player.previousBodyPitch = player.bodyPitch;
     if (player.human) updateHuman(state, player, controls, dt);
     else updateAI(state, player, dt);
     player.cooldown = Math.max(0, player.cooldown - dt);

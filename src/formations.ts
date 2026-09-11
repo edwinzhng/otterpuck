@@ -1,4 +1,4 @@
-import { defendingZone, safeAirReserve } from "./bots";
+import { defendingZone, followingAttack, safeAirReserve } from "./bots";
 import {
   formationTarget,
   positionSide,
@@ -79,6 +79,10 @@ const applyRotation = (
     finishRotation(state, team, rotation);
     return;
   }
+  if (followingAttack(state, outgoing)) {
+    finishRotation(state, team, rotation);
+    return;
+  }
   const station = outgoing.formationTarget;
   incoming.target.copy(station);
   incoming.wantDown = true;
@@ -151,6 +155,7 @@ const planRotation = (
         (player): boolean =>
           !player.human &&
           !committed(player) &&
+          !followingAttack(state, player) &&
           player.mode === "playing" &&
           player.position.y < 0.65 &&
           state.time >= player.cycleUntil &&

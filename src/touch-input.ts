@@ -1,5 +1,6 @@
 import { atPlayingDepth } from "./depth";
 import { getElement } from "./dom";
+import { bindFullscreen } from "./fullscreen";
 import { puckReaction } from "./handling";
 import { createTouchController, type TouchAction } from "./touch-controls";
 import { type Controls, clamp, type Simulation } from "./types";
@@ -48,6 +49,11 @@ export const createTouchInput = (
   const captures = new Map<number, HTMLElement>();
   const abort = new AbortController();
   const options = { signal: abort.signal };
+  bindFullscreen(
+    getElement("#touch-fullscreen", HTMLButtonElement),
+    onPause,
+    abort.signal,
+  );
   const coarse = matchMedia("(pointer: coarse)");
   const state = { active: false, x: 0, y: 0, charge: 0 };
   const shot = getElement(".touch-shot", HTMLButtonElement);
@@ -177,7 +183,6 @@ export const createTouchInput = (
       2.5 / Math.max(320, Math.min(innerWidth, innerHeight));
     if (!input.enabled) return;
     clear();
-    if (state.active && innerHeight > innerWidth) onPause();
   };
   resize();
   window.addEventListener("resize", resize, options);

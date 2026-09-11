@@ -22,6 +22,8 @@ bun run build
 bun run start
 ```
 
+Production builds precompress models and code; the included server negotiates Brotli/gzip and revalidates cached assets. See [performance measurements](docs/performance.md).
+
 Blender is not needed to run or build the game; the exported runtime assets are included. No backend, API keys or external services are required for play.
 
 ## Play on a phone
@@ -54,7 +56,9 @@ Phones automatically use touch controls. **Settings → Controls → Touch** als
 | X | Grab a nearby puck or knock down an incoming shot |
 | R | Toggle backhand |
 | T | Tactics |
-| Esc | Pause |
+| Esc | Pause / release mouse |
+| Ctrl + F | Toggle fullscreen |
+| H / P | Tutorial help / retry |
 
 The pool is approximately 25 × 15 × 2.44 m, with low metal trough goals. Supported formations are 3-3, 2-3-1 and 1-3-2. Players manage breath and rotate through formation coverage. Puck control combines physical blade contact, assisted uncontested carrying, curls, pull/push, flicks and opposing challenges. See [formation logic and research](docs/bot-formations.md).
 

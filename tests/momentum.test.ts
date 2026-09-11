@@ -123,8 +123,8 @@ test("sprinting spends noticeably more air during both cruising and puck work", 
     });
     const normal = consumed.at(0) ?? 0;
     const sprint = consumed.at(1) ?? 0;
-    expect(sprint).toBeGreaterThan(engaged ? 35 : 30);
-    expect(sprint).toBeLessThan(engaged ? 39 : 34);
+    expect(sprint).toBeGreaterThan((engaged ? 35 : 30) / 0.75);
+    expect(sprint).toBeLessThan((engaged ? 39 : 34) / 0.75);
     expect(sprint).toBeGreaterThan(normal + 8);
   }
 });

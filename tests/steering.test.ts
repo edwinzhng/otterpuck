@@ -40,7 +40,7 @@ test("player propulsion follows the body through left/right swimming, sprinting 
           );
           const turn = angleDifference(player.yaw, previousYaw);
           expect(turn * direction).toBeLessThan(0);
-          expect(Math.abs(turn)).toBeLessThanOrEqual(1.91 * STEP);
+          expect(Math.abs(turn)).toBeLessThanOrEqual(1.91 * 1.3 * STEP);
           const right = new Vector3(
             Math.cos(player.yaw),
             0,
@@ -91,7 +91,7 @@ test("bots turn toward travel rather than watching a different target while slid
       expect(
         Math.abs(angleDifference(bot.yaw, previousYaw)),
       ).toBeLessThanOrEqual(
-        botProfiles[difficulty].turnSpeed * STEP + 0.000001,
+        botProfiles[difficulty].turnSpeed * 1.2 * STEP + 0.000001,
       );
       if (frame < 10) expect(bot.position.x).toBeLessThan(0.01);
       if (frame === 150) expect(bot.position.x).toBeGreaterThan(0.6);

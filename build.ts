@@ -1,4 +1,5 @@
 import { cp, mkdir } from "node:fs/promises";
+import { brotliCompressSync, constants, gzipSync } from "node:zlib";
 
 const build = await Bun.build({
   entrypoints: ["./index.html"],
@@ -9,4 +10,23 @@ const build = await Bun.build({
 if (!build.success) throw new Error(build.logs.map(String).join("\n"));
 await mkdir("dist/models", { recursive: true });
 await cp("public", "dist", { recursive: true });
+for await (const path of new Bun.Glob("**/*.{html,js,css,glb,json,svg}").scan(
+  "dist",
+)) {
+  const file = Bun.file(`dist/${path}`);
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  if (bytes.length < 1024) continue;
+  for (const [suffix, compressed] of [
+    [
+      "br",
+      brotliCompressSync(bytes, {
+        params: { [constants.BROTLI_PARAM_QUALITY]: 6 },
+      }),
+    ],
+    ["gz", gzipSync(bytes, { level: 6 })],
+  ] as const) {
+    if (compressed.length < bytes.length * 0.95)
+      await Bun.write(`dist/${path}.${suffix}`, compressed);
+  }
+}
 console.info("Production build ready in dist/");

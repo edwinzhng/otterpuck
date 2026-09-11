@@ -1,4 +1,9 @@
-for (const args of [["create.ts"], ["create.ts", "--city"], ["export.ts"]]) {
+for (const args of [
+  ["create.ts"],
+  ["create.ts", "--city"],
+  ["goals.ts"],
+  ["export.ts"],
+]) {
   const task = Bun.spawn([process.execPath, ...args], {
     cwd: import.meta.dir,
     stdout: "inherit",

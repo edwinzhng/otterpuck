@@ -13,3 +13,7 @@ art/**/motion-review/
 art/**/review-rounds/
 .codex/
 .omc/
+
+.vercel/
+.vercel
+.env*

@@ -26,11 +26,12 @@ export type PuckMove = {
   returning: boolean;
 };
 export type PuckCradle = {
-  kind: "curl" | "charge" | "settling";
+  kind: "curl" | "charge" | "dummy" | "settling";
   elapsed: number;
   origin: Vector3;
   target: Vector3;
   turnDirection: number;
+  originFace: number;
 };
 export type Player = {
   id: number;
@@ -40,6 +41,9 @@ export type Player = {
   handedness: Handedness;
   position: Vector3;
   previous: Vector3;
+  previousYaw: number;
+  previousBodyPitch: number;
+  dummyBurstUntil: number;
   velocity: Vector3;
   yaw: number;
   aimYaw: number | undefined;
@@ -93,6 +97,7 @@ export type Player = {
   charge: number;
   shotDraw: number;
   shotPower: number;
+  shotLoft: number;
   shotFired: boolean;
   shotDirection: Vector3;
   shotOrigin: Vector3 | undefined;

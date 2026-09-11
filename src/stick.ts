@@ -20,6 +20,8 @@ export const HOOK_ROOT = new Vector3(-0.12, 0, 0.058);
 export const INSIDE_NORMAL = new Vector3(0.007, 0, -0.034).normalize();
 export const CRADLE_APPROACH = 0.24;
 export const CURL_APPROACH = 0.045;
+export const SWERVE_PULL_DURATION = 0.168;
+export const SWERVE_EXTEND_DURATION = 0.22;
 export const bladeMirror = (player: Player): number => -handSide(player);
 export const mirrorBladePoint = (player: Player, point: Vector3): Vector3 =>
   point.clone().setX(point.x * bladeMirror(player));
@@ -40,7 +42,8 @@ export const shotProgress = (player: Player): number =>
 const shotWristTurn = (progress: number): number =>
   0.5 *
     smoothMotion((progress - SHOT_APPROACH) / (SHOT_RELEASE - SHOT_APPROACH)) +
-  0.55 * smoothMotion((progress - 0.42) / 0.34);
+  (Math.PI * 1.5 - REST_BLADE_YAW - 0.5) *
+    smoothMotion((progress - 0.42) / 0.34);
 
 export const bladeOrientation = (
   yaw: number,
@@ -78,6 +81,13 @@ export const smoothMotion = (value: number): number => {
   return t * t * (3 - 2 * t);
 };
 
+export const swerveExtension = (player: Player): number =>
+  player.cradle?.kind === "dummy"
+    ? smoothMotion(
+        (player.cradle.elapsed - SWERVE_PULL_DURATION) / SWERVE_EXTEND_DURATION,
+      )
+    : 1;
+
 const reverseBladeYaw = (player: Player): number => {
   const target = reversePuckOffset(player);
   const reverseDirection = new Vector3(
@@ -99,7 +109,24 @@ export const updateBladePose = (player: Player, dt: number): void => {
   const pulling = player.puckMove?.kind === "pull";
   const inside =
     pulling || player.backhand || player.curl !== 0 || player.charging;
-  const sideways = player.curl === 0 ? player.dummy || player.lateral : 0;
+  const extension = swerveExtension(player);
+  const cradle = player.cradle;
+  const face = inside
+    ? 1
+    : cradle?.kind === "dummy"
+      ? (cradle.originFace +
+          (1 - cradle.originFace) *
+            smoothMotion(cradle.elapsed / (SWERVE_PULL_DURATION * 0.7))) *
+        (1 - extension)
+      : cradle?.kind === "settling"
+        ? cradle.originFace * (1 - smoothMotion(cradle.elapsed / 0.26))
+        : 0;
+  const sideways =
+    player.curl !== 0
+      ? 0
+      : player.cradle?.kind === "dummy"
+        ? player.cradle.turnDirection * extension
+        : player.dummy || player.lateral;
   const desired =
     player.curl < 0
       ? reverseBladeYaw(player) * bladeMirror(player)
@@ -110,8 +137,7 @@ export const updateBladePose = (player: Player, dt: number): void => {
       angleDifference(desired, player.bladeRotation) *
       (1 - Math.exp(-response * dt));
     player.bladeFace +=
-      (Number(inside) - player.bladeFace) *
-      (1 - Math.exp(-response * 1.8 * dt));
+      (face - player.bladeFace) * (1 - Math.exp(-response * 1.8 * dt));
     player.bladeTilt +=
       ((player.curl < 0 ? 0.22 : STICK_TILT) - player.bladeTilt) *
       (1 - Math.exp(-response * dt));
@@ -166,11 +192,14 @@ export const shotStroke = (player: Player): number =>
 export const shotPuckOrientation = (player: Player): Quaternion =>
   new Quaternion()
     .setFromUnitVectors(new Vector3(0, 1, 0), player.shotDirection)
-    .slerp(new Quaternion(), 1 - smoothMotion(shotStroke(player)))
+    .slerp(
+      new Quaternion(),
+      1 - smoothMotion(shotStroke(player)) * player.shotLoft,
+    )
     .premultiply(
       new Quaternion().setFromAxisAngle(
         new Vector3(0, 1, 0),
-        shotWristTurn(shotProgress(player)) * bladeMirror(player),
+        (Math.PI / 2) * smoothMotion(shotStroke(player)) * bladeMirror(player),
       ),
     );
 
@@ -188,6 +217,6 @@ export const shotPuckPosition = (player: Player): Vector3 => {
       player.shotDirection,
       (0.16 + player.shotPower * 0.1) * slide * slide,
     );
-  position.y += 0.06 * smoothMotion(slide);
+  position.y += 0.06 * smoothMotion(slide) * player.shotLoft;
   return position;
 };

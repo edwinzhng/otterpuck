@@ -9,7 +9,13 @@ import {
   updateStick,
 } from "../src/simulation";
 import { puckSeat } from "../src/stick";
-import { FLOOR_HEIGHT, freshControls, PUCK_HEIGHT, STEP } from "../src/types";
+import {
+  directionYaw,
+  FLOOR_HEIGHT,
+  freshControls,
+  PUCK_HEIGHT,
+  STEP,
+} from "../src/types";
 
 test("side contacts never lift a grounded swimmer and intentional ascent remains free", (): void => {
   const state = createSimulation();
@@ -50,64 +56,78 @@ test("side contacts never lift a grounded swimmer and intentional ascent remains
   expect(swimmer.position.y).toBeGreaterThan(FLOOR_HEIGHT + 0.3);
 });
 
-test("a player can collect at the chest in a crowd, steer out and swim clear with the puck", (): void => {
-  const state = createSimulation("2-3-1", "2-3-1", "playground");
-  const human = state.players.at(0);
-  if (!human) throw new Error("Missing swimmer");
-  state.puck.position
-    .copy(human.position)
-    .add(new Vector3(0.3, 0, -0.23))
-    .setY(PUCK_HEIGHT);
-  const opponents = createSimulation()
-    .players.filter((p): boolean => p.team === 1)
-    .slice(0, 3);
-  for (const [index, opponent] of opponents.entries()) {
-    const offset = [
-      new Vector3(-0.72, 0, -0.2),
-      new Vector3(0.72, 0, 0.2),
-      new Vector3(0, 0, -1.15),
-    ].at(index);
-    if (!offset) throw new Error("Missing crowd position");
-    opponent.position.copy(human.position).add(offset);
-    opponent.yaw = 0;
-    opponent.mode = "playing";
-    opponent.bodyPitch = 0;
-    opponent.wallReady = false;
-    opponent.target.copy(opponent.position);
-    opponent.previous.copy(opponent.position);
-    updateStick(opponent, STEP);
-    opponent.previousStick.copy(opponent.stick);
-    state.players.push(opponent);
-  }
-  expect(canGrabPuck(state, human, 0.1)).toBe(true);
-  stepSimulation(
-    state,
-    { ...freshControls(), pitch: 0.1, knockdown: true },
-    STEP,
+for (const challenged of [false, true]) {
+  test(
+    challenged
+      ? "a real blade challenge can take the puck during a crowd escape"
+      : "a player can collect at the chest in a crowd, steer out and swim clear with the puck",
+    (): void => {
+      const state = createSimulation("2-3-1", "2-3-1", "playground");
+      const human = state.players.at(0);
+      if (!human) throw new Error("Missing swimmer");
+      state.puck.position
+        .copy(human.position)
+        .add(new Vector3(0.3, 0, -0.23))
+        .setY(PUCK_HEIGHT);
+      const opponents = createSimulation()
+        .players.filter((p): boolean => p.team === 1)
+        .slice(0, 3);
+      for (const [index, opponent] of opponents.entries()) {
+        const offset = [
+          new Vector3(-0.72, 0, -0.2),
+          new Vector3(0.72, 0, 0.2),
+          new Vector3(0, 0, -1.15),
+        ].at(index);
+        if (!offset) throw new Error("Missing crowd position");
+        opponent.position.copy(human.position).add(offset);
+        opponent.yaw = challenged ? 0 : directionYaw(offset.x, offset.z);
+        opponent.mode = "playing";
+        opponent.bodyPitch = 0;
+        opponent.wallReady = false;
+        opponent.target.copy(opponent.position);
+        opponent.previous.copy(opponent.position);
+        updateStick(opponent, STEP);
+        opponent.previousStick.copy(opponent.stick);
+        state.players.push(opponent);
+      }
+      expect(canGrabPuck(state, human, 0.1)).toBe(true);
+      stepSimulation(
+        state,
+        { ...freshControls(), pitch: 0.1, knockdown: true },
+        STEP,
+      );
+      for (const unused of Array.from({ length: 6 })) {
+        void unused;
+        stepSimulation(state, { ...freshControls(), pitch: 0.1 }, STEP);
+      }
+      expect(state.puck.controlOwner).toBe(human.id);
+      const origin = human.position.clone();
+      for (const frame of Array.from(
+        { length: 200 },
+        (_, index): number => index,
+      )) {
+        stepSimulation(
+          state,
+          { ...freshControls(), forward: 1, lateral: frame < 60 ? 1 : 0 },
+          STEP,
+        );
+        expect(human.position.y).toBeCloseTo(FLOOR_HEIGHT, 7);
+      }
+      expect(human.position.distanceTo(origin)).toBeGreaterThan(1.6);
+      if (challenged) {
+        const owner = state.players.find(
+          (player) => player.id === state.puck.controlOwner,
+        );
+        expect(owner?.team).toBe(1);
+        return;
+      }
+      expect(state.puck.controlOwner).toBe(human.id);
+      expect(
+        state.puck.position.distanceTo(puckSeat(human).setY(PUCK_HEIGHT)),
+      ).toBeLessThan(0.05);
+    },
   );
-  for (const unused of Array.from({ length: 6 })) {
-    void unused;
-    stepSimulation(state, { ...freshControls(), pitch: 0.1 }, STEP);
-  }
-  expect(state.puck.controlOwner).toBe(human.id);
-  const origin = human.position.clone();
-  for (const frame of Array.from(
-    { length: 200 },
-    (_, index): number => index,
-  )) {
-    stepSimulation(
-      state,
-      { ...freshControls(), forward: 1, lateral: frame < 60 ? 1 : 0 },
-      STEP,
-    );
-    expect(human.position.y).toBeCloseTo(FLOOR_HEIGHT, 7);
-  }
-  expect(human.position.distanceTo(origin)).toBeGreaterThan(1.6);
-  expect(state.puck.controlOwner).toBe(human.id);
-  expect(
-    state.puck.position.distanceTo(puckSeat(human).setY(PUCK_HEIGHT)),
-  ).toBeLessThan(0.05);
-});
+}
 
 test("traffic steering commits to an open side, shifts the held stick and avoids the wall", (): void => {
   const state = createSimulation();

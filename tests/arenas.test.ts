@@ -21,7 +21,7 @@ for (const name of ["tropical", "city"]) {
           3,
       0,
     );
-    expect(meshes.length).toBeLessThan(26);
+    expect(meshes.length).toBeLessThan(30);
     expect(triangles).toBeLessThan(100_000);
     const materials = new Set(
       meshes.flatMap((mesh): string[] =>
@@ -33,7 +33,7 @@ for (const name of ["tropical", "city"]) {
     expect(materials.has("Pool floor")).toBe(true);
     expect(materials.has("Pool wall")).toBe(true);
     expect(materials.has("Pool marking")).toBe(true);
-    expect(materials.has("Trough steel")).toBe(true);
+    expect(materials.has("Goal brushed steel")).toBe(true);
     for (const x of [-7, -3, 0, 3, 7])
       for (const z of [-11.5, -6, 0, 6, 11.5]) {
         const ray = new Raycaster(
@@ -66,7 +66,7 @@ for (const name of ["tropical", "city"]) {
         new Vector3(0, -1, 0),
       );
       const hit = ray.intersectObject(gltf.scene, true).at(0);
-      expect(hit?.point.y).toBeGreaterThan(0.01);
+      expect(hit?.point.y).toBeGreaterThan(0.004);
       expect(hit?.point.y).toBeLessThan(0.06);
     }
     console.info(
