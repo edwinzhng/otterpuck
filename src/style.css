@@ -1335,3 +1335,39 @@ legend {
     display: none;
   }
 }
+
+.puck-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+.puck-indicator-dot {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  left: -16px;
+  top: -12px;
+  border-radius: 50%;
+  background: #ff62aa;
+  border: 3px solid #fff0f8;
+  box-shadow:
+    inset 0 -4px 0 #ca367a,
+    0 0 0 2px #174a70,
+    0 3px 8px #092c5266;
+}
+.puck-indicator-arrow {
+  position: absolute;
+  left: 13px;
+  top: -6px;
+  width: 12px;
+  height: 12px;
+  border-top: 4px solid #fff18c;
+  border-right: 4px solid #fff18c;
+  border-radius: 2px;
+  transform: rotate(45deg);
+  filter: drop-shadow(1px 1px 1px #174a70);
+}

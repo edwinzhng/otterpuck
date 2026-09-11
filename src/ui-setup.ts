@@ -43,6 +43,7 @@ export const createUI = (): UI => {
       air: element("air"),
       airLabel: element("air-label"),
       event: element("announcement"),
+      puckIndicator: element("puck-indicator"),
       role: element("role"),
       handling: element("handling-mode"),
       fps: element("fps"),

@@ -1,5 +1,7 @@
+import { Vector3 } from "three";
 import { depthGuidance } from "./depth";
 import { getElement } from "./dom";
+import { projectPuckDirection } from "./puck-indicator";
 
 export { getElement } from "./dom";
 export { createUI } from "./ui-setup";
@@ -46,6 +48,7 @@ export type UI = {
     air: HTMLElement;
     airLabel: HTMLElement;
     event: HTMLElement;
+    puckIndicator: HTMLElement;
     role: HTMLElement;
     handling: HTMLElement;
     fps: HTMLElement;
@@ -153,12 +156,31 @@ const drawMap = (ui: UI, state: Simulation): void => {
   context.fill();
 };
 
+const indicatorPosition = new Vector3();
+
 export const renderPlayerLabels = (
   ui: UI,
   state: Simulation,
   world: World,
   alpha: number,
 ): void => {
+  const direction =
+    state.restartTime > 0 || state.finished
+      ? undefined
+      : projectPuckDirection(
+          indicatorPosition.lerpVectors(
+            state.puck.previous,
+            state.puck.position,
+            alpha,
+          ),
+          world.camera,
+          ui.canvas.clientWidth,
+          ui.canvas.clientHeight,
+        );
+  ui.elements.puckIndicator.classList.toggle("hidden", !direction);
+  if (direction) {
+    ui.elements.puckIndicator.style.transform = `translate(${direction.x}px, ${direction.y}px) rotate(${direction.angle}rad)`;
+  }
   for (const [id, label] of ui.playerLabels.entries()) {
     const player = state.players.at(id);
     const point =

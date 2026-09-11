@@ -58,6 +58,7 @@ export const uiShell = (): string => `
     </div>
     <div id="player-labels" aria-label="Player positions"></div><div class="crosshair" aria-hidden="true"></div>
     <div id="knockdown-prompt" class="reaction hidden" role="status"><kbd>X</kbd><strong id="reaction-label">Grab</strong></div>
+    <div id="puck-indicator" class="puck-indicator hidden" aria-hidden="true"><span class="puck-indicator-dot"></span><i class="puck-indicator-arrow"></i></div>
     <div id="announcement" class="announcement" role="status"></div>
     ${goalConfettiMarkup()}
     <div class="hud-bottom">
