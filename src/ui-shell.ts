@@ -1,3 +1,4 @@
+import { goalConfettiMarkup } from "./goal-confetti";
 import { lobbyMarkup } from "./lobby";
 import {
   touchHelpMarkup,
@@ -58,6 +59,7 @@ export const uiShell = (): string => `
     <div id="player-labels" aria-label="Player positions"></div><div class="crosshair" aria-hidden="true"></div>
     <div id="knockdown-prompt" class="reaction hidden" role="status"><kbd>X</kbd><strong id="reaction-label">Grab</strong></div>
     <div id="announcement" class="announcement" role="status"></div>
+    ${goalConfettiMarkup()}
     <div class="hud-bottom">
       <div class="vitals panel"><div class="vitals-header"><span id="air-label">Air</span></div><div class="air-value"><strong id="air">100</strong><span>%</span></div><div class="air-track"><i id="air-fill"></i></div></div>
       <div class="handling"><div id="bottom-guidance" class="bottom-guidance panel hidden" role="status"><strong id="bottom-title"></strong><span id="bottom-detail"></span><div id="descend-cue"><kbd>Ctrl</kbd> ↓</div></div><div id="stick-controls"><div id="shot-charge" class="shot-charge"><span></span></div><strong id="handling-mode"></strong></div></div>

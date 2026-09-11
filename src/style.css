@@ -1259,3 +1259,79 @@ legend {
     animation: none;
   }
 }
+
+.goal-confetti {
+  --confetti-team: #54cfff;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+}
+.beaver-goal + .goal-confetti {
+  --confetti-team: #ff7e91;
+}
+.sea-confetti {
+  position: absolute;
+  left: 50%;
+  top: var(--origin);
+  width: var(--size);
+  height: var(--size);
+  opacity: 0;
+  background: var(--confetti-team);
+}
+.sea-confetti.bubble {
+  border: 2px solid #d6f9ff;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 30% 25%,
+    #fff 0 12%,
+    #b8eeff33 20% 60%,
+    #76d7f066 80%
+  );
+}
+.sea-confetti.star {
+  background: #fff18c;
+  clip-path: polygon(
+    50% 0,
+    63% 34%,
+    100% 38%,
+    71% 60%,
+    80% 100%,
+    50% 77%,
+    20% 100%,
+    29% 60%,
+    0 38%,
+    37% 34%
+  );
+}
+.sea-confetti.ribbon {
+  height: calc(var(--size) * 1.8);
+  border-radius: 5px 1px 5px 1px;
+  border-left: 3px solid #ffffff88;
+}
+.goal-celebration + .goal-confetti .sea-confetti {
+  animation: sea-confetti-burst 2400ms var(--delay)
+    cubic-bezier(0.15, 0.6, 0.25, 1) both;
+}
+@keyframes sea-confetti-burst {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(0) scale(0.3);
+  }
+  12% {
+    opacity: 0.95;
+  }
+  65% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--drift), var(--rise)) rotate(var(--spin)) scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .goal-confetti {
+    display: none;
+  }
+}
