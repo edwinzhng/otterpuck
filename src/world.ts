@@ -186,13 +186,13 @@ export const createWorld = (canvas: HTMLCanvasElement): World => {
   renderer.shadowMap.autoUpdate = false;
   renderer.setClearColor(0x43b5c7);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.35));
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
   const scene = new Scene();
   scene.background = new Color(0x43b5c7);
   scene.fog = new FogExp2(0x43b5c7, 0.026);
   const camera = new PerspectiveCamera(
     77,
-    window.innerWidth / window.innerHeight,
+    canvas.clientWidth / Math.max(1, canvas.clientHeight),
     0.045,
     800,
   );
@@ -583,11 +583,14 @@ export const poseSwimmer = (
 };
 
 export const resizeWorld = (world: World): void => {
+  const canvas = world.renderer.domElement;
+  const width = Math.max(1, canvas.clientWidth);
+  const height = Math.max(1, canvas.clientHeight);
   world.renderer.setPixelRatio(
     Math.min(window.devicePixelRatio, world.renderScale),
   );
-  world.renderer.setSize(window.innerWidth, window.innerHeight);
-  world.camera.aspect = window.innerWidth / window.innerHeight;
+  world.renderer.setSize(width, height, false);
+  world.camera.aspect = width / height;
   world.camera.updateProjectionMatrix();
 };
 

@@ -1,1 +1,14 @@
-{"name":"Otterpuck","short_name":"Otterpuck","start_url":"/","display":"standalone","background_color":"#073b4b","theme_color":"#073b4b"}
+{
+  "id": "/",
+  "name": "Otterpuck",
+  "short_name": "Otterpuck",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#073b4b",
+  "theme_color": "#073b4b",
+  "icons": [
+    { "src": "/icons/otterpuck-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/otterpuck-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

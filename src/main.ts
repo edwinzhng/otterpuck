@@ -265,6 +265,8 @@ const boot = async (): Promise<void> => {
     },
   );
   const resize = (): void => resizeWorld(world);
+  const viewportObserver = new ResizeObserver(resize);
+  viewportObserver.observe(ui.canvas);
   window.addEventListener("resize", resize);
   window.visualViewport?.addEventListener("resize", resize);
   document.addEventListener("fullscreenchange", (): void => {
@@ -276,6 +278,7 @@ const boot = async (): Promise<void> => {
       pause();
       return;
     }
+    viewportObserver.disconnect();
     input.touch.dispose();
     disposeWorld(world);
     app.audio?.dispose();

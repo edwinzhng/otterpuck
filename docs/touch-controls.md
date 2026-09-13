@@ -46,3 +46,11 @@ The physics and AI remain authoritative. The Mobile graphics preset caps device 
 The 180-second CPU simulation benchmark averaged 0.0329 ms per step (p95 0.0498 ms), with 27 shots and a 1–2 result. A warmed 90,000-sample two-pointer input diagnostic averaged 0.00015 ms per poll. These measurements exclude browser rendering and do not establish phone frame rates.
 
 Browser verification is pending: the Mac was locked and computer use could not unlock it. No phone or responsive browser screenshot, audio playback check, GPU frame-rate result, or physical multi-finger device test is claimed for this pass. Next checks: 844×390 and 667×375 landscape, 390×844 portrait menus/rotation, simultaneous movement + charge/aim on iOS Safari and Android Chrome, interrupted touches, surface head lift, and sustained full-team play in both arenas.
+
+## Installed app layout and icons
+
+The install manifest includes 192px and 512px PNG icons, and the page links an explicit 180px Apple touch icon. The browser and install icons share enlarged otter artwork with a curved snorkel mouthpiece seated at the mouth. Apple documents the home-screen icon link in [Configuring Web Applications](https://developer.apple.com/library/archive/documentation/AppleApplications/Reference/SafariWebContent/ConfiguringWebApplications/ConfiguringWebApplications.html).
+
+The game canvas uses `100dvh`; the renderer measures the canvas CSS dimensions and changes only its drawing buffer. A resize observer tracks viewport-driven canvas changes. This avoids pinning the canvas to an inline `innerHeight` measurement, which can differ from the installed iOS viewport. Controls retain safe-area spacing, following [WebKit's safe-area guidance](https://webkit.org/blog/7929/designing-websites-for-iphone-x/). The mobile tutorial objective shares the pause toolbar's safe-area offset and starts 16px below its 48px buttons.
+
+Verified at 390 × 844 and 844 × 390 in the desktop browser: canvas and drawing buffer match the viewport at Performance quality, the tutorial-to-pause gap is 16px, and no console errors occur. A 600-frame portrait tutorial sample measured 59.55 FPS and 18.3ms p95 frame interval. All 198 tests, type checks and the production build pass. These are responsive desktop checks; installed iPhone status/home-indicator areas and icon refresh still require device verification.

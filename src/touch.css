@@ -18,6 +18,8 @@
   accent-color: #1687bd;
 }
 .touch-mode {
+  --hud-top: max(10px, env(safe-area-inset-top));
+  --hud-action-size: 48px;
   overscroll-behavior: none;
 }
 .touch-playing {
@@ -207,8 +209,7 @@
   box-shadow: inset 0 0 0 6px #ffe98150;
 }
 .touch-mode .hud-top {
-  inset: max(10px, env(safe-area-inset-top))
-    max(16px, env(safe-area-inset-right)) auto
+  inset: var(--hud-top) max(16px, env(safe-area-inset-right)) auto
     max(16px, env(safe-area-inset-left));
 }
 .touch-mode #pause-button {
@@ -539,8 +540,8 @@
   gap: 10px;
 }
 .hud-actions .button {
-  width: 48px;
-  height: 48px;
+  width: var(--hud-action-size, 48px);
+  height: var(--hud-action-size, 48px);
   min-width: 48px;
   min-height: 48px;
   display: grid;
