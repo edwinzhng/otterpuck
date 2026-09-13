@@ -3,5 +3,16 @@
   "framework": null,
   "installCommand": "bunx bun@1.4.2 install --frozen-lockfile",
   "buildCommand": "bunx bun@1.4.2 run build",
-  "outputDirectory": "dist"
+  "outputDirectory": "dist",
+  "headers": [
+    {
+      "source": "/sw.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        }
+      ]
+    }
+  ]
 }

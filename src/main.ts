@@ -3,6 +3,7 @@ import { createAudioEventTracker } from "./audio-events";
 import { createInput } from "./input";
 import { createLearning } from "./learning";
 import { matchResult } from "./match-result";
+import { enableOffline } from "./offline";
 import { createFrameMeter } from "./performance";
 import { renderPlayerLabels } from "./player-labels";
 import { bindGraphicsSettings, bindVolumeSettings } from "./settings";
@@ -400,6 +401,7 @@ const boot = async (): Promise<void> => {
   getElement("#boot-cover", HTMLElement).classList.add("ready");
   setTimeout((): void => getElement("#boot-cover", HTMLElement).remove(), 400);
   learning.offer();
+  enableOffline();
 };
 
 const start = new URLSearchParams(window.location.search).has("review")

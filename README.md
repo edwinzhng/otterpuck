@@ -39,6 +39,12 @@ Open `http://<computer-LAN-IP>:3204` on the phone. This command listens on the l
 
 Phones automatically use touch controls. **Settings → Controls → Touch** also enables the overlay on a desktop or hybrid device. Play in landscape: left joystick swims/steers, the outer ring sprints, right-side dragging aims, and holding Shoot charges a shot while still allowing drag-to-aim. The buttons expose puck skills and depth controls. See [touch controls and device testing](docs/touch-controls.md).
 
+## Offline play
+
+The production app automatically downloads an offline copy after its first online load. Once that background download finishes, both arenas, characters, tutorials and audio work without a connection. There is no download button or opt-in step. Keep the app open online long enough for the first download to complete.
+
+Updates download in the background and take over after existing game tabs/windows close. An interrupted update keeps the previous offline copy. Browser storage can still be cleared or evicted by the device. See [offline implementation and verification](docs/offline.md).
+
 ## Desktop controls
 
 | Input | Action |

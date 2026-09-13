@@ -49,7 +49,7 @@ Browser verification is pending: the Mac was locked and computer use could not u
 
 ## Installed app layout and icons
 
-The install manifest includes 192px and 512px PNG icons, and the page links an explicit 180px Apple touch icon. The browser and install icons share enlarged otter artwork with a curved snorkel mouthpiece seated at the mouth. Apple documents the home-screen icon link in [Configuring Web Applications](https://developer.apple.com/library/archive/documentation/AppleApplications/Reference/SafariWebContent/ConfiguringWebApplications/ConfiguringWebApplications.html).
+The install manifest includes 192px and 512px PNG icons, and the page links an explicit 180px Apple touch icon. The browser and install icons share enlarged otter artwork with a smooth U-shaped snorkel mouthpiece centered below the smile. Apple documents the home-screen icon link in [Configuring Web Applications](https://developer.apple.com/library/archive/documentation/AppleApplications/Reference/SafariWebContent/ConfiguringWebApplications/ConfiguringWebApplications.html).
 
 The game canvas uses `100dvh`; the renderer measures the canvas CSS dimensions and changes only its drawing buffer. A resize observer tracks viewport-driven canvas changes. This avoids pinning the canvas to an inline `innerHeight` measurement, which can differ from the installed iOS viewport. Controls retain safe-area spacing, following [WebKit's safe-area guidance](https://webkit.org/blog/7929/designing-websites-for-iphone-x/). The mobile tutorial objective shares the pause toolbar's safe-area offset and starts 16px below its 48px buttons.
 
