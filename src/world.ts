@@ -14,7 +14,6 @@ import {
   Line,
   LineBasicMaterial,
   type Material,
-  Matrix4,
   Mesh,
   MeshBasicMaterial,
   MeshStandardMaterial,
@@ -42,7 +41,6 @@ import {
 } from "./arenas";
 import { type Avatar, createAvatar, poseAvatar } from "./avatar";
 import { type BubbleField, createBubbles, updateBubbles } from "./bubbles";
-import { confineCameraToPool } from "./camera-bounds";
 import { applyCharacterStyle } from "./character-style";
 import {
   applyCharacterVisorReflection,
@@ -50,7 +48,7 @@ import {
 } from "./character-visor";
 import { atPlayingDepth } from "./depth";
 import { createSwimMotion, type SwimMotion, updateSwimMotion } from "./motion";
-import { createShadowTexture } from "./shadows";
+import { createShadowTexture, updateShadows } from "./shadows";
 import { shareCharacterSkeleton } from "./skeletons";
 import {
   bladeMirror,
@@ -59,15 +57,9 @@ import {
   REST_BLADE_YAW,
   STICK_GRIP,
 } from "./stick";
-import {
-  CAMERA_OFFSET,
-  type Player,
-  POOL,
-  type Simulation,
-  STICK_OUTLINE,
-} from "./types";
-import { approachHeadLift, headLiftTarget } from "./view-effects";
+import { type Player, POOL, type Simulation, STICK_OUTLINE } from "./types";
 import { captureWater, createWater, type WaterSurface } from "./water";
+import { type CameraRig, updateWorldCamera } from "./world-camera";
 
 type SwimmerView = {
   root: Group;
@@ -101,7 +93,7 @@ export type World = {
   arena?: ArenaView;
   arenaRequest: number;
   headLift: number;
-  reviewCamera?: { position: Vector3; target: Vector3; firstPerson: boolean };
+  reviewCamera?: CameraRig["reviewCamera"];
   visorReflection?: ReturnType<typeof createCharacterVisorReflection>;
 };
 
@@ -599,6 +591,14 @@ export const resizeWorld = (world: World): void => {
   world.camera.updateProjectionMatrix();
 };
 
+const updateShaderTime = (
+  shaders: readonly ShaderMaterial[],
+  time: number,
+): void => {
+  for (const shader of shaders)
+    if (shader.uniforms.uTime) shader.uniforms.uTime.value = time;
+};
+
 export const renderWorld = (
   world: World,
   state: Simulation,
@@ -610,8 +610,8 @@ export const renderWorld = (
   liftHead = false,
 ): void => {
   if (world.arena) world.arena.time.value = time;
-  for (const shader of [...world.shaders, ...(world.arena?.shaders ?? [])])
-    if (shader.uniforms.uTime) shader.uniforms.uTime.value = time;
+  updateShaderTime(world.shaders, time);
+  if (world.arena) updateShaderTime(world.arena.shaders, time);
   for (const [index, view] of world.swimmers.entries()) {
     const player = state.players.find(
       (candidate): boolean => candidate.id === index,
@@ -649,87 +649,8 @@ export const renderWorld = (
     positions.needsUpdate = true;
     world.trail.geometry.setDrawRange(0, state.playground.trace.length);
   }
-  const human = state.players.at(0);
-  if (active && human) {
-    const viewYaw = human.previousYaw + (human.yaw - human.previousYaw) * alpha;
-    const viewBodyPitch =
-      human.previousBodyPitch +
-      (human.bodyPitch - human.previousBodyPitch) * alpha;
-    world.camera.position
-      .lerpVectors(human.previous, human.position, alpha)
-      .add(
-        CAMERA_OFFSET.clone()
-          .applyAxisAngle(new Vector3(1, 0, 0), viewBodyPitch)
-          .applyAxisAngle(new Vector3(0, 1, 0), viewYaw),
-      );
-    world.headLift = approachHeadLift(
-      world.headLift,
-      headLiftTarget(human, liftHead),
-      dt,
-    );
-    world.camera.position.y += world.headLift;
-    world.camera.rotation.order = "YXZ";
-    world.camera.rotation.set(pitch, viewYaw, 0);
-    world.camera.fov +=
-      (Math.min(
-        110,
-        (human.sprint ? 81 : 77) + Math.max(0, 1 - world.camera.aspect) * 60,
-      ) -
-        world.camera.fov) *
-      Math.min(1, dt * 4);
-    world.camera.updateProjectionMatrix();
-    if (state.mode === "playground" && state.playground.camera === "side") {
-      const target = world.puck.position.clone().lerp(human.stick, 0.3);
-      world.camera.position
-        .copy(target)
-        .add(
-          new Vector3(1.3, 0.65, 0.4).applyAxisAngle(
-            new Vector3(0, 1, 0),
-            human.yaw,
-          ),
-        );
-      world.camera.fov = 56;
-      confineCameraToPool(world.camera);
-      world.camera.lookAt(target);
-      world.camera.updateProjectionMatrix();
-    } else confineCameraToPool(world.camera);
-  } else {
-    world.headLift = 0;
-    world.camera.position.set(10.3, 7.6, 15.7);
-    world.camera.lookAt(-1.2, 2.2, -3.6);
-  }
-  const matrix = new Matrix4();
-  if (world.reviewCamera) {
-    if (!world.reviewCamera.firstPerson) {
-      world.camera.position.copy(world.reviewCamera.position);
-      world.camera.lookAt(world.reviewCamera.target);
-    }
-    world.camera.fov = world.reviewCamera.firstPerson ? 77 : 48;
-    world.camera.updateProjectionMatrix();
-    if (world.reviewCamera.firstPerson) confineCameraToPool(world.camera);
-  }
-  const quaternion = new Quaternion();
-  const shadowScale = new Vector3();
-  for (const [index, player] of state.players.entries()) {
-    shadowScale
-      .set(0.26, 0.002, 0.7)
-      .multiplyScalar(1 + player.position.y * 0.08);
-    quaternion.setFromAxisAngle(new Vector3(0, 1, 0), player.yaw);
-    matrix.compose(
-      new Vector3(player.position.x, 0.007, player.position.z),
-      quaternion,
-      shadowScale,
-    );
-    world.shadows.setMatrixAt(index, matrix);
-  }
-  matrix.compose(
-    new Vector3(state.puck.position.x, 0.007, state.puck.position.z),
-    new Quaternion(),
-    new Vector3(0.057, 0.002, 0.057),
-  );
-  world.shadows.setMatrixAt(state.players.length, matrix);
-  world.shadows.count = state.players.length + 1;
-  world.shadows.instanceMatrix.needsUpdate = true;
+  updateWorldCamera(world, state, dt, active, pitch, alpha, liftHead);
+  updateShadows(world.shadows, state);
   updateBubbles(world.bubbles, state.players, dt, time);
   const heightUniform = world.bubbles.points.material.uniforms.uHeight;
   if (heightUniform) heightUniform.value = world.renderer.domElement.height;

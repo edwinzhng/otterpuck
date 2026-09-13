@@ -45,10 +45,10 @@ export const projectPlayerLabel = (
   player: Player,
   camera: PerspectiveCamera,
   alpha: number,
+  target = new Vector3(),
 ): Vector3 | undefined => {
-  const anchor = new Vector3()
-    .lerpVectors(player.previous, player.position, alpha)
-    .add(new Vector3(0, 0.3, 0));
+  const anchor = target.lerpVectors(player.previous, player.position, alpha);
+  anchor.y += 0.3;
   const distance = anchor.distanceTo(camera.position);
   if (distance > 15 || distance < 0.65) return undefined;
   const point = anchor.project(camera);

@@ -4,6 +4,8 @@ import { createInput } from "./input";
 import { createLearning } from "./learning";
 import { matchResult } from "./match-result";
 import { createFrameMeter } from "./performance";
+import { renderPlayerLabels } from "./player-labels";
+import { bindGraphicsSettings, bindVolumeSettings } from "./settings";
 import {
   createSimulation,
   feedPracticePuck,
@@ -12,7 +14,7 @@ import {
   stepSimulation,
 } from "./simulation";
 import { freshControls, POOL, STEP } from "./types";
-import { createUI, getElement, renderPlayerLabels, updateUI } from "./ui";
+import { createUI, getElement, updateUI } from "./ui";
 import { createSpeedLines } from "./view-effects";
 import {
   createWorld,
@@ -87,40 +89,14 @@ const boot = async (): Promise<void> => {
           app.state.playground.camera === "side" ? "first-person" : "side";
     },
   );
-  const quality = getElement("#quality", HTMLSelectElement);
-  const graphics = { chosen: localStorage.getItem("otterpuck-quality") };
-  const applyQuality = (): void => {
-    quality.value =
-      ["0.85", "1", "1.35", "1.7", "2"].find(
-        (value): boolean => value === graphics.chosen,
-      ) ?? (input.touch.enabled ? "1.7" : "1.35");
-    world.renderScale = Number(quality.value);
-    resizeWorld(world);
-  };
-  applyQuality();
-  window.addEventListener("input-mode-change", applyQuality);
-  const volumes = { music: 0.5, effects: 1 };
-  const applyVolumes = (): void => {
-    for (const kind of ["music", "effects"] as const)
-      app.audio?.setVolume(kind, volumes[kind]);
-  };
-  for (const kind of ["music", "effects"] as const) {
-    const saved = localStorage.getItem(`otterpuck-volume-${kind}`);
-    const parsed = saved === null ? volumes[kind] : Number(saved);
-    volumes[kind] = Number.isFinite(parsed)
-      ? Math.max(0, Math.min(1, parsed))
-      : volumes[kind];
-    const slider = getElement(`#${kind}-volume`, HTMLInputElement);
-    const output = getElement(`#${kind}-volume-value`, HTMLOutputElement);
-    slider.value = String(Math.round(volumes[kind] * 100));
-    output.value = slider.value + "%";
-    slider.addEventListener("input", (): void => {
-      volumes[kind] = Number(slider.value) / 100;
-      output.value = slider.value + "%";
-      localStorage.setItem(`otterpuck-volume-${kind}`, String(volumes[kind]));
-      applyVolumes();
-    });
-  }
+  bindGraphicsSettings(
+    () => input.touch.enabled,
+    (scale): void => {
+      world.renderScale = scale;
+      resizeWorld(world);
+    },
+  );
+  const applyVolumes = bindVolumeSettings(() => app.audio);
   getElement("#pause-settings", HTMLButtonElement).addEventListener(
     "click",
     (): void => getElement("#settings-dialog", HTMLDialogElement).showModal(),
@@ -261,15 +237,6 @@ const boot = async (): Promise<void> => {
       app.audio?.setPlaying(false);
     },
   );
-  getElement("#quality", HTMLSelectElement).addEventListener(
-    "change",
-    (event: Event): void => {
-      if (!(event.target instanceof HTMLSelectElement)) return;
-      graphics.chosen = event.target.value;
-      localStorage.setItem("otterpuck-quality", graphics.chosen);
-      applyQuality();
-    },
-  );
   getElement("#sound", HTMLButtonElement).addEventListener(
     "click",
     (): void => {
@@ -357,11 +324,7 @@ const boot = async (): Promise<void> => {
           ? 0.25
           : 1);
       const steps = Math.min(Math.floor(app.accumulator / STEP), 12);
-      for (const unused of Array.from(
-        { length: steps },
-        (_: unknown, i: number): number => i,
-      )) {
-        void unused;
+      for (let step = 0; step < steps; step += 1) {
         if (app.phase !== "playing") break;
         const attemptedGrab = input.controls.knockdown;
         stepSimulation(app.state, input.controls, STEP);
@@ -410,7 +373,7 @@ const boot = async (): Promise<void> => {
       renderPlayerLabels(
         ui,
         app.state,
-        world,
+        world.camera,
         app.phase === "playing" ? app.accumulator / STEP : 1,
       );
     if (now - app.uiTime > 100 && app.phase !== "menu") {

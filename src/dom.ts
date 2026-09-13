@@ -7,3 +7,7 @@ export const getElement = <T extends Element>(
     throw new Error(`Missing element: ${selector}`);
   return element;
 };
+
+export const setText = (element: HTMLElement, value: string): void => {
+  if (element.textContent !== value) element.textContent = value;
+};

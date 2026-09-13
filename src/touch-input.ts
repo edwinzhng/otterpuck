@@ -244,13 +244,11 @@ export const createTouchInput = (
     target.addEventListener("pointerup", end, options);
     target.addEventListener("pointercancel", end, options);
     target.addEventListener("lostpointercapture", end, options);
-    target.addEventListener(
-      "contextmenu",
-      (event: Event): void => {
-        if (input.enabled && state.active) event.preventDefault();
-      },
-      options,
-    );
   }
+  const preventGameplaySelection = (event: Event): void => {
+    if (input.enabled && state.active) event.preventDefault();
+  };
+  document.addEventListener("selectstart", preventGameplaySelection, options);
+  document.addEventListener("contextmenu", preventGameplaySelection, options);
   return input;
 };

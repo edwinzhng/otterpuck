@@ -64,7 +64,7 @@ The pool is approximately 25 × 15 × 2.44 m, with low metal trough goals. Suppo
 
 ## Project structure
 
-- `src/`: gameplay, AI, controls, UI, rendering, audio and runtime animation.
+- `src/`: gameplay, AI, controls, UI, rendering, audio and runtime animation. See [runtime boundaries](docs/architecture.md).
 - `tests/`: physics, formations, movement, input, cameras, rig/deformation and asset checks.
 - `public/`: exported GLBs, textures, images and audio used by the game.
 - `art/characters/`: current editable character/equipment sources and authoring scripts.

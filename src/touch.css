@@ -20,8 +20,11 @@
 .touch-mode {
   overscroll-behavior: none;
 }
-.touch-playing #pool {
+.touch-playing {
   touch-action: none;
+}
+.touch-playing,
+.touch-playing * {
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;

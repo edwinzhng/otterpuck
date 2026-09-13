@@ -27,3 +27,20 @@ A focused statistics benchmark measured about 83–95% less work depending on ru
 153 tests pass, including encoding negotiation, exact decompression, HEAD, revalidation, stale-variant rejection and rolling-window/reset statistics. TypeScript, build and Biome checks pass with the pre-existing eleven CSS warnings and one informational finding.
 
 The next candidates are consolidating compatible character draw calls and distance-based character detail for phones. Profile on actual phone hardware before changing fidelity. This pass does not complete the separate art-review goal.
+
+## Modular runtime pass — September 12, 2026
+
+Camera updates, instanced shadow updates, label projection, saved settings, minimap drawing, and puck physics now have separate modules. Camera/shadow/puck math reuses temporary vectors and quaternions. Frame stepping no longer builds an index array; shader updates no longer concatenate arrays. HUD text writes skip unchanged content, the lab readout is bound once, and tactics drawing avoids a filtered roster allocation.
+
+Desktop in-app browser, Tropical Cove, default twelve-player 2-3-1 match with Medium bots, Balanced graphics, 1280 × 720 CSS viewport and 1728 × 972 render target, 600-sample windows:
+
+| Build | FPS | Frame interval p95 | Callback CPU | Draw calls at sampling | Triangles at sampling |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Before | 59.94 | 18.0 ms | 1.95 ms | 143 | 523,092 |
+| After | 59.96 | 18.1 ms | 2.17 ms | 220 | 721,489 |
+
+The scenes contain different visible player arrangements, so these samples establish continued roughly 60 FPS rendering, not a CPU or GPU speedup. Both samples report 96 geometries and 26 textures. No browser console warnings or errors were observed. Menu/setup navigation, pause/resume, graphics resolution changes, volume readout updates, and the touch overlay were exercised. Active-touch HUD text reports `user-select: none` in the desktop browser; iOS long-press behavior and sustained phone performance remain unverified.
+
+The 180-second CPU simulation benchmark produced identical scores, contacts, shots, and reported player outcomes before/after. A single pair measured 0.0329 / 0.0340 ms mean step and 0.0525 / 0.0555 ms p95; this does not establish a simulation speedup. Reduced temporary allocations are the intended optimization, with no lowered visual fidelity or physics frequency.
+
+All 198 tests pass, including new camera interpolation/non-mutation, shadow roster transitions, and reusable label projection checks. TypeScript, production build, and Biome checks pass; Biome retains 23 existing CSS warnings and 15 informational findings.

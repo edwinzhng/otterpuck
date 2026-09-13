@@ -1,7 +1,7 @@
 import { getElement } from "./dom";
 import { bindLobby } from "./lobby";
-import type { UI } from "./ui";
 import { uiShell } from "./ui-shell";
+import type { UI } from "./ui-types";
 
 export const createUI = (): UI => {
   getElement("#app", HTMLElement).innerHTML = uiShell();
@@ -38,6 +38,7 @@ export const createUI = (): UI => {
     }),
     elements: {
       clock: element("clock"),
+      labReadout: element("lab-readout"),
       homeScore: element("home-score"),
       awayScore: element("away-score"),
       air: element("air"),

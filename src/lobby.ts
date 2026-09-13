@@ -1,6 +1,6 @@
 import { formationChoices } from "./positions";
-import type { UI } from "./ui";
 import { button, field } from "./ui-components";
+import type { UI } from "./ui-types";
 
 export const lobbyMarkup = (): string => `
   <div id="menu" class="menu">
