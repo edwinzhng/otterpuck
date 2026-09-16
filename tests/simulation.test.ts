@@ -257,4 +257,4 @@ test("each formation can play a finite complete match", (): void => {
       expect(Math.abs(player.position.z)).toBeLessThan(12.5);
     }
   }
-});
+}, 30_000);

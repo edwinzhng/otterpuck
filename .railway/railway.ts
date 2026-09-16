@@ -31,7 +31,7 @@ export default defineRailway(() => {
         NODE_ENV: "production",
         ROOM_REGION: id,
         ALLOWED_ORIGINS:
-          "https://otterpuck.edwinzhang.com,https://otterpuck.vercel.app,https://otterpuck-multiplayer-preview.vercel.app",
+          "https://otterpuck.edwinzhang.com,https://otterpuck.vercel.app",
         PORT: "3210",
       },
     });

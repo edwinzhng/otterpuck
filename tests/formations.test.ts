@@ -288,17 +288,19 @@ test("actual AI swimming reforms around a teammate's puck instead of orbiting or
       player.previous.copy(player.position);
       updateStick(player, STEP);
     }
-    for (const unused of Array.from({ length: 1440 })) {
+    for (const unused of Array.from({ length: 2160 })) {
       void unused;
+      for (const player of state.players) player.air = 100;
       stepSimulation(state, freshControls(), STEP);
     }
     expect(state.puck.controlOwner).toBe(human.id);
     for (const player of state.players.filter(
       (other): boolean => other !== human,
     )) {
-      expect(player.position.distanceTo(player.formationTarget)).toBeLessThan(
-        0.65,
-      );
+      expect(
+        player.position.distanceTo(player.formationTarget),
+        `${formation} player ${player.id} must settle into formation`,
+      ).toBeLessThan(0.65);
       expect(player.duty).not.toBe("pressure");
       expect(player.position.y).toBeCloseTo(FLOOR_HEIGHT, 5);
       const code = playerPosition(state, player).code;

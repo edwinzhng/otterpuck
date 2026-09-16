@@ -93,9 +93,11 @@ export const bindMultiplayer = (callbacks: {
   const updateRegion = (): void => {
     const region = regions.find((r) => r.id === selected);
     getElement("#mp-region-summary", HTMLElement).textContent =
-      connection === "lan" ? "LAN" : (region?.label ?? "Choose server");
+      connection === "lan"
+        ? "Local Network"
+        : (region?.label ?? "Choose server");
     getElement("#network-region", HTMLElement).textContent =
-      connection === "lan" ? "LAN" : (region?.label ?? "Connecting");
+      connection === "lan" ? "Local Network" : (region?.label ?? "Connecting");
     getElement("#mp-mode-help", HTMLElement).hidden = connection !== "lan";
   };
   const setStatus = (text: string): void => {
@@ -160,7 +162,7 @@ export const bindMultiplayer = (callbacks: {
     getElement("#mp-room-title", HTMLElement).textContent = room.code;
     getElement("#mp-room-region", HTMLElement).textContent =
       room.mode === "lan"
-        ? "LAN"
+        ? "Local Network"
         : (regions.find((r) => r.id === selected)?.label ?? selected);
     const me = room.members.find((member) => member.id === self);
     assignedName = me?.name ?? "";
@@ -486,7 +488,7 @@ export const bindMultiplayer = (callbacks: {
         getElement("#mp-region-picker", HTMLDetailsElement).open = false;
       });
       const lanName = document.createElement("span");
-      lanName.textContent = "LAN";
+      lanName.textContent = "Local Network";
       lanLabel.append(lanRadio, lanName);
       regionList.append(lanLabel);
       if (invite.get("mode") === "lan") {
