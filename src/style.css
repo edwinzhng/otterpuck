@@ -335,9 +335,6 @@ legend {
   display: flex;
   align-items: center;
   inset-block-end: max(52px, calc(40px + env(safe-area-inset-bottom)));
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding-block: 8px;
 }
 .home-credit {
   position: fixed;
@@ -1231,10 +1228,61 @@ legend {
     width: 115px;
   }
   .mode-card {
-    min-height: 85px;
+    gap: 10px;
+    min-height: 48px;
+    padding: 6px 12px;
+    border-radius: 15px;
+    box-shadow: 0 4px 0 #acd4e0;
+  }
+  .mode-card > span {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    font-size: 24px;
+  }
+  .mode-card strong {
+    font-size: 18px;
+    line-height: 1.1;
+  }
+  .mode-card p {
+    margin-top: 2px;
+    font-size: 11px;
+    line-height: 1.2;
   }
   .mode-list {
-    gap: 15px;
+    gap: 8px;
+  }
+}
+@media (max-height: 360px) and (orientation: landscape) {
+  html,
+  body {
+    height: auto;
+    min-height: 100%;
+    overflow: auto;
+    scrollbar-width: none;
+  }
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar {
+    display: none;
+  }
+  .menu {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    min-height: 100dvh;
+  }
+  .mode-screen {
+    position: static;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    margin: 16px 5vw 0;
+  }
+  .home-credit {
+    position: static;
+    width: 100%;
+    margin-top: 12px;
+    padding-bottom: 12px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
