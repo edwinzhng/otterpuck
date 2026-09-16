@@ -29,6 +29,15 @@
   margin-left: auto;
   font-size: 0.85rem;
 }
+.mp-region output[data-quality="good"] {
+  color: #299e86;
+}
+.mp-region output[data-quality="fair"] {
+  color: #b97812;
+}
+.mp-region output[data-quality="poor"] {
+  color: #c44d4d;
+}
 .mp-region:has(input:checked) {
   border-color: #299e86;
   background: #daf4ed;

@@ -101,7 +101,8 @@ export const bindMultiplayer = (callbacks: {
       connection === "lan"
         ? "Local Network"
         : (region?.label ?? "Choose server");
-    const milliseconds = region ? pings.get(region.id) : undefined;
+    const milliseconds =
+      connection === "online" && region ? pings.get(region.id) : undefined;
     summary.replaceChildren(label);
     if (milliseconds !== undefined) {
       const ping = document.createElement("span");
@@ -367,8 +368,15 @@ export const bindMultiplayer = (callbacks: {
             const milliseconds = await measurePing(region);
             pings.set(region.id, milliseconds);
             output.textContent = `${milliseconds} ms`;
+            output.dataset.quality =
+              milliseconds < 100
+                ? "good"
+                : milliseconds < 180
+                  ? "fair"
+                  : "poor";
           } catch {
             output.textContent = "Unavailable";
+            output.dataset.quality = "poor";
           }
         }),
     );
