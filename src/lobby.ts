@@ -22,7 +22,7 @@ export const lobbyMarkup = (): string => `
     </nav></header>
     <section class="lobby-screen mode-screen" data-screen="mode" aria-label="Game modes">
       <div class="mode-list">
-        <button type="button" class="mode-card" data-mode="match" disabled><span aria-hidden="true">◈</span><div><strong>Quick match vs AI</strong><p>2v2, 3v3 or 6v6</p></div></button>
+        <button type="button" class="mode-card" data-mode="match" disabled><span aria-hidden="true">◈</span><div><strong>Play vs AI</strong><p>Jump into a bot match</p></div></button>
         <button id="show-multiplayer" type="button" class="mode-card"><span aria-hidden="true"><svg
   xmlns="http://www.w3.org/2000/svg"
   width="24"
@@ -42,9 +42,9 @@ export const lobbyMarkup = (): string => `
   <path d="m5 14 4 4" />
   <path d="m5 21-2-2" />
   <path d="M7.5 16.5 4 20" />
-</svg></span><div><strong>Play with friends</strong><p>2v2, 3v3 or 6v6 online or same Wi-Fi</p></div></button>
-        <button type="button" class="mode-card" data-mode="playground" disabled><span aria-hidden="true">≈</span><div><strong>Free swim</strong><p>Explore and practice skills</p></div></button>
-        <button id="learn-button" type="button" class="mode-card" disabled><span aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg></span><div><strong>Learn</strong><p>Practice the basics</p></div></button>
+</svg></span><div><strong>Play with friends</strong><p>Online or same Wi-Fi</p></div></button>
+        <button type="button" class="mode-card" data-mode="playground" disabled><span aria-hidden="true">≈</span><div><strong>Free swim</strong><p>Explore and practice</p></div></button>
+        <button id="learn-button" type="button" class="mode-card" disabled><span aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg></span><div><strong>Learn</strong><p>Master the basics</p></div></button>
       </div>
       <footer class="home-credit">Made with <a href="https://calgaryuwh.com/" target="_blank" rel="noopener noreferrer" aria-label="Calgary Crocs"><span aria-hidden="true">🐊</span></a> by <a href="https://edwinzhang.com" target="_blank" rel="noopener noreferrer">Edwin Zhang</a></footer>
     </section>
@@ -89,13 +89,6 @@ export const lobbyMarkup = (): string => `
             ["hard", "Hard"],
             ["elite", "Elite"],
           ])}
-        </div>
-        <div class="rules-setup">
-          ${field("ruleset", "Rules", [
-            ["alternative", "Alternative"],
-            ["original", "Original"],
-          ])}
-          <p id="ruleset-note" class="rules-note"></p>
         </div>
         ${button("start", "Play", "primary", "disabled")}
       </div>
@@ -224,22 +217,6 @@ export const bindLobby = (ui: UI): void => {
         other.setAttribute("aria-pressed", String(other === choice));
       }
     });
-  const ruleset = document.querySelector<HTMLSelectElement>("#ruleset");
-  const rulesetNote = document.querySelector("#ruleset-note");
-  const describeRuleset = (): void => {
-    if (rulesetNote)
-      rulesetNote.textContent =
-        ui.ruleset === "original"
-          ? "Unlimited sprinting and free turning, as the game played before."
-          : "Sprinting spends stamina, turning costs speed, and a hard turn with the puck curls.";
-  };
-  if (ruleset) ruleset.value = ui.ruleset;
-  describeRuleset();
-  ruleset?.addEventListener("change", (): void => {
-    ui.ruleset = ruleset.value === "original" ? "original" : "alternative";
-    localStorage.setItem("otterpuck-ruleset", ui.ruleset);
-    describeRuleset();
-  });
   const difficulty = document.querySelector<HTMLSelectElement>("#difficulty");
   if (difficulty) difficulty.value = ui.difficulty;
   difficulty?.addEventListener("change", (): void => {

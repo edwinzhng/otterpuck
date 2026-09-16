@@ -47,6 +47,8 @@ export type Player = {
   previousYaw: number;
   previousBodyPitch: number;
   dummyBurstUntil: number;
+  autoDummyUntil: number;
+  autoDummyLocked: boolean;
   velocity: Vector3;
   yaw: number;
   aimYaw: number | undefined;

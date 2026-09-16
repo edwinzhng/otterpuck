@@ -5,13 +5,12 @@ room service limits, snapshot compression) is left out.
 
 ## Turnovers
 
-- **Turnovers you are in flash across the screen.** TACKLED when the puck is
-  taken off you, PUCK WON when you take it or help close the pincer that does,
-  with the side it came from — or SANDWICH — underneath. Turnovers between other
-  swimmers stay off the screen.
-- **A debug log in the top right** lists the last few turnovers, yours and
-  everyone else's, naming the tackle side, the carry the puck was lost from and
-  the cover the taker had to beat. `L` hides it.
+- **Turnovers you are in briefly show a small cue.** Puck lost appears when the
+  puck is taken off you; Puck won appears when you take it or help close the
+  pincer that does. Turnovers between other swimmers stay off the screen.
+- **An optional debug log in the top right** lists the last few turnovers, yours
+  and everyone else's, naming the tackle side, the carry the puck was lost from
+  and the cover the taker had to beat. It starts hidden; `Shift + L` toggles it.
 
 ## Match sizes
 
