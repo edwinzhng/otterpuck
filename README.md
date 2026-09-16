@@ -78,7 +78,9 @@ Sprinting spends stamina, which returns slowly and faster at the surface. A drai
 
 A curl also shields the puck. A reverse curl seals the stick side and the front and leaves the far side open, a regular curl guards both sides evenly, and a challenger facing the same way as the carrier gets a far better angle than one coming head-on. Cover makes the challenging blade sit ever more exactly on the puck, and past a point no placement reaches it. Caught between two opponents facing your way, turning loses the puck.
 
-A small debug log in the top right lists the last few turnovers, naming the side the tackle came from (or SANDWICH), the carry it was lost from, and how well covered the carrier was. Press L to hide it.
+Turnovers you are part of flash across the middle of the screen: TACKLED when the puck is taken off you, PUCK WON when you take it or help close the pincer that does, with the side it came from (or SANDWICH) underneath. Turnovers between other swimmers stay off the screen.
+
+A small debug log in the top right lists the last few turnovers, yours and everyone else's, naming the side the tackle came from (or SANDWICH), the carry it was lost from, and how well covered the carrier was. Press L to hide it.
 
 The pool is approximately 25 × 15 × 2.44 m, with low metal trough goals. Supported formations are 3-3, 2-3-1 and 1-3-2. Players manage breath and rotate through formation coverage. Puck control combines physical blade contact, assisted uncontested carrying, curls, pull/push, flicks and opposing challenges. See [formation logic and research](docs/bot-formations.md).
 

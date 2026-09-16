@@ -19,6 +19,7 @@ import {
   stepSimulation,
 } from "./simulation";
 import { createTackleTracker } from "./tackle-events";
+import { createTurnoverBanner } from "./turnover-banner";
 import { freshControls, POOL, STEP } from "./types";
 import { createUI, getElement, updateUI } from "./ui";
 import { createSpeedLines } from "./view-effects";
@@ -39,6 +40,7 @@ const boot = async (): Promise<void> => {
   const meter = createFrameMeter();
   const audioEvents = createAudioEventTracker();
   const tackleEvents = createTackleTracker();
+  const turnoverBanner = createTurnoverBanner();
   let multiplayer: ReturnType<typeof bindMultiplayer> | undefined;
   let backgroundElapsed = 0;
   let backgroundLoading = false;
@@ -428,6 +430,7 @@ const boot = async (): Promise<void> => {
       app.accumulator -= steps * STEP;
       for (const cue of audioEvents.sample(app.state)) app.audio?.play(cue);
       tackleEvents.sample(app.state);
+      turnoverBanner.render(ui, app.state, tackleEvents.events());
       const tackleMarkup = tackleEvents
         .events()
         .map(

@@ -1,12 +1,20 @@
 import { Vector3 } from "three";
-import { inSandwich, puckProtection } from "./shielding";
-import type { Player, Simulation } from "./types";
+import { puckProtection, sandwichPartners } from "./shielding";
+import type { Player, Simulation, Team } from "./types";
 
 const SETTLED = 0.2;
 const REPEAT = 0.5;
 const KEPT = 6;
 
-export type TackleEvent = { label: string; detail: string; time: number };
+export type TackleEvent = {
+  label: string;
+  detail: string;
+  carrierId: number;
+  takerId: number;
+  sandwichIds: readonly number[];
+  takerTeam: Team;
+  time: number;
+};
 
 export type TackleTracker = {
   reset: (state: Simulation) => void;
@@ -54,6 +62,7 @@ export const createTackleTracker = (): TackleTracker => {
     yaw: 0,
     curl: 0,
     sandwiched: false,
+    sandwichIds: [] as number[],
     covers: new Map<number, number>(),
   };
   const forget = (state: Simulation): void => {
@@ -82,7 +91,9 @@ export const createTackleTracker = (): TackleTracker => {
           held.position.copy(carrier.position);
           held.yaw = carrier.yaw;
           held.curl = carrier.curl;
-          held.sandwiched = inSandwich(state, carrier);
+          const pincer = sandwichPartners(state, carrier);
+          held.sandwiched = pincer.length > 0;
+          held.sandwichIds = pincer.map((other: Player): number => other.id);
           recordCover(state, carrier, held.covers);
         }
         return;
@@ -109,6 +120,10 @@ export const createTackleTracker = (): TackleTracker => {
           log.unshift({
             label,
             detail: `${carryLabel(held.curl)}${cover}`,
+            carrierId: carrier.id,
+            takerId: taker.id,
+            sandwichIds: held.sandwiched ? [...held.sandwichIds] : [],
+            takerTeam: taker.team,
             time: state.time,
           });
           log.length = Math.min(log.length, KEPT);
@@ -122,6 +137,7 @@ export const createTackleTracker = (): TackleTracker => {
         held.yaw = taker.yaw;
         held.curl = taker.curl;
         held.sandwiched = false;
+        held.sandwichIds = [];
         held.covers.clear();
       }
     },

@@ -64,6 +64,7 @@ export const uiShell = (): string => `
     <div id="knockdown-prompt" class="reaction hidden" role="status"><kbd>X</kbd><strong id="reaction-label">Grab</strong></div>
     <div id="puck-indicator" class="puck-indicator hidden" aria-hidden="true"><span class="puck-indicator-dot"></span><i class="puck-indicator-arrow"></i></div>
     <div id="announcement" class="announcement" role="status"></div>
+    <div id="turnover" class="turnover" role="status"><strong id="turnover-title" class="turnover-title"></strong><span id="turnover-detail" class="turnover-detail"></span></div>
     ${goalConfettiMarkup()}
     <div class="hud-bottom">
       <div class="vitals panel"><div class="vitals-header"><span id="air-label">Air</span></div><div class="air-value"><strong id="air">100</strong><span>%</span></div><div class="air-track"><i id="air-fill"></i></div><div class="stamina-row"><span>Stamina</span><div class="stamina-track"><i id="stamina-fill"></i></div></div></div>

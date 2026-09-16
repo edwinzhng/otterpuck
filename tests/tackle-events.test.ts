@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import { Vector3 } from "three";
 import { createSimulation } from "../src/simulation";
 import { createTackleTracker } from "../src/tackle-events";
+import { turnoverOutcome } from "../src/turnover-banner";
 import { FLOOR_HEIGHT, type Player, type Simulation } from "../src/types";
 
 const RIGHT = Math.PI / 2;
@@ -141,4 +142,98 @@ test("the log keeps the most recent entries first and stays bounded", (): void =
   const [newest, older] = tracker.events();
   if (!newest || !older) throw new Error("Missing entries");
   expect(newest.time).toBeGreaterThan(older.time);
+});
+
+test("an entry records who lost it, who took it and any pincer", (): void => {
+  const { state, carrier, taker } = stage();
+  const tracker = createTackleTracker();
+  tracker.reset(state);
+  taker.position.copy(carrier.position).add(new Vector3(0.9, 0, 0));
+  state.time = 1;
+  tracker.sample(state);
+  state.time = 2;
+  state.puck.controlOwner = taker.id;
+  tracker.sample(state);
+  const event = tracker.events().at(0);
+  if (!event) throw new Error("No event logged");
+  expect(event.carrierId).toBe(carrier.id);
+  expect(event.takerId).toBe(taker.id);
+  expect(event.takerTeam).toBe(taker.team);
+  expect(event.sandwichIds).toHaveLength(0);
+});
+
+test("a sandwich records both opponents who closed on the carrier", (): void => {
+  const { state, carrier, taker } = stage();
+  const other = state.players.at(7);
+  if (!other) throw new Error("Second challenger missing");
+  const tracker = createTackleTracker();
+  carrier.curl = -1;
+  tracker.reset(state);
+  taker.position.copy(carrier.position).add(new Vector3(0.9, 0, 0));
+  taker.yaw = carrier.yaw;
+  other.position.copy(carrier.position).add(new Vector3(-0.9, 0, 0));
+  other.yaw = carrier.yaw;
+  state.time = 1;
+  tracker.sample(state);
+  state.time = 2;
+  state.puck.controlOwner = taker.id;
+  tracker.sample(state);
+  const event = tracker.events().at(0);
+  if (!event) throw new Error("No event logged");
+  expect(event.label).toBe("SANDWICH");
+  expect([...event.sandwichIds].sort()).toEqual([taker.id, other.id].sort());
+});
+
+test("the banner speaks only for the local player's own turnovers", (): void => {
+  const { state, carrier, taker } = stage();
+  const mate = state.players.at(1);
+  const opponent = state.players.at(7);
+  if (!mate || !opponent) throw new Error("Players missing");
+  const base = {
+    label: "RIGHT TACKLE",
+    detail: "carrying",
+    sandwichIds: [],
+    time: 0,
+  };
+  expect(
+    turnoverOutcome(state, {
+      ...base,
+      carrierId: carrier.id,
+      takerId: taker.id,
+      takerTeam: taker.team,
+    }),
+  ).toBe("lost");
+  expect(
+    turnoverOutcome(state, {
+      ...base,
+      carrierId: taker.id,
+      takerId: carrier.id,
+      takerTeam: carrier.team,
+    }),
+  ).toBe("won");
+  expect(
+    turnoverOutcome(state, {
+      ...base,
+      carrierId: mate.id,
+      takerId: taker.id,
+      takerTeam: taker.team,
+    }),
+  ).toBeUndefined();
+  expect(
+    turnoverOutcome(state, {
+      ...base,
+      carrierId: opponent.id,
+      takerId: mate.id,
+      takerTeam: mate.team,
+    }),
+  ).toBeUndefined();
+  expect(
+    turnoverOutcome(state, {
+      ...base,
+      carrierId: opponent.id,
+      takerId: mate.id,
+      sandwichIds: [mate.id, carrier.id],
+      takerTeam: mate.team,
+    }),
+  ).toBe("won");
 });
