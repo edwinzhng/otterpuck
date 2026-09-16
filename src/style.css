@@ -334,6 +334,10 @@ legend {
 .mode-screen {
   display: flex;
   align-items: center;
+  inset-block-end: max(52px, calc(40px + env(safe-area-inset-bottom)));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-block: 8px;
 }
 .home-credit {
   position: fixed;
@@ -1199,6 +1203,9 @@ legend {
 @media (max-height: 680px) and (min-width: 620px) {
   .lobby-screen {
     inset: 86px 5vw 20px;
+  }
+  .mode-screen {
+    inset-block-end: max(52px, calc(40px + env(safe-area-inset-bottom)));
   }
   .setup-panel {
     gap: 14px;
