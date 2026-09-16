@@ -42,7 +42,7 @@ const regions = regionsSchema.parse(
 for (const region of regions) {
   const configured =
     process.env[
-      region.id === "us" ? "PUBLIC_ROOMS_US_URL" : "PUBLIC_ROOMS_EU_URL"
+      `PUBLIC_ROOMS_${region.id.replaceAll("-", "_").toUpperCase()}_URL`
     ];
   if (configured) region.url = configured;
 }
