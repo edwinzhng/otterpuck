@@ -546,6 +546,17 @@ legend {
   flex-direction: column;
   gap: 16px;
 }
+.rules-setup {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.rules-note {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #5c8397;
+}
 .load-status {
   position: absolute;
   bottom: 13px;
@@ -673,6 +684,7 @@ legend {
   z-index: 3;
   pointer-events: none;
   --air: 100%;
+  --stamina: 100%;
   color: var(--ink);
 }
 .hud-top {
@@ -777,6 +789,36 @@ legend {
   border-radius: 6px;
   background: #24a4d6;
   transition: width 0.15s;
+}
+.stamina-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 9px;
+  font-size: 10px;
+  font-weight: 750;
+  color: #5c8397;
+}
+.stamina-track {
+  flex: 1;
+  height: 5px;
+  border-radius: 4px;
+  background: #c8e2ec;
+  overflow: hidden;
+}
+.stamina-track i {
+  display: block;
+  width: var(--stamina);
+  height: 100%;
+  border-radius: 4px;
+  background: #4bbf8a;
+  transition: width 0.15s;
+}
+.stamina-track i.spent {
+  background: #e0a13f;
+}
+.original-rules .stamina-row {
+  display: none;
 }
 .speed-value {
   display: block;

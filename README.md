@@ -52,12 +52,12 @@ Updates download in the background and take over after existing game tabs/window
 | W / S | Swim / brake |
 | A / D | Turn the body and swim |
 | Mouse | Look and aim |
-| Shift | Sprint |
+| Shift | Sprint while stamina lasts |
 | Space | Rise; hold at the surface to lift your head |
 | Ctrl / C | Descend / duck dive |
 | Left mouse | Hold to charge; release to shoot |
 | Right mouse + A / D | Swerve |
-| Q / E | Reverse / regular curl |
+| Q / E | Reverse / regular curl; a hard turn with the puck curls on its own |
 | Z | Hold to pull back; release to push forward |
 | X | Grab a nearby puck or knock down an incoming shot |
 | R | Toggle backhand |
@@ -65,6 +65,15 @@ Updates download in the background and take over after existing game tabs/window
 | Esc | Pause / release mouse |
 | Ctrl + F | Toggle fullscreen |
 | H / P | Tutorial help / retry |
+
+## Rulesets
+
+The setup screen offers two rulesets, and the choice is remembered:
+
+- **Alternative** (default): a shorter breath — 30s still, 20s swimming, 10s sprinting — plus stamina, turning drag and the assisted curl described below.
+- **Original**: the game as it played before those were added — unlimited sprinting, no turning cost, and curls only on Q/E.
+
+Sprinting spends stamina, which returns slowly and faster at the surface. A drained swimmer drops out of the sprint until stamina rebuilds, and replenishes air more slowly, so a hard sprint costs breath time afterwards. A full breath lasts 30 seconds holding still, 20 while swimming and 10 at a full sprint, and an empty stamina bar shortens all of those further. Under Alternative rules, turning underwater costs a little forward speed, the more so the harder you turn. Carrying the puck, a gentle turn steers as normal, but turning hard enough hands over to the curl mechanic automatically: the swimmer stops and pivots around the puck exactly as Q/E does, and releases back into swimming once the turn eases.
 
 The pool is approximately 25 × 15 × 2.44 m, with low metal trough goals. Supported formations are 3-3, 2-3-1 and 1-3-2. Players manage breath and rotate through formation coverage. Puck control combines physical blade contact, assisted uncontested carrying, curls, pull/push, flicks and opposing challenges. See [formation logic and research](docs/bot-formations.md).
 
