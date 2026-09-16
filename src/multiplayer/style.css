@@ -326,9 +326,15 @@
 }
 .mp-player-bar {
   margin: 16px 0;
+  flex-wrap: wrap;
 }
 .mp-player-bar .field {
-  width: min(280px, 60%);
+  flex: 1 1 180px;
+  max-width: 280px;
+}
+.mp-player-bar .field:has(#mp-team-size) {
+  flex: 0 0 auto;
+  min-width: 110px;
 }
 .mp-player-bar p,
 .mp-room-hint {

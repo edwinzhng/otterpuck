@@ -9,6 +9,7 @@ import { bindMultiplayer } from "./multiplayer/ui";
 import { enableOffline } from "./offline";
 import { createFrameMeter } from "./performance";
 import { renderPlayerLabels } from "./player-labels";
+import { sizeLabel, teamSize } from "./positions";
 import { bindGraphicsSettings, bindVolumeSettings } from "./settings";
 import {
   createSimulation,
@@ -193,7 +194,9 @@ const boot = async (): Promise<void> => {
     ui.hud.classList.toggle("original-rules", app.state.ruleset === "original");
     getElement("#lab-readout", HTMLElement).classList.toggle("hidden", true);
     ui.elements.matchLabel.textContent =
-      ui.mode !== "match" ? "FREE SWIM" : `${ui.formation} / ${ui.opposition}`;
+      ui.mode !== "match"
+        ? "FREE SWIM"
+        : `${sizeLabel(teamSize(app.state.formations[0]))} · ${app.state.formations[0]} / ${app.state.formations[1]}`;
   };
   const enterWithFeedback = (fresh: boolean): void => {
     enter(fresh).catch((error: Error): void => {

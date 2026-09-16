@@ -1,11 +1,35 @@
 import { type PerspectiveCamera, Vector3 } from "three";
-import type { Formation, Player, Simulation } from "./types";
+import type { Formation, Player, Simulation, TeamSize } from "./types";
 
 export const formationPositions = {
   "3-3": ["CF", "LF", "RF", "LB", "CB", "RB"],
   "2-3-1": ["LF", "RF", "LW", "C", "RW", "B"],
   "1-3-2": ["F", "LW", "C", "RW", "LB", "RB"],
+  "2-1": ["LF", "RF", "B"],
+  "1-2": ["F", "LB", "RB"],
+  "1-1": ["F", "B"],
 } as const satisfies Record<Formation, readonly string[]>;
+
+export const TEAM_SIZES = [6, 3, 2] as const satisfies readonly TeamSize[];
+
+const sizeRosters = {
+  6: ["2-3-1", "1-3-2", "3-3"],
+  3: ["2-1", "1-2"],
+  2: ["1-1"],
+} as const satisfies Record<TeamSize, readonly Formation[]>;
+
+export const sizeFormations = (size: TeamSize): readonly Formation[] =>
+  sizeRosters[size];
+
+export const teamSize = (formation: Formation): TeamSize =>
+  TEAM_SIZES.find((size): boolean =>
+    sizeRosters[size].some((candidate): boolean => candidate === formation),
+  ) ?? 6;
+
+export const sizeLabel = (size: TeamSize): string => `${size}v${size}`;
+
+export const defaultFormation = (size: TeamSize): Formation =>
+  sizeRosters[size].at(0) ?? "2-3-1";
 
 const positionNames = {
   F: "Forward",

@@ -5,6 +5,7 @@ import type {
   Handedness,
   Ruleset,
   Species,
+  TeamSize,
 } from "./types";
 
 export type UI = {
@@ -21,6 +22,7 @@ export type UI = {
   ruleset: Ruleset;
   formation: Formation;
   opposition: Formation;
+  teamSize: TeamSize;
   mode: GameMode;
   duration: number;
   handedness: Handedness;
