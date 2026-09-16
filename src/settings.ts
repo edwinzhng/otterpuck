@@ -12,6 +12,7 @@ export const bindGraphicsSettings = (
       ["0.85", "1", "1.35", "1.7", "2"].find(
         (value): boolean => value === graphics.chosen,
       ) ?? (touch() ? "1.7" : "1.35");
+    quality.dispatchEvent(new Event("input", { bubbles: true }));
     applyScale(Number(quality.value));
   };
   applyQuality();

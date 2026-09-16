@@ -1,3 +1,4 @@
+import { inject } from "@vercel/analytics";
 import { ARENA_IDS } from "./arenas";
 import { createAudio, type PoolAudio } from "./audio";
 import { createAudioEventTracker } from "./audio-events";
@@ -29,6 +30,7 @@ import {
 } from "./world";
 
 const boot = async (): Promise<void> => {
+  inject();
   const ui = createUI();
   const world = createWorld(ui.canvas);
   const speedLines = createSpeedLines();

@@ -301,7 +301,7 @@
     max(20px, env(safe-area-inset-left));
 }
 .touch-mode .button,
-.touch-mode .field select,
+.touch-mode .select-field-trigger,
 .touch-mode .team-choice button,
 .touch-mode .menu-header .button {
   min-height: 48px;

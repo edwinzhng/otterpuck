@@ -16,6 +16,7 @@
     "rooms": "bun run services/server.ts"
   },
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
     "three": "0.185.1",
     "zod": "^4.6.5"
   },

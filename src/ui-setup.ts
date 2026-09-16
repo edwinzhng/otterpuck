@@ -1,5 +1,6 @@
 import { getElement } from "./dom";
 import { bindLobby } from "./lobby";
+import { bindSelectFields } from "./select-fields";
 import { uiShell } from "./ui-shell";
 import type { UI } from "./ui-types";
 
@@ -60,58 +61,18 @@ export const createUI = (): UI => {
     },
   };
   bindLobby(ui);
-  for (const id of ["handedness"]) {
-    const select = getElement(`#${id}`, HTMLSelectElement);
-    const trigger = getElement("#handedness-trigger", HTMLButtonElement);
-    const options = getElement("#handedness-options", HTMLElement);
-    const updateHandednessPicker = (): void => {
-      const selected = select.selectedOptions.item(0)?.textContent ?? "Right";
-      getElement("#handedness-value", HTMLElement).textContent = selected;
-      for (const option of options.querySelectorAll<HTMLButtonElement>(
-        "[data-handedness]",
-      ))
-        option.setAttribute(
-          "aria-selected",
-          String(option.dataset.handedness === select.value),
-        );
-    };
-    const closeHandednessPicker = (): void => {
-      options.hidden = true;
-      trigger.setAttribute("aria-expanded", "false");
-    };
-    select.value = ui.handedness;
-    updateHandednessPicker();
-    select.addEventListener("change", (): void => {
-      ui.handedness = select.value === "left" ? "left" : "right";
+  getElement("#handedness", HTMLSelectElement).value = ui.handedness;
+  getElement("#handedness", HTMLSelectElement).addEventListener(
+    "change",
+    (): void => {
+      ui.handedness =
+        getElement("#handedness", HTMLSelectElement).value === "left"
+          ? "left"
+          : "right";
       localStorage.setItem("otter-hockey-handedness", ui.handedness);
-      for (const target of ["handedness"])
-        getElement(`#${target}`, HTMLSelectElement).value = ui.handedness;
-      updateHandednessPicker();
-    });
-    trigger.addEventListener("click", (): void => {
-      options.hidden = !options.hidden;
-      trigger.setAttribute("aria-expanded", String(!options.hidden));
-    });
-    for (const option of options.querySelectorAll<HTMLButtonElement>(
-      "[data-handedness]",
-    ))
-      option.addEventListener("click", (): void => {
-        select.value = option.dataset.handedness ?? "right";
-        select.dispatchEvent(new Event("change", { bubbles: true }));
-        closeHandednessPicker();
-      });
-    document.addEventListener("pointerdown", (event): void => {
-      if (
-        !options.hidden &&
-        event.target instanceof Node &&
-        !options.parentElement?.contains(event.target)
-      )
-        closeHandednessPicker();
-    });
-    trigger.addEventListener("keydown", (event): void => {
-      if (event.key === "Escape") closeHandednessPicker();
-    });
-  }
+    },
+  );
+  bindSelectFields();
   for (const name of ["controls", "settings"]) {
     getElement(`#show-${name}`, HTMLButtonElement).addEventListener(
       "click",

@@ -192,10 +192,10 @@ kbd {
   font-size: max(var(--input-font-min, 0px), 15px);
   font-weight: 650;
 }
-.hand-select {
+.select-field {
   position: relative;
 }
-.hand-select-trigger {
+.select-field-trigger {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -211,11 +211,15 @@ kbd {
   font-weight: 650;
   text-align: left;
 }
-.hand-select-trigger[aria-expanded="true"] {
+.select-field-trigger,
+.select-field-option {
+  transition: none;
+}
+.select-field-trigger[aria-expanded="true"] {
   border-color: #299e86;
   box-shadow: 0 0 0 4px #d5f3eb;
 }
-.hand-select-chevron {
+.select-field-chevron {
   width: 9px;
   height: 9px;
   margin: 0 4px 4px 0;
@@ -224,11 +228,11 @@ kbd {
   border-radius: 1px;
   transform: rotate(45deg);
 }
-.hand-select-trigger[aria-expanded="true"] .hand-select-chevron {
+.select-field-trigger[aria-expanded="true"] .select-field-chevron {
   margin: 4px 4px 0 0;
   transform: rotate(225deg);
 }
-.hand-select-options {
+.select-field-options {
   position: absolute;
   z-index: 4;
   top: calc(100% + 4px);
@@ -240,7 +244,7 @@ kbd {
   background: #fff;
   box-shadow: 0 8px 20px #123e511f;
 }
-.hand-select-options button {
+.select-field-option {
   display: block;
   width: 100%;
   min-height: 42px;
@@ -254,11 +258,12 @@ kbd {
   font-weight: 650;
   text-align: left;
 }
-.hand-select-options button:last-child {
+.select-field-option:last-child {
   border-bottom: 0;
 }
-.hand-select-options button[aria-selected="true"],
-.hand-select-options button:hover {
+.select-field-option[aria-selected="true"],
+.select-field-option:hover,
+.select-field-option:focus-visible {
   background: #dff4ed;
 }
 fieldset {
@@ -1205,7 +1210,7 @@ legend {
   .field {
     gap: 5px;
   }
-  .field select {
+  .select-field-trigger {
     min-height: 38px;
     padding: 7px 10px;
   }

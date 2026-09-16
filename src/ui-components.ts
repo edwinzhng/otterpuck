@@ -11,7 +11,7 @@ export const field = (
   label: string,
   options: readonly (readonly [string, string])[],
 ): string =>
-  `<label class="field" for="${id}"><span>${label}</span><select id="${id}">${options.map(([value, text]): string => `<option value="${value}">${text}</option>`).join("")}</select></label>`;
+  `<div class="field select-field" data-select-field><label id="${id}-label" for="${id}">${label}</label><select id="${id}" hidden>${options.map(([value, text]): string => `<option value="${value}">${text}</option>`).join("")}</select><button id="${id}-trigger" class="select-field-trigger" type="button" aria-labelledby="${id}-label ${id}-value" aria-haspopup="listbox" aria-controls="${id}-options" aria-expanded="false"><span id="${id}-value">${options.at(0)?.at(1) ?? ""}</span><span class="select-field-chevron" aria-hidden="true"></span></button><div id="${id}-options" class="select-field-options" role="listbox" aria-labelledby="${id}-label" hidden>${options.map(([value, text], index): string => `<button type="button" class="select-field-option" role="option" data-select-option="${value}" aria-selected="${index === 0}">${text}</button>`).join("")}</div></div>`;
 
 export const control = (key: string, label: string): string =>
   `<div class="control"><kbd>${key}</kbd><span>${label}</span></div>`;
