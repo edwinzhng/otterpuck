@@ -65,6 +65,7 @@ Updates download in the background and take over after existing game tabs/window
 | Esc | Pause / release mouse |
 | Ctrl + F | Toggle fullscreen |
 | H / P | Tutorial help / retry |
+| L | Hide / show the tackle log |
 
 ## Rulesets
 
@@ -76,6 +77,8 @@ The setup screen offers two rulesets, and the choice is remembered:
 Sprinting spends stamina, which returns slowly and faster at the surface. A drained swimmer drops out of the sprint until stamina rebuilds, and replenishes air more slowly, so a hard sprint costs breath time afterwards. A full breath lasts 30 seconds holding still, 20 while swimming and 10 at a full sprint, and an empty stamina bar shortens all of those further. Under Alternative rules, turning underwater costs a little forward speed, the more so the harder you turn. Carrying the puck, a gentle turn steers as normal, but turning hard enough hands over to the curl mechanic automatically: the swimmer stops and pivots around the puck exactly as Q/E does, and releases back into swimming once the turn eases.
 
 A curl also shields the puck. A reverse curl seals the stick side and the front and leaves the far side open, a regular curl guards both sides evenly, and a challenger facing the same way as the carrier gets a far better angle than one coming head-on. Cover makes the challenging blade sit ever more exactly on the puck, and past a point no placement reaches it. Caught between two opponents facing your way, turning loses the puck.
+
+A small debug log in the top right lists the last few turnovers, naming the side the tackle came from (or SANDWICH), the carry it was lost from, and how well covered the carrier was. Press L to hide it.
 
 The pool is approximately 25 × 15 × 2.44 m, with low metal trough goals. Supported formations are 3-3, 2-3-1 and 1-3-2. Players manage breath and rotate through formation coverage. Puck control combines physical blade contact, assisted uncontested carrying, curls, pull/push, flicks and opposing challenges. See [formation logic and research](docs/bot-formations.md).
 

@@ -54,6 +54,7 @@ export const createUI = (): UI => {
       role: element("role"),
       handling: element("handling-mode"),
       fps: element("fps"),
+      tackleLog: element("tackle-log"),
       charge: element("shot-charge"),
       matchLabel: element("match-label"),
       knockdown: element("knockdown-prompt"),
