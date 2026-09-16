@@ -1,20 +1,23 @@
 import { z } from "zod";
+
+const privateHost =
+  /^(localhost|127\.0\.0\.1|\[::1\]|10(\.\d{1,3}){3}|192\.168(\.\d{1,3}){2}|172\.(1[6-9]|2\d|3[01])(\.\d{1,3}){2}|[a-z0-9-]+\.local)$/;
 export const regionsSchema = z
   .array(
     z.object({
       id: z.string().regex(/^[a-z-]+$/),
       label: z.string().max(80),
-      url: z
-        .string()
-        .refine(
-          (value) =>
-            value === "" ||
-            /^wss:\/\/[^\s]+$/.test(value) ||
-            /^ws:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/socket$/.test(value),
-        ),
+      url: z.string().refine((value) => {
+        if (value === "") return true;
+        if (/^wss:\/\/[^\s]+$/.test(value)) return true;
+        const match = /^ws:\/\/([^/:\s]+|\[[^\]\s]+\])(:\d+)?\/socket$/.exec(
+          value,
+        );
+        return Boolean(match?.at(1) && privateHost.test(match[1] ?? ""));
+      }),
     }),
   )
-  .max(4);
+  .max(5);
 export type Region = z.infer<typeof regionsSchema>[number];
 export const loadRegions = async (): Promise<Region[]> => {
   const response = await fetch("/multiplayer.json", { cache: "no-store" });
