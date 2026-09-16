@@ -90,6 +90,7 @@ export const startRoomServer = (options: {
       backpressureLimit: LIMITS.bufferedBytes,
       closeOnBackpressureLimit: true,
       idleTimeout: 60,
+      perMessageDeflate: { compress: "64KB", decompress: "16KB" },
       open: (socket): void => {
         socket.data.peer = {
           send: (message): void => {
@@ -97,7 +98,7 @@ export const startRoomServer = (options: {
               socket.readyState === 1 &&
               socket.getBufferedAmount() < LIMITS.bufferedBytes
             )
-              socket.send(encode(message));
+              socket.send(encode(message), message.type === "snapshot");
           },
           close: (): void => socket.close(4001, "Session replaced"),
         };
