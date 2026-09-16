@@ -12,15 +12,18 @@
     "test": "bun test",
     "benchmark": "bun run tests/benchmark.ts",
     "assets:characters": "bun art/characters/export.ts",
-    "assets:arenas": "bun art/arenas/export.ts"
+    "assets:arenas": "bun art/arenas/export.ts",
+    "rooms": "bun run services/server.ts"
   },
   "dependencies": {
-    "three": "0.185.1"
+    "three": "0.185.1",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.12",
     "@types/bun": "1.4.1",
     "@types/three": "0.185.4",
+    "railway": "^3.11.0",
     "typescript": "7.0.2"
   },
   "description": "A stylized underwater hockey game built with Three.js and Blender."

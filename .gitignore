@@ -1,8 +1,7 @@
 node_modules/
 dist/
 .DS_Store
-.env
-.env.*
+.env*
 !.env.example
 *.log
 *.blend[0-9]*
@@ -15,5 +14,3 @@ art/**/review-rounds/
 .omc/
 
 .vercel/
-.vercel
-.env*

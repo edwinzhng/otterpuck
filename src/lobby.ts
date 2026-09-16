@@ -25,7 +25,26 @@ export const lobbyMarkup = (): string => `
         )
         .join(
           "",
-        )}<button id="learn-button" type="button" class="mode-card" disabled><span aria-hidden="true">↗</span><div><strong>Learn</strong><p>Practice the basics</p></div></button></div>
+        )}<button id="learn-button" type="button" class="mode-card" disabled><span aria-hidden="true">↗</span><div><strong>Learn</strong><p>Practice the basics</p></div></button><button id="show-multiplayer" type="button" class="mode-card"><span aria-hidden="true"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="m13 19 6-6" />
+  <path d="M14.5 17.5 3.586 6.586A2 2 0 013 5.172V3h2.172a2 2 0 011.414.586L17.5 14.5" />
+  <path d="m14.828 6.172 2.586-2.586A2 2 0 0118.828 3H21v2.172a2 2 0 01-.586 1.414l-2.586 2.586" />
+  <path d="m16 16 4 4" />
+  <path d="m19 21 2-2" />
+  <path d="m5 14 4 4" />
+  <path d="m5 21-2-2" />
+  <path d="M7.5 16.5 4 20" />
+</svg></span><div><strong>Play with friends</strong><p>Online or same Wi-Fi</p></div></button></div>
     </section>
     <section class="lobby-screen map-screen" data-screen="map" aria-label="Map" hidden>
       <h1>Map</h1><div class="map-cards">

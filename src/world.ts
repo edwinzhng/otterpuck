@@ -257,10 +257,11 @@ export const createWorld = (canvas: HTMLCanvasElement): World => {
 export const setWorldArena = async (
   world: World,
   id: ArenaId,
+  shouldApply: () => boolean = () => true,
 ): Promise<boolean> => {
   const request = ++world.arenaRequest;
   const arena = await loadArena(id);
-  if (request !== world.arenaRequest) {
+  if (request !== world.arenaRequest || !shouldApply()) {
     disposeArena(arena);
     return false;
   }
@@ -630,6 +631,7 @@ export const renderWorld = (
         active,
         alpha,
         active &&
+          player.id === state.players.at(0)?.id &&
           (world.reviewCamera?.firstPerson ?? true) &&
           !(state.mode === "playground" && state.playground.camera === "side"),
       );

@@ -27,6 +27,11 @@ select,
 input {
   font: inherit;
 }
+input,
+textarea,
+select {
+  font-size: max(var(--input-font-min, 0px), 1em);
+}
 button,
 a,
 select,
@@ -184,7 +189,7 @@ kbd {
   border-radius: 11px;
   background: #fff;
   color: var(--ink);
-  font-size: 15px;
+  font-size: max(var(--input-font-min, 0px), 15px);
   font-weight: 650;
 }
 fieldset {

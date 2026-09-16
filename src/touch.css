@@ -619,3 +619,8 @@
     flex: 0 0 140px;
   }
 }
+@media (max-width: 850px), (pointer: coarse) {
+  :root {
+    --input-font-min: 16px;
+  }
+}

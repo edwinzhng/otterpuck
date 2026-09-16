@@ -1,0 +1,10 @@
+.git
+node_modules
+dist
+.env*
+.vercel
+art
+public
+tests
+.codex
+.omc

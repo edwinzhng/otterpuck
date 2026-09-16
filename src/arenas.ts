@@ -28,7 +28,8 @@ import { createPoolSurface } from "./arena-surfaces";
 import { sampleCharacterRamp } from "./character-look";
 import { createOceanSurface } from "./ocean";
 
-export type ArenaId = "tropical" | "city";
+export const ARENA_IDS = ["tropical", "city"] as const;
+export type ArenaId = (typeof ARENA_IDS)[number];
 export type ArenaView = {
   id: ArenaId;
   root: Group;

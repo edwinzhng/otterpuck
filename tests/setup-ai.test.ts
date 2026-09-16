@@ -128,6 +128,7 @@ test("menu markup has unique IDs, complete position choices, and only mode label
   const ids: string[] = [],
     modes: string[] = [],
     labels: string[] = [];
+  let modeLabel = "";
   const response = new HTMLRewriter()
     .on("[id]", {
       element(element): void {
@@ -135,8 +136,14 @@ test("menu markup has unique IDs, complete position choices, and only mode label
       },
     })
     .on(".mode-card strong", {
+      element(element): void {
+        modeLabel = "";
+        element.onEndTag((): void => {
+          modes.push(modeLabel.trim());
+        });
+      },
       text(chunk): void {
-        if (chunk.text) modes.push(chunk.text);
+        modeLabel += chunk.text;
       },
     })
     .on("label[for]", {
@@ -147,7 +154,12 @@ test("menu markup has unique IDs, complete position choices, and only mode label
     .transform(new Response(uiShell()));
   await response.text();
   expect(new Set(ids).size).toBe(ids.length);
-  expect(modes).toEqual(["Quick match", "Free swim", "Learn"]);
+  expect(modes).toEqual([
+    "Quick match",
+    "Free swim",
+    "Learn",
+    "Play with friends",
+  ]);
   for (const id of [
     "formation",
     "position",

@@ -12,5 +12,13 @@
     "noUnusedParameters": true,
     "types": ["bun"]
   },
-  "include": ["src", "tests", "art/**/*.ts", "server.ts", "build.ts"]
+  "include": [
+    "src",
+    "tests",
+    "art/**/*.ts",
+    "server.ts",
+    "build.ts",
+    "services",
+    ".railway"
+  ]
 }

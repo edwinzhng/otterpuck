@@ -1,8 +1,10 @@
+import { ARENA_IDS } from "./arenas";
 import { createAudio, type PoolAudio } from "./audio";
 import { createAudioEventTracker } from "./audio-events";
 import { createInput } from "./input";
 import { createLearning } from "./learning";
 import { matchResult } from "./match-result";
+import { bindMultiplayer } from "./multiplayer/ui";
 import { enableOffline } from "./offline";
 import { createFrameMeter } from "./performance";
 import { renderPlayerLabels } from "./player-labels";
@@ -32,6 +34,9 @@ const boot = async (): Promise<void> => {
   const speedLines = createSpeedLines();
   const meter = createFrameMeter();
   const audioEvents = createAudioEventTracker();
+  let multiplayer: ReturnType<typeof bindMultiplayer> | undefined;
+  let backgroundElapsed = 0;
+  let backgroundLoading = false;
   const vignette = getElement(".water-vignette", HTMLElement);
   const app: {
     phase: "menu" | "playing" | "paused" | "finished" | "learning";
@@ -55,9 +60,11 @@ const boot = async (): Promise<void> => {
   const pause = (): void => {
     if (app.phase !== "playing") return;
     app.phase = "paused";
+    multiplayer?.cancelInput();
     ui.pause.classList.remove("match-result");
     ui.pause.setAttribute("aria-label", "Paused");
-    getElement("#restart", HTMLButtonElement).textContent = "Restart";
+    getElement("#restart", HTMLButtonElement).textContent =
+      multiplayer?.active() ? "Leave match" : "Restart";
     app.audio?.setPlaying(false);
     input.setActive(false);
     const player = app.state.players.at(0);
@@ -67,7 +74,10 @@ const boot = async (): Promise<void> => {
     }
     ui.pause.classList.remove("hidden");
     getElement("#pause-title", HTMLElement).textContent = "Paused";
-    getElement("#pause-description", HTMLElement).textContent = "";
+    getElement("#pause-description", HTMLElement).textContent =
+      multiplayer?.active()
+        ? "The match continues while this menu is open."
+        : "";
     getElement("#resume", HTMLButtonElement).classList.remove("hidden");
     if (document.pointerLockElement) document.exitPointerLock();
   };
@@ -104,6 +114,12 @@ const boot = async (): Promise<void> => {
   );
   const enter = async (fresh: boolean): Promise<void> => {
     if (!world.loaded) return;
+    backgroundElapsed = 0;
+    world.arenaRequest++;
+    const arena =
+      multiplayer?.active() || ui.arena.value !== "city" ? "tropical" : "city";
+    if (world.arena?.id !== arena && !(await setWorldArena(world, arena)))
+      return;
     ui.status.textContent = "";
     if (ui.sound) {
       if (!app.audio) app.audio = createAudio();
@@ -119,6 +135,7 @@ const boot = async (): Promise<void> => {
       );
     input.setActive(true);
     if (fresh) {
+      multiplayer?.leave();
       app.state = createSimulation(
         ui.formation,
         ui.opposition,
@@ -203,7 +220,8 @@ const boot = async (): Promise<void> => {
       "change",
       (): void => {
         input.clear();
-        setPlayerHandedness(app.state, ui.handedness);
+        if (multiplayer?.active()) multiplayer.handedness(ui.handedness);
+        else setPlayerHandedness(app.state, ui.handedness);
       },
     );
   getElement("#resume", HTMLButtonElement).addEventListener("click", (): void =>
@@ -212,7 +230,10 @@ const boot = async (): Promise<void> => {
   getElement("#restart", HTMLButtonElement).addEventListener(
     "click",
     (): void => {
-      if (learning.active()) {
+      if (multiplayer?.active()) {
+        getElement("#return-menu", HTMLButtonElement).click();
+        getElement("#show-multiplayer", HTMLButtonElement).click();
+      } else if (learning.active()) {
         learning.retry();
         enterWithFeedback(false);
       } else enterWithFeedback(true);
@@ -225,6 +246,7 @@ const boot = async (): Promise<void> => {
   getElement("#return-menu", HTMLButtonElement).addEventListener(
     "click",
     (): void => {
+      multiplayer?.leave();
       learning.stop();
       app.phase = "menu";
       input.setActive(false);
@@ -311,6 +333,13 @@ const boot = async (): Promise<void> => {
     getElement("#pause-description", HTMLElement).dataset.teams = result.teams;
     getElement("#resume", HTMLButtonElement).classList.add("hidden");
   };
+  const homeBackgroundActive = (): boolean =>
+    app.phase === "menu" &&
+    world.loaded &&
+    !multiplayer?.active() &&
+    !learning.active() &&
+    !getElement('[data-screen="mode"]', HTMLElement).hidden &&
+    !document.querySelector("dialog[open]");
   const frame = (now: number): void => {
     const frameStart = performance.now();
     requestAnimationFrame(frame);
@@ -320,14 +349,40 @@ const boot = async (): Promise<void> => {
     }
     const dt = Math.min((now - app.previousTime) / 1000, 0.1);
     app.previousTime = now;
+    if (homeBackgroundActive()) {
+      if (!backgroundLoading) backgroundElapsed += dt;
+      if (!backgroundLoading && backgroundElapsed >= 12) {
+        backgroundElapsed = 0;
+        backgroundLoading = true;
+        const next = ARENA_IDS.at(
+          (ARENA_IDS.indexOf(world.arena?.id ?? "tropical") + 1) %
+            ARENA_IDS.length,
+        );
+        if (next)
+          void setWorldArena(world, next, homeBackgroundActive)
+            .catch((error: unknown): void =>
+              console.error("Could not rotate menu background", error),
+            )
+            .finally((): void => {
+              backgroundLoading = false;
+            });
+      }
+    } else backgroundElapsed = 0;
     if (app.phase === "playing") {
       input.poll();
+      if (multiplayer?.active()) multiplayer.input(input.controls, dt);
+    }
+    multiplayer?.frame();
+    if (app.phase === "playing") {
       app.accumulator +=
         dt *
         (app.state.mode === "playground" && app.state.playground.slowMotion
           ? 0.25
           : 1);
-      const steps = Math.min(Math.floor(app.accumulator / STEP), 12);
+      const steps = multiplayer?.active()
+        ? 0
+        : Math.min(Math.floor(app.accumulator / STEP), 12);
+      if (multiplayer?.active()) app.accumulator = 0;
       for (let step = 0; step < steps; step += 1) {
         if (app.phase !== "playing") break;
         const attemptedGrab = input.controls.knockdown;
@@ -352,7 +407,11 @@ const boot = async (): Promise<void> => {
       renderDt,
       app.phase !== "menu",
       input.controls.pitch,
-      app.phase === "playing" ? app.accumulator / STEP : 1,
+      multiplayer?.active()
+        ? multiplayer.alpha()
+        : app.phase === "playing"
+          ? app.accumulator / STEP
+          : 1,
       app.phase === "playing" && input.controls.vertical > 0,
     );
     meter.sample(renderDt * 1000, performance.now() - frameStart);
@@ -378,7 +437,11 @@ const boot = async (): Promise<void> => {
         ui,
         app.state,
         world.camera,
-        app.phase === "playing" ? app.accumulator / STEP : 1,
+        multiplayer?.active()
+          ? multiplayer.alpha()
+          : app.phase === "playing"
+            ? app.accumulator / STEP
+            : 1,
       );
     if (now - app.uiTime > 100 && app.phase !== "menu") {
       updateUI(ui, app.state, input, world);
@@ -400,7 +463,27 @@ const boot = async (): Promise<void> => {
   getElement("#learn-button", HTMLButtonElement).disabled = false;
   getElement("#boot-cover", HTMLElement).classList.add("ready");
   setTimeout((): void => getElement("#boot-cover", HTMLElement).remove(), 400);
-  learning.offer();
+  multiplayer = bindMultiplayer({
+    handedness: () => ui.handedness,
+    play: (state): void => {
+      app.state = state;
+      ui.mode = "match";
+      audioEvents.reset(state);
+      const begin = async (): Promise<void> => {
+        if (world.arena?.id !== "tropical")
+          await setWorldArena(world, "tropical");
+        await enter(false);
+      };
+      void begin().catch(console.error);
+    },
+    state: (state): void => {
+      app.state = state;
+    },
+    ended: (): void => {
+      getElement("#return-menu", HTMLButtonElement).click();
+    },
+  });
+  if (!location.hash.includes("room=")) learning.offer();
   enableOffline();
 };
 

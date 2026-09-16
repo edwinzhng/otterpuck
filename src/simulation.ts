@@ -76,6 +76,7 @@ import {
   type Formation,
   FRONT_PAW,
   forwardVector,
+  freshControls,
   type GameMode,
   type Handedness,
   handSide,
@@ -276,8 +277,9 @@ export const createSimulation = (
 export const setPlayerHandedness = (
   state: Simulation,
   handedness: Handedness,
+  playerId = state.players.at(0)?.id,
 ): void => {
-  const player = state.players.at(0);
+  const player = state.players.find((candidate) => candidate.id === playerId);
   if (!player || player.handedness === handedness) return;
   player.handedness = handedness;
   player.stickOffset.x *= -1;
@@ -438,7 +440,7 @@ const approachSwimVelocity = (
   return target === 0 && Math.abs(velocity) < 0.01 ? 0 : velocity;
 };
 
-const updateHuman = (
+const updateHumanMovement = (
   state: Simulation,
   player: Player,
   controls: Controls,
@@ -516,6 +518,13 @@ const updateHuman = (
     player.velocity.y -= 1.5 * dt;
   else player.velocity.y *= Math.exp(-2.8 * dt);
   if (controls.curl !== 0 && !player.emergency) player.velocity.y = 0;
+};
+
+const updateHumanCharge = (
+  player: Player,
+  controls: Controls,
+  dt: number,
+): void => {
   player.charging =
     controls.charging &&
     !player.emergency &&
@@ -528,6 +537,18 @@ const updateHuman = (
   if (player.shotTime <= 0)
     player.shotDraw +=
       (player.charge - player.shotDraw) * (1 - Math.exp(-16 * dt));
+};
+
+const updateHuman = (
+  state: Simulation,
+  player: Player,
+  controls: Controls,
+  dt: number,
+): void => {
+  updateHumanMovement(state, player, controls, dt);
+  const forward = forwardVector(player.yaw);
+  const underwater = player.position.y < SURFACE_HEIGHT - 0.07;
+  updateHumanCharge(player, controls, dt);
   if (player.charging && player.puckMove) endPuckMove(state, player);
   if (controls.pushPull && !player.puckWorkHeld && !player.charging) {
     const kind = availablePuckMove(state, player);
@@ -1616,9 +1637,23 @@ const planStrike = (state: Simulation): void => {
   }
 };
 
+type MatchControls = Controls | ReadonlyMap<number, Controls>;
+const idleControls = freshControls();
+const playerControls = (controls: MatchControls, id: number): Controls =>
+  "get" in controls ? (controls.get(id) ?? idleControls) : controls;
+const clearActions = (controls: MatchControls): void => {
+  const inputs = "values" in controls ? controls.values() : [controls];
+  for (const input of inputs) {
+    input.yawDelta = 0;
+    input.shot = 0;
+    input.dive = false;
+    input.knockdown = false;
+  }
+};
+
 const updateWallStart = (
   state: Simulation,
-  controls: Controls,
+  controls: MatchControls,
   dt: number,
 ): boolean => {
   const faceoff = state.faceoff;
@@ -1640,13 +1675,11 @@ const updateWallStart = (
     player.previousYaw = player.yaw;
     player.previousBodyPitch = player.bodyPitch;
     player.previousStick.copy(player.stick);
-    if (player.human) player.yaw += controls.yawDelta;
+    if (player.human)
+      player.yaw += playerControls(controls, player.id).yawDelta;
     updateStick(player, dt);
   }
-  controls.yawDelta = 0;
-  controls.shot = 0;
-  controls.dive = false;
-  controls.knockdown = false;
+  clearActions(controls);
   if (faceoff.remaining === 0) {
     state.faceoff = { phase: "strike", elapsed: 0 };
     for (const player of state.players) {
@@ -1666,9 +1699,19 @@ const updateWallStart = (
   return true;
 };
 
+const updatePlayerMotion = (player: Player, dt: number): void => {
+  const targetPitch =
+    player.mode === "diving" ? -0.65 : player.mode === "ascending" ? 0.5 : 0;
+  player.bodyPitch +=
+    (targetPitch - player.bodyPitch) * (1 - Math.exp(-7 * dt));
+  player.bodyRoll +=
+    (-player.curl * 0.2 - player.bodyRoll) * (1 - Math.exp(-9 * dt));
+  player.kickPhase += dt * (player.sprint ? 13 : 4 + player.kick * 4);
+};
+
 export const stepSimulation = (
   state: Simulation,
-  controls: Controls,
+  controls: MatchControls,
   dt: number,
 ): void => {
   if (state.finished) return;
@@ -1676,15 +1719,13 @@ export const stepSimulation = (
   state.eventTime = Math.max(0, state.eventTime - dt);
   if (state.restartTime > 0) {
     for (const player of state.players) {
-      if (player.human) player.yaw += controls.yawDelta * 1.3;
+      if (player.human)
+        player.yaw += playerControls(controls, player.id).yawDelta * 1.3;
     }
     state.restartTime = Math.max(0, state.restartTime - dt);
     if (state.restartTime === 0) resetPositions(state);
     syncInterpolation(state);
-    controls.yawDelta = 0;
-    controls.shot = 0;
-    controls.dive = false;
-    controls.knockdown = false;
+    clearActions(controls);
     return;
   }
   if (updateWallStart(state, controls, dt)) return;
@@ -1712,7 +1753,8 @@ export const stepSimulation = (
     player.previous.copy(player.position);
     player.previousYaw = player.yaw;
     player.previousBodyPitch = player.bodyPitch;
-    if (player.human) updateHuman(state, player, controls, dt);
+    if (player.human)
+      updateHuman(state, player, playerControls(controls, player.id), dt);
     else updateAI(state, player, dt);
     player.cooldown = Math.max(0, player.cooldown - dt);
     player.knockdownCooldown = Math.max(0, player.knockdownCooldown - dt);
@@ -1720,13 +1762,7 @@ export const stepSimulation = (
     player.knockdownTime = Math.max(0, player.knockdownTime - dt);
     player.shotTime = Math.max(0, player.shotTime - dt);
     if (state.mode !== "playground") updateAir(state, player, dt);
-    const targetPitch =
-      player.mode === "diving" ? -0.65 : player.mode === "ascending" ? 0.5 : 0;
-    player.bodyPitch +=
-      (targetPitch - player.bodyPitch) * (1 - Math.exp(-7 * dt));
-    player.bodyRoll +=
-      (-player.curl * 0.2 - player.bodyRoll) * (1 - Math.exp(-9 * dt));
-    player.kickPhase += dt * (player.sprint ? 13 : 4 + player.kick * 4);
+    updatePlayerMotion(player, dt);
   }
   resolveBodies(state.players, dt, false);
   resolveBodies(state.players, dt, false);
@@ -1769,9 +1805,52 @@ export const stepSimulation = (
       if (lab.trace.length > 180) lab.trace.shift();
     }
   }
-  controls.yawDelta = 0;
-  controls.shot = 0;
-  controls.dive = false;
-  controls.knockdown = false;
+  clearActions(controls);
   if (state.restartTime > 0) syncInterpolation(state);
+};
+
+export const predictPlayerMovement = (
+  state: Simulation,
+  player: Player,
+  controls: Controls,
+  dt: number,
+): void => {
+  if (state.finished) return;
+  if (state.restartTime > 0 || state.faceoff?.phase === "ready") {
+    player.yaw += controls.yawDelta * (state.restartTime > 0 ? 1.3 : 1);
+    return;
+  }
+  updateHumanMovement(state, player, controls, dt);
+  updateHumanCharge(player, controls, dt);
+  updatePlayerMotion(player, dt);
+  if (state.puck.controlOwner === player.id) updateCradle(state, player, dt);
+  player.position.addScaledVector(player.velocity, dt);
+  player.position.x = clamp(player.position.x, -7.18, 7.18);
+  player.position.z = clamp(player.position.z, -12.1, 12.1);
+  player.position.y = clamp(player.position.y, FLOOR_HEIGHT, SURFACE_HEIGHT);
+  if (player.position.y === FLOOR_HEIGHT)
+    player.velocity.y = Math.max(0, player.velocity.y);
+  if (player.position.y === SURFACE_HEIGHT)
+    player.velocity.y = Math.min(0, player.velocity.y);
+  updateStick(player, dt);
+};
+
+export const predictOwnedPuck = (
+  state: Simulation,
+  player: Player,
+  dt: number,
+): boolean => {
+  if (
+    state.finished ||
+    state.restartTime > 0 ||
+    state.faceoff?.phase === "ready" ||
+    state.puck.controlOwner !== player.id ||
+    state.puck.shotOwner !== undefined ||
+    player.puckMove ||
+    !canCarryPuck(state, player) ||
+    player.stick.distanceTo(state.puck.position) > 0.8
+  )
+    return false;
+  moveControlledPuck(state, player, dt);
+  return true;
 };

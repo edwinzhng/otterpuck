@@ -24,7 +24,7 @@ bun run start
 
 Production builds precompress models and code; the included server negotiates Brotli/gzip and revalidates cached assets. See [performance measurements](docs/performance.md).
 
-Blender is not needed to run or build the game; the exported runtime assets are included. No backend, API keys or external services are required for play.
+Blender is not needed to run or build the game; the exported runtime assets are included. Solo play requires no backend, API keys or external services.
 
 ## Play on a phone
 
@@ -78,8 +78,6 @@ The pool is approximately 25 × 15 × 2.44 m, with low metal trough goals. Suppo
 - `art/*.blend`: retained earlier rig sources, including the first-person interaction binding.
 - `docs/`: controls, gameplay research and development notes.
 
-The permanent local checkout is `/Users/edwin/repo/otterpuck`. The initial import preserves the latest playable prototype and gathers its matching asset sources. Earlier handoff documents contain historical temporary paths; they are not setup instructions for this repository.
-
 ## Blender workflow
 
 Save edits in the existing `.blend` files, then export:
@@ -105,8 +103,14 @@ bun run build
 bun run benchmark
 ```
 
-The imported playable version passes 142 tests. CPU simulation and input benchmarks do not measure GPU or phone performance. Touch browser/device checks were pending because the Mac was locked; the broader visual-quality review is also still in progress. These are prototype features, not a claim of completed mobile or art acceptance.
+CPU simulation and input benchmarks do not measure GPU or phone performance; verify interactive changes in a browser and on target devices.
 
 ## Credits
 
-Music and splash recordings are credited with their sources and licenses in [audio credits](public/audio/CREDITS.md). Generated environment artwork is documented in `art/arenas/backgrounds.md` and `art/arenas/rock-texture.md`. No blanket license is granted for the game's code or authored assets by this repository.
+The multiplayer swords icon is from [Lucide](public/licenses/lucide.txt). Music and splash recordings are credited with their sources and licenses in [audio credits](public/audio/CREDITS.md). Generated environment artwork is documented in `art/arenas/backgrounds.md` and `art/arenas/rock-texture.md`. No blanket license is granted for the game's code or authored assets by this repository.
+
+## Multiplayer
+
+Play with friends supports US East and EU West online rooms, plus device-hosted LAN rooms using WebRTC. LAN players need internet to join and must keep the host device awake. Empty positions are filled by bots. Rooms are held in memory and end when their regional service restarts.
+
+Run the room service locally with `bun run rooms`; configure browser endpoints in `public/multiplayer.json` and server variables using `.env.example`. Railway services, regions and automatic deployment from `main` are defined in `.railway/railway.ts`; frontend build and headers are in `vercel.json`.
