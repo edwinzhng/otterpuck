@@ -10,22 +10,9 @@ export const lobbyMarkup = (): string => `
       ${button("show-settings", "⚙", "icon", 'aria-label="Settings"')}
     </nav></header>
     <section class="lobby-screen mode-screen" data-screen="mode" aria-label="Game modes">
-      <div class="mode-list">${[
-        ["match", "Quick match", "◈", "6v6 vs AI team"],
-        [
-          "playground",
-          "Free swim",
-          "≈",
-          "Explore the pool and practice puck skills",
-        ],
-      ]
-        .map(
-          ([mode, label, icon, detail]): string =>
-            `<button type="button" class="mode-card" data-mode="${mode}" disabled><span aria-hidden="true">${icon}</span><div><strong>${label}</strong><p>${detail}</p></div><i aria-hidden="true">↗</i></button>`,
-        )
-        .join(
-          "",
-        )}<button id="learn-button" type="button" class="mode-card" disabled><span aria-hidden="true">↗</span><div><strong>Learn</strong><p>Practice the basics</p></div></button><button id="show-multiplayer" type="button" class="mode-card"><span aria-hidden="true"><svg
+      <div class="mode-list">
+        <button type="button" class="mode-card" data-mode="match" disabled><span aria-hidden="true">◈</span><div><strong>Quick match</strong><p>6v6 vs AI team</p></div></button>
+        <button id="show-multiplayer" type="button" class="mode-card"><span aria-hidden="true"><svg
   xmlns="http://www.w3.org/2000/svg"
   width="24"
   height="24"
@@ -44,7 +31,11 @@ export const lobbyMarkup = (): string => `
   <path d="m5 14 4 4" />
   <path d="m5 21-2-2" />
   <path d="M7.5 16.5 4 20" />
-</svg></span><div><strong>Play with friends</strong><p>Online or same Wi-Fi</p></div></button></div>
+</svg></span><div><strong>Play with friends</strong><p>Online or same Wi-Fi</p></div></button>
+        <button type="button" class="mode-card" data-mode="playground" disabled><span aria-hidden="true">≈</span><div><strong>Free swim</strong><p>Explore and practice skills</p></div></button>
+        <button id="learn-button" type="button" class="mode-card" disabled><span aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg></span><div><strong>Learn</strong><p>Practice the basics</p></div></button>
+      </div>
+      <footer class="home-credit">Created by <a href="https://edwinzhang.com" target="_blank" rel="noopener noreferrer">Edwin Zhang</a><span aria-hidden="true"> · </span><a href="https://calgaryuwh.com/" target="_blank" rel="noopener noreferrer">Calgary Crocs <span aria-label="crocodile">🐊</span></a></footer>
     </section>
     <section class="lobby-screen map-screen" data-screen="map" aria-label="Map" hidden>
       <h1>Map</h1><div class="map-cards">

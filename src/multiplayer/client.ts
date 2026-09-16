@@ -32,6 +32,7 @@ export const connectRoom = (
     room: (room: RoomView, self: string) => void;
     state: (state: Simulation) => void;
     status: (text: string) => void;
+    rejected?: (message: string) => void;
     ended: () => void;
     ping?: (milliseconds: number | undefined) => void;
   },
@@ -146,6 +147,11 @@ export const connectRoom = (
       const message = result.data;
       if (message.type === "error") {
         callbacks.status(message.message);
+        if (!room) {
+          stop();
+          callbacks.rejected?.(message.message);
+          return;
+        }
         if (message.fatal || !room) {
           stop();
           callbacks.ended();

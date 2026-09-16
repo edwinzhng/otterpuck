@@ -258,9 +258,15 @@ export const setWorldArena = async (
   world: World,
   id: ArenaId,
   shouldApply: () => boolean = () => true,
+  beforeApply?: () => Promise<void>,
 ): Promise<boolean> => {
   const request = ++world.arenaRequest;
   const arena = await loadArena(id);
+  if (request !== world.arenaRequest || !shouldApply()) {
+    disposeArena(arena);
+    return false;
+  }
+  if (beforeApply) await beforeApply();
   if (request !== world.arenaRequest || !shouldApply()) {
     disposeArena(arena);
     return false;

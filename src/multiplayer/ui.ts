@@ -55,6 +55,8 @@ export const bindMultiplayer = (callbacks: {
   const regionList = getElement("#mp-regions", HTMLElement);
   let regions: Region[] = [];
   let selected = "";
+  const pings = new Map<string, number>();
+  let regionChosen = false;
   let session: Session | undefined;
   let started = false;
   let connection: "online" | "lan" = "online";
@@ -78,6 +80,8 @@ export const bindMultiplayer = (callbacks: {
   const chooseIntent = (next: "create" | "join"): void => {
     intent = next;
     getElement("#mp-join-fields", HTMLElement).hidden = next !== "join";
+    getElement("#mp-region-picker", HTMLDetailsElement).hidden =
+      next === "join";
     getElement("#mp-create", HTMLElement).hidden = next !== "create";
     getElement("#mp-join", HTMLElement).hidden = next !== "join";
     getElement("#mp-create-tab", HTMLElement).setAttribute(
@@ -92,10 +96,21 @@ export const bindMultiplayer = (callbacks: {
   };
   const updateRegion = (): void => {
     const region = regions.find((r) => r.id === selected);
-    getElement("#mp-region-summary", HTMLElement).textContent =
+    const summary = getElement("#mp-region-summary", HTMLElement);
+    const label =
       connection === "lan"
         ? "Local Network"
         : (region?.label ?? "Choose server");
+    const milliseconds = region ? pings.get(region.id) : undefined;
+    summary.replaceChildren(label);
+    if (milliseconds !== undefined) {
+      const ping = document.createElement("span");
+      ping.className = "mp-region-ping";
+      ping.textContent = ` · ${milliseconds} ms`;
+      summary.append(ping);
+      summary.dataset.quality =
+        milliseconds < 100 ? "good" : milliseconds < 180 ? "fair" : "poor";
+    } else delete summary.dataset.quality;
     getElement("#network-region", HTMLElement).textContent =
       connection === "lan" ? "Local Network" : (region?.label ?? "Connecting");
     getElement("#mp-mode-help", HTMLElement).hidden = connection !== "lan";
@@ -247,8 +262,11 @@ export const bindMultiplayer = (callbacks: {
         : "Match connected",
     );
   };
-  const open = (request: Parameters<typeof connectRoom>[1]): void => {
-    const region = regions.find((r) => r.id === selected);
+  const open = (
+    request: Parameters<typeof connectRoom>[1],
+    region = regions.find((r) => r.id === selected),
+    rejected?: (message: string) => void,
+  ): void => {
     if (!region?.url) {
       setStatus("This location is not configured yet.");
       return;
@@ -261,6 +279,7 @@ export const bindMultiplayer = (callbacks: {
     session = connectRoom(region, request, {
       room: updateRoom,
       status: setStatus,
+      rejected,
       ping: (milliseconds): void => {
         latency.textContent = hosting
           ? "0 ms (Host)"
@@ -299,6 +318,41 @@ export const bindMultiplayer = (callbacks: {
       },
     });
   };
+  const joinRoom = (code: string): void => {
+    const invite = new URLSearchParams(location.hash.slice(1));
+    const preferred = invite.get("region");
+    const candidates = regions.filter(
+      (region): boolean =>
+        Boolean(region.url) && (!preferred || region.id === preferred),
+    );
+    const tryRegion = (index: number): void => {
+      const region = candidates.at(index);
+      if (!region) {
+        setStatus("Room not found. Check the six-character code.");
+        lock(false);
+        return;
+      }
+      selected = region.id;
+      open(
+        {
+          type: "join",
+          protocol: PROTOCOL,
+          code,
+          name: customName,
+          handedness: callbacks.handedness(),
+        },
+        region,
+        (message): void => {
+          if (/Room not found/i.test(message)) tryRegion(index + 1);
+          else {
+            setStatus(message);
+            lock(false);
+          }
+        },
+      );
+    };
+    tryRegion(0);
+  };
   const ping = async (): Promise<void> => {
     const button = getElement("#mp-ping", HTMLButtonElement);
     button.disabled = true;
@@ -310,12 +364,19 @@ export const bindMultiplayer = (callbacks: {
           if (!output) return;
           output.textContent = "Checking…";
           try {
-            output.textContent = `${await measurePing(region)} ms`;
+            const milliseconds = await measurePing(region);
+            pings.set(region.id, milliseconds);
+            output.textContent = `${milliseconds} ms`;
           } catch {
             output.textContent = "Unavailable";
           }
         }),
     );
+    if (!regionChosen && connection === "online") {
+      const nearest = [...pings.entries()].sort((a, b) => a[1] - b[1]).at(0);
+      if (nearest) selected = nearest[0];
+    }
+    updateRegion();
     button.disabled = false;
   };
   for (const action of ["create", "join"] as const)
@@ -391,13 +452,7 @@ export const bindMultiplayer = (callbacks: {
         setStatus("Enter the six-character room code.");
         return;
       }
-      open({
-        type: "join",
-        protocol: PROTOCOL,
-        code,
-        name: customName,
-        handedness: callbacks.handedness(),
-      });
+      joinRoom(code);
     },
   );
   getElement("#mp-start", HTMLButtonElement).addEventListener(
@@ -442,8 +497,10 @@ export const bindMultiplayer = (callbacks: {
       regions = next;
       selected = regions.find((r) => r.url)?.id ?? "";
       const invite = new URLSearchParams(location.hash.slice(1));
-      if (regions.some((r) => r.id === invite.get("region") && r.url))
+      if (regions.some((r) => r.id === invite.get("region") && r.url)) {
         selected = invite.get("region") ?? selected;
+        regionChosen = true;
+      }
       regionList.replaceChildren();
       const legend = document.createElement("legend");
       legend.textContent = "Server region";
@@ -460,6 +517,7 @@ export const bindMultiplayer = (callbacks: {
         radio.disabled = !region.url;
         radio.addEventListener("change", (): void => {
           selected = region.id;
+          regionChosen = true;
           connection = "online";
           updateRegion();
           getElement("#mp-region-picker", HTMLDetailsElement).open = false;
@@ -483,6 +541,7 @@ export const bindMultiplayer = (callbacks: {
       );
       lanRadio.addEventListener("change", (): void => {
         connection = "lan";
+        regionChosen = true;
         selected = "us";
         updateRegion();
         getElement("#mp-region-picker", HTMLDetailsElement).open = false;

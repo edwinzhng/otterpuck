@@ -192,6 +192,75 @@ kbd {
   font-size: max(var(--input-font-min, 0px), 15px);
   font-weight: 650;
 }
+.hand-select {
+  position: relative;
+}
+.hand-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 2px solid #c0dde8;
+  border-radius: 11px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: max(var(--input-font-min, 0px), 15px);
+  font-weight: 650;
+  text-align: left;
+}
+.hand-select-trigger[aria-expanded="true"] {
+  border-color: #299e86;
+  box-shadow: 0 0 0 4px #d5f3eb;
+}
+.hand-select-chevron {
+  width: 9px;
+  height: 9px;
+  margin: 0 4px 4px 0;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  border-radius: 1px;
+  transform: rotate(45deg);
+}
+.hand-select-trigger[aria-expanded="true"] .hand-select-chevron {
+  margin: 4px 4px 0 0;
+  transform: rotate(225deg);
+}
+.hand-select-options {
+  position: absolute;
+  z-index: 4;
+  top: calc(100% + 4px);
+  right: 0;
+  left: 0;
+  overflow: hidden;
+  border: 2px solid #b9dce7;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 8px 20px #123e511f;
+}
+.hand-select-options button {
+  display: block;
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 0;
+  border-bottom: 1px solid #d9eaf0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: max(var(--input-font-min, 0px), 15px);
+  font-weight: 650;
+  text-align: left;
+}
+.hand-select-options button:last-child {
+  border-bottom: 0;
+}
+.hand-select-options button[aria-selected="true"],
+.hand-select-options button:hover {
+  background: #dff4ed;
+}
 fieldset {
   border: 0;
   padding: 0;
@@ -261,6 +330,24 @@ legend {
   display: flex;
   align-items: center;
 }
+.home-credit {
+  position: fixed;
+  bottom: 12px;
+  left: 0;
+  width: 100%;
+  text-align: center;
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 13px;
+  font-weight: 300;
+  line-height: 18px;
+  text-shadow: 0 1px 3px #103c5a80;
+}
+.home-credit a {
+  color: inherit;
+  font-weight: inherit;
+  text-decoration: none;
+}
 .mode-list {
   display: flex;
   flex-direction: column;
@@ -291,6 +378,7 @@ legend {
   font-size: 35px;
   width: 58px;
   height: 58px;
+  flex-shrink: 0;
   background: #d6f2fa;
   border-radius: 17px;
   color: #188dc0;
@@ -306,18 +394,15 @@ legend {
   color: #40667a;
   margin-top: 5px;
 }
-.mode-card i {
-  font-style: normal;
-  margin-left: auto;
-  font-size: 22px;
-  color: #39829f;
-}
-.mode-card:first-child {
+
+.mode-card[data-mode="match"],
+.mode-card#show-multiplayer {
   background: var(--yellow);
   border-color: #fff4b5;
   box-shadow: 0 7px 0 #c8a740;
 }
-.mode-card:first-child > span {
+.mode-card[data-mode="match"] > span,
+.mode-card#show-multiplayer > span {
   background: #fff0a5;
   color: #936d12;
 }
@@ -1468,4 +1553,13 @@ legend {
   .match-result[data-outcome="win"] .pause-card {
     animation: none;
   }
+}
+
+#arena-fade {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  background: #103c5a;
+  opacity: 0;
+  pointer-events: none;
 }

@@ -37,6 +37,22 @@ const boot = async (): Promise<void> => {
   let multiplayer: ReturnType<typeof bindMultiplayer> | undefined;
   let backgroundElapsed = 0;
   let backgroundLoading = false;
+  const arenaFade = getElement("#arena-fade", HTMLElement);
+  const fadeBackground = async (opacity: number): Promise<void> => {
+    const animation = arenaFade.animate(
+      [{ opacity: getComputedStyle(arenaFade).opacity }, { opacity }],
+      {
+        duration: matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? 0
+          : 450,
+        easing: "ease-in-out",
+        fill: "forwards",
+      },
+    );
+    await animation.finished;
+    arenaFade.style.opacity = String(opacity);
+    animation.cancel();
+  };
   const vignette = getElement(".water-vignette", HTMLElement);
   const app: {
     phase: "menu" | "playing" | "paused" | "finished" | "learning";
@@ -349,6 +365,7 @@ const boot = async (): Promise<void> => {
     }
     const dt = Math.min((now - app.previousTime) / 1000, 0.1);
     app.previousTime = now;
+    arenaFade.hidden = !homeBackgroundActive();
     if (homeBackgroundActive()) {
       if (!backgroundLoading) backgroundElapsed += dt;
       if (!backgroundLoading && backgroundElapsed >= 12) {
@@ -359,11 +376,14 @@ const boot = async (): Promise<void> => {
             ARENA_IDS.length,
         );
         if (next)
-          void setWorldArena(world, next, homeBackgroundActive)
+          void setWorldArena(world, next, homeBackgroundActive, () =>
+            fadeBackground(1),
+          )
             .catch((error: unknown): void =>
               console.error("Could not rotate menu background", error),
             )
-            .finally((): void => {
+            .finally(async (): Promise<void> => {
+              await fadeBackground(0);
               backgroundLoading = false;
             });
       }

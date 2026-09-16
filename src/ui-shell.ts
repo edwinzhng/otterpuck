@@ -12,6 +12,8 @@ const hands: readonly (readonly [string, string])[] = [
   ["right", "Right"],
   ["left", "Left"],
 ];
+const handednessField = (): string =>
+  `<div class="field hand-select"><label id="handedness-label" for="handedness">Stick hand</label><select id="handedness" hidden>${hands.map(([value, label]): string => `<option value="${value}">${label}</option>`).join("")}</select><button id="handedness-trigger" class="hand-select-trigger" type="button" aria-labelledby="handedness-label handedness-value" aria-haspopup="listbox" aria-expanded="false"><span id="handedness-value">Right</span><span class="hand-select-chevron" aria-hidden="true"></span></button><div id="handedness-options" class="hand-select-options" role="listbox" aria-labelledby="handedness-label" hidden>${hands.map(([value, label]): string => `<button type="button" role="option" data-handedness="${value}" aria-selected="${value === "right"}">${label}</button>`).join("")}</div></div>`;
 export const controlsMarkup = (): string =>
   `<div class="controls-grid keyboard-help">${[
     ["W / S", "Swim / brake"],
@@ -37,13 +39,13 @@ export const controlsMarkup = (): string =>
     .join("")}</div>${touchHelpMarkup()}`;
 
 export const uiShell = (): string => `
-  <canvas id="pool" tabindex="0" aria-label="Otterpuck playing pool"></canvas><div class="water-vignette" aria-hidden="true"></div>
+  <canvas id="pool" tabindex="0" aria-label="Otterpuck playing pool"></canvas><div class="water-vignette" aria-hidden="true"></div><div id="arena-fade" aria-hidden="true"></div>
   ${lobbyMarkup()}
   ${multiplayerMarkup()}
   ${dialog(
     "settings-dialog",
     "Settings",
-    `${field("handedness", "Stick hand", hands)}${field("quality", "Graphics", [
+    `${handednessField()}${field("quality", "Graphics", [
       ["1.35", "Balanced"],
       ["1", "Performance"],
       ["1.7", "Sharp"],

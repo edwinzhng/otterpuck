@@ -186,6 +186,14 @@ export const createTouchInput = (
   };
   resize();
   window.addEventListener("resize", resize, options);
+  const release = (id: number, cancelled: boolean): void => {
+    const target = captures.get(id);
+    if (!target) return;
+    captures.delete(id);
+    controller.end(id, performance.now(), cancelled);
+    if (target.hasPointerCapture(id)) target.releasePointerCapture(id);
+    paint();
+  };
   const begin = (event: PointerEvent): void => {
     if (!input.enabled || !state.active || event.button !== 0) return;
     if (!(event.currentTarget instanceof HTMLElement)) return;
@@ -216,35 +224,46 @@ export const createTouchInput = (
       return;
     event.preventDefault();
     captures.set(event.pointerId, target);
-    target.setPointerCapture(event.pointerId);
+    try {
+      target.setPointerCapture(event.pointerId);
+    } catch {
+      release(event.pointerId, true);
+    }
     paint();
   };
   const move = (event: PointerEvent): void => {
     if (!captures.has(event.pointerId)) return;
+    if (event.buttons === 0) {
+      release(event.pointerId, true);
+      return;
+    }
     event.preventDefault();
     controller.move(event.pointerId, { x: event.clientX, y: event.clientY });
   };
   const end = (event: PointerEvent): void => {
-    const target = captures.get(event.pointerId);
-    if (!target) return;
-    event.preventDefault();
-    controller.end(
-      event.pointerId,
-      performance.now(),
-      event.type !== "pointerup",
-    );
-    captures.delete(event.pointerId);
-    if (target.hasPointerCapture(event.pointerId))
-      target.releasePointerCapture(event.pointerId);
-    paint();
+    if (!captures.has(event.pointerId)) return;
+    if (event.cancelable) event.preventDefault();
+    release(event.pointerId, event.type !== "pointerup");
   };
-  for (const target of [canvas, joystick, ...buttons]) {
+  for (const target of [canvas, joystick, ...buttons])
     target.addEventListener("pointerdown", begin, options);
-    target.addEventListener("pointermove", move, options);
-    target.addEventListener("pointerup", end, options);
-    target.addEventListener("pointercancel", end, options);
-    target.addEventListener("lostpointercapture", end, options);
-  }
+  const captureOptions = { ...options, capture: true };
+  window.addEventListener("pointermove", move, captureOptions);
+  window.addEventListener("pointerup", end, captureOptions);
+  window.addEventListener("pointercancel", end, captureOptions);
+  window.addEventListener("lostpointercapture", end, captureOptions);
+  const cancelEndedTouches = (event: TouchEvent): void => {
+    if (event.touches.length !== 0) return;
+    for (const id of captures.keys()) release(id, true);
+  };
+  window.addEventListener("touchend", cancelEndedTouches, {
+    ...captureOptions,
+    passive: true,
+  });
+  window.addEventListener("touchcancel", cancelEndedTouches, {
+    ...captureOptions,
+    passive: true,
+  });
   const preventGameplaySelection = (event: Event): void => {
     if (input.enabled && state.active) event.preventDefault();
   };
