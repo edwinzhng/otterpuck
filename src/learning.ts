@@ -1,3 +1,4 @@
+import { assetUrl } from "./asset-url";
 import { getElement } from "./dom";
 import {
   advanceProgress,
@@ -151,7 +152,7 @@ export const createLearning = (hooks: {
     image.style.visibility = "hidden";
     getElement("#lesson-image", HTMLImageElement).replaceWith(image);
     if (source) {
-      image.src = "/art/learn/" + source + "-toon-v1.png";
+      image.src = assetUrl(`/art/learn/${source}-toon-v1.webp`);
       void image
         .decode()
         .then((): void => {

@@ -25,6 +25,7 @@ import {
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { finishArenaMaterial } from "./arena-materials";
 import { createPoolSurface } from "./arena-surfaces";
+import { assetUrl } from "./asset-url";
 import { sampleCharacterRamp } from "./character-look";
 import { createOceanSurface } from "./ocean";
 
@@ -44,10 +45,14 @@ export type ArenaView = {
 
 export const loadArena = async (id: ArenaId): Promise<ArenaView> => {
   const [gltf, sky, rockTexture] = await Promise.all([
-    new GLTFLoader().loadAsync(`/models/arenas/${id}.glb?v=20260908-soft`),
-    new TextureLoader().loadAsync(`/art/arenas/${id}-panorama-painted.png`),
+    new GLTFLoader().loadAsync(assetUrl(`/models/arenas/${id}.glb`)),
+    new TextureLoader().loadAsync(
+      assetUrl(`/art/arenas/${id}-panorama-painted.webp`),
+    ),
     id === "tropical"
-      ? new TextureLoader().loadAsync("/art/arenas/island-rock-painted.png")
+      ? new TextureLoader().loadAsync(
+          assetUrl("/art/arenas/island-rock-painted.webp"),
+        )
       : Promise.resolve(undefined),
   ]);
   if (rockTexture) {

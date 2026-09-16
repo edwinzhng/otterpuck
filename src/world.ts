@@ -39,6 +39,7 @@ import {
   disposeArena,
   loadArena,
 } from "./arenas";
+import { assetUrl } from "./asset-url";
 import { type Avatar, createAvatar, poseAvatar } from "./avatar";
 import { type BubbleField, createBubbles, updateBubbles } from "./bubbles";
 import { applyCharacterStyle } from "./character-style";
@@ -409,9 +410,9 @@ export const createSwimmerView = (
 export const loadSwimmers = async (world: World): Promise<void> => {
   const loader = new GLTFLoader();
   const [gltf, otter, beaver] = await Promise.all([
-    loader.loadAsync("/models/otter-paws.glb"),
-    loader.loadAsync("/models/characters/otter.glb"),
-    loader.loadAsync("/models/characters/beaver.glb"),
+    loader.loadAsync(assetUrl("/models/otter-paws.glb")),
+    loader.loadAsync(assetUrl("/models/characters/otter.glb")),
+    loader.loadAsync(assetUrl("/models/characters/beaver.glb")),
   ]);
   applyCharacterStyle(otter.scene);
   applyCharacterStyle(beaver.scene);

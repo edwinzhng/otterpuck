@@ -3,11 +3,29 @@ export {};
 
 declare const self: ServiceWorkerGlobalScope;
 declare const OFFLINE_VERSION: string;
-declare const OFFLINE_ASSETS: readonly { url: string; integrity: string }[];
+declare const OFFLINE_ASSETS: readonly {
+  url: string;
+  integrity: string;
+  version: string;
+}[];
+declare const OFFLINE_RUNTIME_ASSETS: readonly {
+  url: string;
+  integrity: string;
+  version: string;
+}[];
 
-const prefix = "otterpuck-offline-";
-const cacheName = `${prefix}${OFFLINE_VERSION}`;
+const shellPrefix = "otterpuck-shell-";
+const cacheName = `${shellPrefix}${OFFLINE_VERSION}`;
+const assetCacheName = "otterpuck-assets-v1";
 const paths = new Set(OFFLINE_ASSETS.map((asset): string => asset.url));
+const runtimeAssets = new Map(
+  OFFLINE_RUNTIME_ASSETS.map(
+    (asset): [string, { integrity: string; version: string }] => [
+      asset.url,
+      { integrity: asset.integrity, version: asset.version },
+    ],
+  ),
+);
 
 self.addEventListener("install", (event: ExtendableEvent): void => {
   event.waitUntil(
@@ -32,8 +50,22 @@ self.addEventListener("activate", (event: ExtendableEvent): void => {
   event.waitUntil(
     (async (): Promise<void> => {
       for (const name of await caches.keys())
-        if (name.startsWith(prefix) && name !== cacheName)
+        if (
+          name.startsWith("otterpuck-offline-") ||
+          (name.startsWith(shellPrefix) && name !== cacheName)
+        )
           await caches.delete(name);
+      const assetCache = await caches.open(assetCacheName);
+      const current = new Set(
+        [...runtimeAssets].map(
+          ([url, asset]): string => `${url}?v=${asset.version}`,
+        ),
+      );
+      for (const request of await assetCache.keys()) {
+        const url = new URL(request.url);
+        if (!current.has(`${url.pathname}${url.search}`))
+          await assetCache.delete(request);
+      }
     })(),
   );
 });
@@ -43,11 +75,20 @@ self.addEventListener("fetch", (event: FetchEvent): void => {
   const url = new URL(request.url);
   if (request.method !== "GET" || url.origin !== self.location.origin) return;
   const path = url.pathname === "/index.html" ? "/" : url.pathname;
-  if (!paths.has(path)) return;
+  const runtimeAsset = runtimeAssets.get(path);
+  if (!paths.has(path) && !runtimeAsset) return;
   event.respondWith(
     (async (): Promise<Response> => {
-      const cache = await caches.open(cacheName);
-      return (await cache.match(path)) ?? fetch(request);
+      const cache = await caches.open(
+        runtimeAsset ? assetCacheName : cacheName,
+      );
+      const key = runtimeAsset ? request : path;
+      const cached = await cache.match(key);
+      if (cached) return cached;
+      const response = await fetch(request);
+      if (runtimeAsset && response.ok)
+        await cache.put(request, response.clone());
+      return response;
     })(),
   );
 });

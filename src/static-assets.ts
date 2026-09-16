@@ -37,6 +37,7 @@ export const serveAsset = async (
   request: Request,
 ): Promise<Response> => {
   const pathname = new URL(request.url).pathname;
+  const versioned = new URL(request.url).searchParams.has("v");
   const safePath = pathname === "/" ? "index.html" : pathname.slice(1);
   if (safePath.includes(".."))
     return new Response("Not found", { status: 404 });
@@ -50,7 +51,9 @@ export const serveAsset = async (
   if (!(await file.exists())) return new Response("Not found", { status: 404 });
   const etag = `W/"${file.size.toString(16)}-${file.lastModified.toString(16)}"`;
   const headers = new Headers({
-    "Cache-Control": "no-cache",
+    "Cache-Control": versioned
+      ? "public, max-age=31536000, immutable"
+      : "no-cache",
     "Content-Type": file.type,
     Vary: "Accept-Encoding",
     ETag: etag,

@@ -1,15 +1,23 @@
 import { expect, test } from "bun:test";
 import { runInNewContext } from "node:vm";
 
-const assets = [
-  { url: "/", integrity: "sha256-shell" },
-  { url: "/models/arenas/city.glb", integrity: "sha256-city" },
+const assets = [{ url: "/", integrity: "sha256-shell", version: "shell" }];
+const runtimeAssets = [
+  {
+    url: "/models/arenas/city.glb",
+    integrity: "sha256-city",
+    version: "city",
+  },
 ];
 const build = await Bun.build({
   entrypoints: ["src/offline-worker.ts"],
   target: "browser",
   format: "iife",
-  define: { OFFLINE_VERSION: '"new"', OFFLINE_ASSETS: JSON.stringify(assets) },
+  define: {
+    OFFLINE_VERSION: '"new"',
+    OFFLINE_ASSETS: JSON.stringify(assets),
+    OFFLINE_RUNTIME_ASSETS: JSON.stringify(runtimeAssets),
+  },
 });
 const script = await build.outputs.at(0)?.text();
 if (!build.success || !script) throw new Error("Worker compilation failed");
@@ -22,7 +30,8 @@ type WorkerEvent = {
 const createWorker = (failInstall = false) => {
   const handlers = new Map<string, (event: WorkerEvent) => void>();
   const stores = new Map<string, Map<string, string>>([
-    ["otterpuck-offline-old", new Map([["/", "old-shell"]])],
+    ["otterpuck-shell-old", new Map([["/", "old-shell"]])],
+    ["otterpuck-offline-legacy", new Map([["/", "legacy-shell"]])],
     ["unrelated-cache", new Map()],
   ]);
   const requests: Request[] = [];
@@ -62,8 +71,28 @@ const createWorker = (failInstall = false) => {
                 `cached:${new URL(request.url).pathname}`,
               );
           },
-          match: async (path: string): Promise<Response | undefined> =>
-            store.has(path) ? new Response(store.get(path)) : undefined,
+          keys: async (): Promise<Request[]> =>
+            [...store.keys()].map(
+              (path): Request =>
+                new Request(new URL(path, "https://game.test")),
+            ),
+          delete: async (request: Request): Promise<boolean> =>
+            store.delete(
+              new URL(request.url).pathname + new URL(request.url).search,
+            ),
+          match: async (
+            key: string | Request,
+          ): Promise<Response | undefined> => {
+            const path =
+              typeof key === "string"
+                ? key
+                : new URL(key.url).pathname + new URL(key.url).search;
+            return store.has(path) ? new Response(store.get(path)) : undefined;
+          },
+          put: async (request: Request, response: Response): Promise<void> => {
+            const url = new URL(request.url);
+            store.set(`${url.pathname}${url.search}`, await response.text());
+          },
         };
       },
     },
@@ -97,7 +126,7 @@ const createWorker = (failInstall = false) => {
 test("offline installation validates content and leaves the active version intact until activation", async (): Promise<void> => {
   const worker = createWorker();
   await worker.dispatch("install");
-  expect(worker.stores.has("otterpuck-offline-old")).toBe(true);
+  expect(worker.stores.has("otterpuck-shell-old")).toBe(true);
   expect(worker.requestOptions.map((options) => options.integrity)).toEqual(
     assets.map((asset): string => asset.integrity),
   );
@@ -107,7 +136,8 @@ test("offline installation validates content and leaves the active version intac
     ),
   ).toBe(true);
   await worker.dispatch("activate");
-  expect(worker.stores.has("otterpuck-offline-old")).toBe(false);
+  expect(worker.stores.has("otterpuck-shell-old")).toBe(false);
+  expect(worker.stores.has("otterpuck-offline-legacy")).toBe(false);
   expect(worker.stores.has("unrelated-cache")).toBe(true);
 });
 
@@ -116,13 +146,11 @@ test("an interrupted install discards only the incomplete new cache", async (): 
   await expect(worker.dispatch("install")).rejects.toThrow(
     "Interrupted download",
   );
-  expect(worker.stores.has("otterpuck-offline-new")).toBe(false);
-  expect(worker.stores.get("otterpuck-offline-old")?.get("/")).toBe(
-    "old-shell",
-  );
+  expect(worker.stores.has("otterpuck-shell-new")).toBe(false);
+  expect(worker.stores.get("otterpuck-shell-old")?.get("/")).toBe("old-shell");
 });
 
-test("offline navigation and version-query assets use the current cache without network access", async (): Promise<void> => {
+test("offline navigation is precached and large assets cache only after use", async (): Promise<void> => {
   const worker = createWorker();
   await worker.dispatch("install");
   expect(
@@ -135,15 +163,10 @@ test("offline navigation and version-query assets use the current cache without 
       await worker.dispatch("fetch", "https://game.test/index.html")
     )?.text(),
   ).toBe("cached:/");
-  expect(
-    await (
-      await worker.dispatch(
-        "fetch",
-        "https://game.test/models/arenas/city.glb?v=20260908-soft",
-      )
-    )?.text(),
-  ).toBe("cached:/models/arenas/city.glb");
-  expect(worker.network).toEqual([]);
+  const city = "https://game.test/models/arenas/city.glb?v=city";
+  expect(await (await worker.dispatch("fetch", city))?.text()).toBe("network");
+  expect(await (await worker.dispatch("fetch", city))?.text()).toBe("network");
+  expect(worker.network).toEqual([city]);
   expect(await worker.dispatch("fetch", "https://other.test/")).toBeUndefined();
   expect(
     await worker.dispatch("fetch", "https://game.test/", "POST"),

@@ -70,6 +70,16 @@ test("unchanged files revalidate without downloading and HEAD has no body", asyn
   ).toBe(404);
 });
 
+test("content-versioned assets stay in the browser cache", async (): Promise<void> => {
+  const response = await serveAsset(
+    root,
+    new Request("http://localhost/game.js?v=content-hash"),
+  );
+  expect(response.headers.get("Cache-Control")).toBe(
+    "public, max-age=31536000, immutable",
+  );
+});
+
 test("a changed original never serves an outdated compressed asset or validator", async (): Promise<void> => {
   const path = join(root, "changed.js");
   await Bun.write(path, "new version");

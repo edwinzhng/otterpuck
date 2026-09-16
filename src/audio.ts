@@ -1,3 +1,4 @@
+import { assetUrl } from "./asset-url";
 import { createEffectBuffers } from "./audio-effects";
 import type { AudioCue } from "./audio-events";
 
@@ -48,7 +49,7 @@ export const createAudio = (): PoolAudio => {
     musicVolume: 0.5,
   };
   for (const kind of ["dive", "surface"] as const) {
-    fetch(`/audio/${kind}.wav`, { signal: loading.signal })
+    fetch(assetUrl(`/audio/${kind}.wav`), { signal: loading.signal })
       .then((response): Promise<ArrayBuffer> => {
         if (!response.ok) throw new Error(`Audio ${kind}: ${response.status}`);
         return response.arrayBuffer();
@@ -84,7 +85,9 @@ export const createAudio = (): PoolAudio => {
     if (!musicState.buffer) {
       if (musicState.loading) return;
       musicState.loading = true;
-      void fetch("/audio/electric-stream.m4a", { signal: loading.signal })
+      void fetch(assetUrl("/audio/electric-stream.m4a"), {
+        signal: loading.signal,
+      })
         .then((response): Promise<ArrayBuffer> => {
           if (!response.ok) throw new Error(`Music: ${response.status}`);
           return response.arrayBuffer();

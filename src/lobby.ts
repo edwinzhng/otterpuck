@@ -1,3 +1,4 @@
+import { assetUrl } from "./asset-url";
 import { formationChoices } from "./positions";
 import { button, field } from "./ui-components";
 import type { UI } from "./ui-types";
@@ -39,12 +40,12 @@ export const lobbyMarkup = (): string => `
     </section>
     <section class="lobby-screen map-screen" data-screen="map" aria-label="Map" hidden>
       <h1>Map</h1><div class="map-cards">
-        <button type="button" class="map-card tropical-card" data-arena="tropical"><img src="/art/arenas/tropical-map.webp" alt="Full Tropical Cove pool"/><strong>Tropical Cove</strong><span aria-hidden="true">↗</span></button>
-        <button type="button" class="map-card city-card" data-arena="city"><img src="/art/arenas/city-map.webp" alt="Full Neon Rooftop pool"/><strong>Neon Rooftop</strong><span aria-hidden="true">↗</span></button>
+        <button type="button" class="map-card tropical-card" data-arena="tropical"><img src="${assetUrl("/art/arenas/tropical-map.webp")}" alt="Full Tropical Cove pool"/><strong>Tropical Cove</strong><span aria-hidden="true">↗</span></button>
+        <button type="button" class="map-card city-card" data-arena="city"><img src="${assetUrl("/art/arenas/city-map.webp")}" alt="Full Neon Rooftop pool"/><strong>Neon Rooftop</strong><span aria-hidden="true">↗</span></button>
       </div>
     </section>
     <section class="lobby-screen setup-screen" data-screen="setup" aria-label="Game setup" hidden>
-      <div class="selected-map"><img id="selected-map-image" src="/art/arenas/tropical-map.webp" alt="Selected pool"/><button id="change-map" type="button">Tropical Cove <span aria-hidden="true">↗</span></button></div>
+      <div class="selected-map"><img id="selected-map-image" src="${assetUrl("/art/arenas/tropical-map.webp")}" alt="Selected pool"/><button id="change-map" type="button">Tropical Cove <span aria-hidden="true">↗</span></button></div>
       <div class="setup-panel"><h1 id="selected-mode">Quick match</h1>
         <fieldset class="team-choice"><legend>Team</legend><div class="segmented"><button type="button" class="selected otters" data-species="otter" aria-pressed="true">Otters</button><button type="button" class="beavers" data-species="beaver" aria-pressed="false">Beavers</button></div></fieldset>
         <div class="match-setup">
@@ -118,7 +119,7 @@ export const bindLobby = (ui: UI): void => {
       const image = document.querySelector<HTMLImageElement>(
         "#selected-map-image",
       );
-      if (image) image.src = `/art/arenas/${ui.arena.value}-map.webp`;
+      if (image) image.src = assetUrl(`/art/arenas/${ui.arena.value}-map.webp`);
       const label = document.querySelector("#change-map");
       if (label)
         label.textContent =
