@@ -189,8 +189,13 @@ test("descending onto a swimmer blocks the descent without pushing them through 
   expect(upper.position.y).toBeGreaterThan(0.85);
 });
 
-test("an opponent's blade can break the curl hold", (): void => {
-  const state = createSimulation("3-3", "3-3", "practice");
+test("an opponent's blade can break the curl hold under original rules", (): void => {
+  const state = createSimulation("3-3", "3-3", "practice", 180, "right", {
+    species: "otter",
+    position: 0,
+    difficulty: "medium",
+    ruleset: "original",
+  });
   advance(state, 0.1, { ...freshControls(), curl: 1 });
   const opponent = createSimulation().players.at(6);
   if (!opponent) throw new Error("Opponent missing");

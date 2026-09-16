@@ -24,6 +24,7 @@ export type Rules = {
   spentAirDrain: number;
   carveDrag: number;
   autoCurl: boolean;
+  shielding: number;
   curlMouseTurn: number;
 };
 
@@ -52,6 +53,7 @@ export const RULESETS: Record<Ruleset, Rules> = {
     spentAirDrain: 2.2,
     carveDrag: 0.12,
     autoCurl: true,
+    shielding: 1,
     curlMouseTurn: 0.3,
   },
   original: {
@@ -78,6 +80,7 @@ export const RULESETS: Record<Ruleset, Rules> = {
     spentAirDrain: 0.3,
     carveDrag: 0,
     autoCurl: false,
+    shielding: 0,
     curlMouseTurn: 1,
   },
 };
