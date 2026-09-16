@@ -8,11 +8,13 @@ export type MatchSelection = {
   species: Species;
   position: number;
   difficulty: BotDifficulty;
+  ruleset?: Ruleset;
 };
 export type Handedness = "right" | "left";
 export type WaterMode = "playing" | "ascending" | "recovering" | "diving";
 export type Duty = "pressure" | "support" | "cover" | "recover";
 export type GameMode = "match" | "practice" | "playground";
+export type Ruleset = "alternative" | "original";
 export type PuckMoveKind = "push" | "pull";
 export type PuckMove = {
   kind: PuckMoveKind;
@@ -51,7 +53,7 @@ export type Player = {
   evadeUntil: number;
   evadeTarget: Vector3;
   air: number;
-  fatigue: number;
+  stamina: number;
   mode: WaterMode;
   duty: Duty;
   role: string;
@@ -68,6 +70,7 @@ export type Player = {
   handling: boolean;
   curl: number;
   curlTurnSpeed: number;
+  turnRate: number;
   dummy: number;
   lateral: number;
   cradle: PuckCradle | undefined;
@@ -159,6 +162,7 @@ export type Controls = {
 };
 export type Simulation = {
   difficulty: BotDifficulty;
+  ruleset: Ruleset;
   physics: { drag: number; lift: number };
   playground: {
     slowMotion: boolean;
@@ -190,6 +194,7 @@ export type Simulation = {
   shots: number;
 };
 export const POOL = { width: 15, length: 25, depth: 2.44, goal: 3 };
+export const MAX_STAMINA = 100;
 export const FLOOR_HEIGHT = 0.36;
 export const SURFACE_HEIGHT = POOL.depth - 0.13;
 export const PUCK_RADIUS = 0.04;

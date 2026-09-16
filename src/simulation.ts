@@ -19,6 +19,7 @@ import { avoidBodies, resolveBodies } from "./collisions";
 import { wallLane } from "./formation-layout";
 import { planTeam } from "./formations";
 import { advancePuck, puckFloorHeight } from "./puck-physics";
+import { RULESETS, type Rules } from "./rules";
 import { announce } from "./simulation-events";
 
 export {
@@ -80,12 +81,14 @@ import {
   type GameMode,
   type Handedness,
   handSide,
+  MAX_STAMINA,
   type MatchSelection,
   type Player,
   POOL,
   PUCK_HEIGHT,
   PUCK_RADIUS,
   type PuckMoveKind,
+  type Ruleset,
   type Simulation,
   STICK_EDGE,
   STICK_HEIGHT,
@@ -126,7 +129,7 @@ const makePlayer = (
     evadeUntil: 0,
     evadeTarget: position.clone(),
     air: 100,
-    fatigue: 0,
+    stamina: MAX_STAMINA,
     mode: "playing",
     duty: "support",
     role: "Forward",
@@ -143,6 +146,7 @@ const makePlayer = (
     handling: false,
     curl: 0,
     curlTurnSpeed: 0,
+    turnRate: 0,
     dummy: 0,
     lateral: 0,
     cradle: undefined,
@@ -198,6 +202,7 @@ export const createSimulation = (
     position: 0,
     difficulty: "medium",
   },
+  ruleset: Ruleset = selection.ruleset ?? "alternative",
 ): Simulation => {
   const humanTeam = selection.species === "beaver" ? 1 : 0;
   const humanId = humanTeam * 6 + clamp(Math.round(selection.position), 0, 5);
@@ -207,6 +212,7 @@ export const createSimulation = (
       : [humanId];
   const state: Simulation = {
     difficulty: selection.difficulty,
+    ruleset,
     physics: { drag: 1, lift: 1 },
     playground: {
       slowMotion: false,
@@ -440,14 +446,92 @@ const approachSwimVelocity = (
   return target === 0 && Math.abs(velocity) < 0.01 ? 0 : velocity;
 };
 
+const rulesFor = (state: Simulation): Rules => RULESETS[state.ruleset];
+
+const staminaFraction = (player: Player): number =>
+  player.stamina / MAX_STAMINA;
+
+const canSprint = (rules: Rules, player: Player): boolean =>
+  !rules.sprintGate || player.stamina > (player.sprint ? 0 : rules.sprintFloor);
+
+const updateStamina = (rules: Rules, player: Player, dt: number): void => {
+  const atSurface = player.position.y >= SURFACE_HEIGHT - 0.045;
+  const effort =
+    (player.sprint ? rules.sprintDrain : rules.idleDrain) +
+    rules.kickDrain * Math.min(1, player.kick);
+  const spent = atSurface
+    ? player.sprint
+      ? effort * rules.surfaceSprint
+      : 0
+    : effort;
+  const regained = player.sprint
+    ? 0
+    : (atSurface ? rules.surfaceRecovery : rules.recovery) *
+      (player.emergency ? rules.emergencyRecovery : 1);
+  player.stamina = clamp(
+    player.stamina + (regained - spent) * dt,
+    0,
+    MAX_STAMINA,
+  );
+};
+
+const CURL_TURN_SPEED = 2.795;
+const TURN_RESPONSE = 9;
+const HARD_TURN_RATE = 2.6;
+const HARD_TURN_RELEASE = 1.6;
+
+const bodyTurnRate = (controls: Controls): number =>
+  controls.lateral * (controls.sprint && controls.forward > 0 ? 2.08 : 2.47);
+
+const turnDemand = (controls: Controls, dt: number): number =>
+  (controls.yawDelta * 1.3) / dt - bodyTurnRate(controls);
+
+const turningHard = (player: Player): boolean =>
+  Math.abs(player.turnRate) >
+  (player.curl === 0 ? HARD_TURN_RATE : HARD_TURN_RELEASE);
+
+const autoCurlDirection = (
+  rules: Rules,
+  state: Simulation,
+  player: Player,
+  controls: Controls,
+): number =>
+  rules.autoCurl &&
+  state.puck.controlOwner === player.id &&
+  !controls.charging &&
+  !controls.dummyMode &&
+  !player.puckMove &&
+  !player.grab &&
+  turningHard(player)
+    ? Math.sign(player.turnRate) * bladeMirror(player)
+    : 0;
+
+const carveThrottle = (
+  rules: Rules,
+  player: Player,
+  underwater: boolean,
+): number =>
+  underwater
+    ? 1 -
+      clamp(Math.abs(player.turnRate) / HARD_TURN_RATE, 0, 1) * rules.carveDrag
+    : 1;
+
 const updateHumanMovement = (
   state: Simulation,
   player: Player,
   controls: Controls,
   dt: number,
 ): void => {
+  const rules = rulesFor(state);
+  player.turnRate +=
+    (turnDemand(controls, dt) - player.turnRate) *
+    (1 - Math.exp(-TURN_RESPONSE * dt));
+  const curl =
+    controls.curl !== 0
+      ? controls.curl
+      : autoCurlDirection(rules, state, player, controls);
   const locomotion =
-    controls.curl === 0
+    curl === 0
       ? controls
       : {
           ...controls,
@@ -457,26 +541,30 @@ const updateHumanMovement = (
           dive: false,
           sprint: false,
         };
-  player.yaw += controls.yawDelta * 1.3;
-  player.yaw -=
-    locomotion.lateral *
-    (locomotion.sprint && locomotion.forward > 0 ? 2.08 : 2.47) *
-    dt;
-  player.curl = controls.curl;
-  player.dummy = player.curl === 0 ? controls.dummy : 0;
+  const underwater = player.position.y < SURFACE_HEIGHT - 0.07;
+  player.curl = curl;
+  player.dummy = curl === 0 ? controls.dummy : 0;
   player.lateral = locomotion.lateral;
   player.curlTurnSpeed +=
-    (controls.curl * 2.795 - player.curlTurnSpeed) *
-    (1 - Math.exp(-(controls.curl === 0 ? 34 : 24) * dt));
+    (curl * CURL_TURN_SPEED - player.curlTurnSpeed) *
+    (1 - Math.exp(-(curl === 0 ? 34 : 24) * dt));
   if (Math.abs(player.curlTurnSpeed) < 0.01) player.curlTurnSpeed = 0;
-  player.yaw += player.curlTurnSpeed * bladeMirror(player) * dt;
+  const steer =
+    controls.yawDelta * 1.3 * (curl === 0 ? 1 : rules.curlMouseTurn) -
+    bodyTurnRate(locomotion) * dt +
+    player.curlTurnSpeed * bladeMirror(player) * dt;
+  player.yaw +=
+    !rules.autoCurl || (curl === 0 && state.puck.controlOwner !== player.id)
+      ? steer
+      : clamp(steer, -CURL_TURN_SPEED * dt, CURL_TURN_SPEED * dt);
   player.sprint =
-    (locomotion.sprint && locomotion.forward > 0) ||
-    (state.time < player.dummyBurstUntil &&
-      locomotion.forward >= 0 &&
-      (locomotion.forward > 0 || locomotion.lateral !== 0));
-  if (controls.curl !== 0) player.sprint = false;
-  player.backhand = controls.backhand || controls.curl < 0;
+    canSprint(rules, player) &&
+    ((locomotion.sprint && locomotion.forward > 0) ||
+      (state.time < player.dummyBurstUntil &&
+        locomotion.forward >= 0 &&
+        (locomotion.forward > 0 || locomotion.lateral !== 0)));
+  if (curl !== 0) player.sprint = false;
+  player.backhand = controls.backhand || curl < 0;
   const forward = forwardVector(player.yaw);
   const throttle =
     locomotion.forward < 0
@@ -485,11 +573,11 @@ const updateHumanMovement = (
   const speed = player.sprint ? 2.9 : 1.55;
   const braking = locomotion.forward < 0;
   const forwardSpeed =
-    controls.curl !== 0
+    curl !== 0
       ? 0
       : approachSwimVelocity(
           Math.max(0, player.velocity.dot(forward)),
-          throttle * speed,
+          throttle * speed * carveThrottle(rules, player, underwater),
           braking,
           dt,
         );
@@ -502,7 +590,6 @@ const updateHumanMovement = (
     0,
     player.sprint ? 1.5 : 1,
   );
-  const underwater = player.position.y < SURFACE_HEIGHT - 0.07;
   if (locomotion.vertical > 0 && !player.emergency) player.mode = "ascending";
   if (locomotion.vertical < 0 && player.air > 8 && !player.emergency)
     player.mode = "diving";
@@ -517,7 +604,7 @@ const updateHumanMovement = (
   else if (player.mode === "diving" && underwater)
     player.velocity.y -= 1.5 * dt;
   else player.velocity.y *= Math.exp(-2.8 * dt);
-  if (controls.curl !== 0 && !player.emergency) player.velocity.y = 0;
+  if (curl !== 0 && !player.emergency) player.velocity.y = 0;
 };
 
 const updateHumanCharge = (
@@ -530,7 +617,7 @@ const updateHumanCharge = (
     !player.emergency &&
     player.cooldown <= 0 &&
     player.knockdownTime <= 0 &&
-    controls.curl === 0 &&
+    player.curl === 0 &&
     controls.dummy === 0 &&
     player.mode !== "ascending";
   player.charge = player.charging ? clamp(controls.charge, 0, 1) : 0;
@@ -823,7 +910,9 @@ const updateAI = (state: Simulation, player: Player, dt: number): void => {
   const travel = player.target.clone().sub(player.position).setY(0);
   const distance = travel.length();
   const resting = player.mode === "recovering" && distance < 0.7;
-  player.sprint = shouldSprintToPuck(state, player, distance);
+  player.sprint =
+    canSprint(rulesFor(state), player) &&
+    shouldSprintToPuck(state, player, distance);
   const speed = Math.min(
     distance * 2.0,
     player.sprint ? profile.sprintSpeed : 1.45,
@@ -904,10 +993,16 @@ const updateAI = (state: Simulation, player: Player, dt: number): void => {
 };
 
 const updateAir = (state: Simulation, player: Player, dt: number): void => {
+  const rules = rulesFor(state);
   const atSurface = player.position.y >= SURFACE_HEIGHT - 0.045;
   if (atSurface) {
-    player.air = clamp(player.air + dt * (13 - player.fatigue * 3), 0, 100);
-    player.fatigue = Math.max(0, player.fatigue - dt * 0.1);
+    player.air = clamp(
+      player.air +
+        (dt * (rules.airBase + rules.airStamina * staminaFraction(player))) /
+          rules.airSupply,
+      0,
+      100,
+    );
     if (player.mode !== "diving") player.mode = "recovering";
     if (player.emergency && player.air >= 80) {
       player.emergency = false;
@@ -922,19 +1017,19 @@ const updateAir = (state: Simulation, player: Player, dt: number): void => {
       state.puck.controlOwner === player.id ||
       (state.puck.lastTouch === player.id &&
         state.time - state.puck.touchTime < 1.2);
+    const air = rules.airDrain;
     const drain = engaged
-      ? 5.2 + (player.sprint ? 2 : 0) + Math.abs(player.curl) * 0.6
+      ? air.engaged +
+        (player.sprint ? air.engagedSprint : 0) +
+        Math.abs(player.curl) * air.curl
       : player.sprint
-        ? 6.2
-        : 1.5 + Math.min(1, player.kick) * 1.3;
+        ? air.sprint
+        : air.idle + Math.min(1, player.kick) * air.kick;
     player.air = Math.max(
       0,
-      player.air - (dt * (drain + player.fatigue * 0.3)) / 0.75,
-    );
-    player.fatigue = clamp(
-      player.fatigue + dt * (player.sprint ? 0.015 : 0.002),
-      0,
-      1,
+      player.air -
+        (dt * (drain + (1 - staminaFraction(player)) * rules.spentAirDrain)) /
+          (0.75 * rules.airSupply),
     );
     if (player.air <= 0 && !player.emergency) {
       player.emergency = true;
@@ -1671,6 +1766,7 @@ const updateWallStart = (
   for (const player of state.players) {
     player.role = player.slot === 0 ? "Striker · at the wall" : "At the wall";
     player.air = 100;
+    player.stamina = MAX_STAMINA;
     player.previous.copy(player.position);
     player.previousYaw = player.yaw;
     player.previousBodyPitch = player.bodyPitch;
@@ -1761,7 +1857,10 @@ export const stepSimulation = (
     player.puckMoveCooldown = Math.max(0, player.puckMoveCooldown - dt);
     player.knockdownTime = Math.max(0, player.knockdownTime - dt);
     player.shotTime = Math.max(0, player.shotTime - dt);
-    if (state.mode !== "playground") updateAir(state, player, dt);
+    if (state.mode !== "playground") {
+      updateStamina(rulesFor(state), player, dt);
+      updateAir(state, player, dt);
+    }
     updatePlayerMotion(player, dt);
   }
   resolveBodies(state.players, dt, false);
