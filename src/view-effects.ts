@@ -10,6 +10,20 @@ export const approachHeadLift = (
 ): number =>
   current + (target - current) * (1 - Math.exp(-Math.max(0, dt) * 9));
 
+// How far the head turns on a glance. Yaw runs the other way to the key, the
+// way steering does: looking right takes the view yaw down.
+export const GLANCE_YAW = (75 * Math.PI) / 180;
+
+export const glanceYaw = (glance: number): number =>
+  -clamp(glance, -1, 1) * GLANCE_YAW;
+
+export const approachGlance = (
+  current: number,
+  target: number,
+  dt: number,
+): number =>
+  current + (target - current) * (1 - Math.exp(-Math.max(0, dt) * 11));
+
 export const speedLineIntensity = (speed: number): number =>
   clamp((speed - 1.55) / 1.35, 0, 1) * 0.5;
 

@@ -3,6 +3,12 @@
 Gameplay changes on this branch, newest first. Infrastructure work (self-hosting,
 room service limits, snapshot compression) is left out.
 
+## Looking around
+
+- **`Q` and `E` glance left and right**, turning the head about 75° without
+  turning the swimmer, so you can watch a teammate or a challenger while still
+  swimming your line. They no longer curl: the mouse starts a curl now.
+
 ## Turnovers
 
 - **Turnovers you are in briefly show a small cue.** Puck lost appears when the

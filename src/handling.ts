@@ -259,7 +259,7 @@ export const pollMovement = (controls: Controls, keys: Set<string>): void => {
     Number(keys.has("Space")) -
     Number(keys.has("ControlLeft") || keys.has("ControlRight"));
   controls.sprint = keys.has("ShiftLeft") || keys.has("ShiftRight");
-  controls.curl = Number(keys.has("KeyE")) - Number(keys.has("KeyQ"));
+  controls.glance = Number(keys.has("KeyE")) - Number(keys.has("KeyQ"));
 };
 
 export const handlingLabel = (state: Simulation, player: Player): string => {

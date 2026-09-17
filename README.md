@@ -59,7 +59,7 @@ Updates download in the background and take over after existing game tabs/window
 | Ctrl / C | Descend / duck dive |
 | Left mouse | Hold to charge; release to shoot |
 | Right mouse + A / D | Swerve |
-| Q / E | Reverse / regular curl; a hard turn with the puck curls on its own |
+| Q / E | Glance left / right without turning |
 | Z | Hold to pull back; release to push forward |
 | X | Grab a nearby puck or knock down an incoming shot |
 | R | Toggle backhand |

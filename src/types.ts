@@ -151,6 +151,7 @@ export type Controls = {
   vertical: number;
   sprint: boolean;
   curl: number;
+  glance: number;
   yawDelta: number;
   pitch: number;
   dummyMode: boolean;
@@ -242,6 +243,7 @@ export const freshControls = (): Controls => ({
   vertical: 0,
   sprint: false,
   curl: 0,
+  glance: 0,
   yawDelta: 0,
   pitch: -0.5,
   dummyMode: false,

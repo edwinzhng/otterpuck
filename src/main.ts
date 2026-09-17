@@ -461,6 +461,7 @@ const boot = async (): Promise<void> => {
           ? app.accumulator / STEP
           : 1,
       app.phase === "playing" && input.controls.vertical > 0,
+      app.phase === "playing" ? input.controls.glance : 0,
     );
     meter.sample(renderDt * 1000, performance.now() - frameStart);
     if (now - app.metricsTime > 100) {
