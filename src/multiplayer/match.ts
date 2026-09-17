@@ -69,10 +69,18 @@ export const createNetworkMatch = (
     advance: (seconds: number): boolean => {
       if (initial.finished) return false;
       accumulator += Math.min(Math.max(seconds, 0), 0.1);
+      const steps = Math.floor(accumulator / STEP);
+      const yawShares = new Map(
+        [...inputs].map(([id, controls]) => [
+          id,
+          steps > 0 ? controls.yawDelta / steps : 0,
+        ]),
+      );
       while (accumulator >= STEP) {
         for (const [id, controls] of inputs) {
           if (initial.time - (received.get(id)?.time ?? -1) > 0.5)
             Object.assign(controls, freshControls());
+          else controls.yawDelta = yawShares.get(id) ?? 0;
         }
         stepSimulation(initial, inputs, STEP);
         for (const [id, input] of received) acknowledged[id] = input.sequence;

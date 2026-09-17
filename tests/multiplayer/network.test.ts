@@ -97,11 +97,11 @@ describe("multiplayer", () => {
     if (!first || !second) throw new Error();
     const yaw = second.yaw;
     const controls = new Map([
-      [0, { ...freshControls(), yawDelta: 1 }],
+      [0, { ...freshControls(), yawDelta: 0.02 }],
       [6, freshControls()],
     ]);
     stepSimulation(state, controls, STEP);
-    expect(first.yaw).toBeCloseTo(1.3);
+    expect(first.yaw).toBeCloseTo(0.026);
     expect(second.yaw).toBe(yaw);
     expect(controls.get(0)?.yawDelta).toBe(0);
     state.faceoff = { phase: "ready", remaining: 3 };
@@ -232,19 +232,37 @@ describe("multiplayer", () => {
     rooms.tick(0.1);
     expect(host.messages.some((m) => m.type === "snapshot")).toBe(false);
   });
+  test("a capped turn scales with elapsed time, not the step count", () => {
+    const yawFor = (seconds: number): number => {
+      const match = createNetworkMatch();
+      match.state.faceoff = undefined;
+      match.roster([
+        { id: crypto.randomUUID(), name: "A", playerId: 0, connected: true },
+      ]);
+      const player = match.state.players.find((p) => p.id === 0);
+      const before = player?.yaw ?? 0;
+      match.input(0, 1, { ...freshControls(), yawDelta: 1 });
+      match.advance(seconds);
+      return (player?.yaw ?? 0) - before;
+    };
+    const one = yawFor(STEP);
+    expect(Math.abs(one)).toBeGreaterThan(0);
+    expect(yawFor(2 * STEP) / one).toBeCloseTo(2, 2);
+    expect(yawFor(4 * STEP) / one).toBeCloseTo(4, 2);
+  });
   test("stale input stops and repeated sequence cannot replay actions", () => {
     const match = createNetworkMatch();
     match.state.faceoff = undefined;
     match.roster([
       { id: crypto.randomUUID(), name: "A", playerId: 0, connected: true },
     ]);
-    match.input(0, 1, { ...freshControls(), yawDelta: 0.5 });
+    match.input(0, 1, { ...freshControls(), yawDelta: 0.02 });
     match.advance(0.1);
     const player = match.state.players.find((p) => p.id === 0);
-    expect(player?.yaw).toBeCloseTo(0.65);
-    match.input(0, 1, { ...freshControls(), yawDelta: 0.5 });
+    expect(player?.yaw).toBeCloseTo(0.026);
+    match.input(0, 1, { ...freshControls(), yawDelta: 0.02 });
     match.advance(0.1);
-    expect(player?.yaw).toBeCloseTo(0.65);
+    expect(player?.yaw).toBeCloseTo(0.026);
     match.input(0, 2, { ...freshControls(), forward: 1, sprint: true });
     match.advance(0.1);
     expect(player?.sprint).toBe(true);

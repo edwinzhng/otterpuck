@@ -500,6 +500,9 @@ const updateStamina = (rules: Rules, player: Player, dt: number): void => {
 };
 
 const CURL_TURN_SPEED = 2.795;
+// Free of the puck the body pivots well faster than a curl, still bounded so
+// a mouse flick cannot spin the otter on the spot.
+const SWIM_TURN_SPEED = CURL_TURN_SPEED * 1.75;
 const TURN_RESPONSE = 9;
 const HARD_TURN_RATE = 2.6;
 const HARD_TURN_FORWARD_RATE = 4.1;
@@ -640,10 +643,13 @@ const updateHumanMovement = (
     controls.yawDelta * 1.3 * (curl === 0 ? 1 : rules.curlMouseTurn) -
     bodyTurnRate(locomotion) * dt +
     player.curlTurnSpeed * bladeMirror(player) * dt;
-  player.yaw +=
-    !rules.autoCurl || (curl === 0 && state.puck.controlOwner !== player.id)
-      ? steer
-      : clamp(steer, -CURL_TURN_SPEED * dt, CURL_TURN_SPEED * dt);
+  const turnLimit =
+    curl === 0 && state.puck.controlOwner !== player.id
+      ? SWIM_TURN_SPEED
+      : CURL_TURN_SPEED;
+  player.yaw += !rules.autoCurl
+    ? steer
+    : clamp(steer, -turnLimit * dt, turnLimit * dt);
   player.sprint =
     canSprint(rules, player) &&
     ((locomotion.sprint && locomotion.forward > 0) ||

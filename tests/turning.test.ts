@@ -171,12 +171,12 @@ test("holding a side key alone never hands over to the curl", (): void => {
   }
 });
 
-test("a hard turn without the puck keeps full mouse authority", (): void => {
+test("a turn without the puck keeps full mouse authority under the cap", (): void => {
   const { state, player } = setup(false);
   const origin = player.yaw;
-  drive(state, 60, swimming(), HARD);
+  drive(state, 60, swimming(), GENTLE);
   expect(player.curl).toBe(0);
-  expect(player.yaw - origin).toBeCloseTo(60 * HARD * 1.3, 6);
+  expect(player.yaw - origin).toBeCloseTo(60 * GENTLE * 1.3, 6);
   expect(horizontalSpeed(player)).toBeGreaterThan(1);
 });
 
@@ -217,6 +217,25 @@ test("the auto curl never turns faster than a Q/E curl", (): void => {
     );
     expect(auto.player.curl).not.toBe(0);
     expect(swung).toBeLessThanOrEqual(keyed + 1e-9);
+  }
+});
+
+test("a swim without the puck turns well faster than a curl", (): void => {
+  const manual = setup(true);
+  const keyed = peakTurnRate(manual.state, manual.player, 240, {
+    ...freshControls(),
+    curl: 1,
+  });
+
+  for (const flick of [FASTER, FASTER * 20]) {
+    const { state, player } = setup(false);
+    const origin = player.yaw;
+    drive(state, 120, swimming(), flick);
+    const swung = (player.yaw - origin) / (120 * STEP);
+    expect(player.curl).toBe(0);
+    expect(swung).toBeGreaterThan(keyed);
+    expect(swung / keyed).toBeCloseTo(1.75, 2);
+    expect(horizontalSpeed(player)).toBeGreaterThan(1);
   }
 });
 

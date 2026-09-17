@@ -419,9 +419,11 @@ const boot = async (): Promise<void> => {
         ? 0
         : Math.min(Math.floor(app.accumulator / STEP), 12);
       if (multiplayer?.active()) app.accumulator = 0;
+      const yawShare = steps > 0 ? input.controls.yawDelta / steps : 0;
       for (let step = 0; step < steps; step += 1) {
         if (app.phase !== "playing") break;
         const attemptedGrab = input.controls.knockdown;
+        input.controls.yawDelta = yawShare;
         stepSimulation(app.state, input.controls, STEP);
         learning.tick(attemptedGrab);
       }
