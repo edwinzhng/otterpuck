@@ -12,6 +12,13 @@ import {
   type TeamSize,
 } from "../types";
 import type { RoomView } from "./protocol";
+
+// Snapshots carry the correction that reconciliation applies, so their rate
+// sets how coarsely a turn is nudged: at 20Hz the nudge landed on every third
+// frame and read as a rocking turn. The room advances at 60Hz, so this is one
+// snapshot per advance. They deflate to about a ninth of their size, which is
+// what makes the rate affordable.
+const SNAPSHOT_HZ = 60;
 export const createRoomSimulation = (teamSize: TeamSize): Simulation => {
   const formation = defaultFormation(teamSize);
   return createSimulation(formation, formation);
@@ -146,8 +153,8 @@ export const createNetworkMatch = (
           return true;
         }
       }
-      if (sinceSnapshot < 1 / 20) return false;
-      sinceSnapshot %= 1 / 20;
+      if (sinceSnapshot < 1 / SNAPSHOT_HZ) return false;
+      sinceSnapshot %= 1 / SNAPSHOT_HZ;
       return true;
     },
   };
