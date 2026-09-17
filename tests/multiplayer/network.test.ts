@@ -289,6 +289,22 @@ describe("multiplayer", () => {
     expect(rateFor(15) / perTick).toBeCloseTo(1, 2);
     expect(rateFor(120) / perTick).toBeCloseTo(1, 2);
   });
+  test("a sequence is acknowledged only once its yaw has been spent", () => {
+    // Clients drop acknowledged inputs from the queue they replay over every
+    // snapshot. Acknowledging one while its yaw is still waiting in the room
+    // erases the turn from the prediction and hands it back a snapshot later,
+    // which reads as the view rocking back and forth against the mouse.
+    const match = createNetworkMatch();
+    match.state.faceoff = undefined;
+    match.roster([
+      { id: crypto.randomUUID(), name: "A", playerId: 0, connected: true },
+    ]);
+    match.input(0, 7, { ...freshControls(), yawDelta: 0.4 }, 8 * STEP);
+    match.advance(STEP);
+    expect(match.acknowledged[0]).toBeUndefined();
+    for (let step = 0; step < 8; step++) match.advance(STEP);
+    expect(match.acknowledged[0]).toBe(7);
+  });
   test("stale input stops and repeated sequence cannot replay actions", () => {
     const match = createNetworkMatch();
     match.state.faceoff = undefined;

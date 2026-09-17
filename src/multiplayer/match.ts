@@ -39,10 +39,23 @@ export const createNetworkMatch = (
   // compress the turn into a fraction of the time it was made over, and the
   // per-step cap in the simulation then discards the remainder. Hold it as a
   // rate instead and pay it out across the interval it belongs to.
-  const turning = new Map<number, { yaw: number; seconds: number }>();
+  const turning = new Map<
+    number,
+    { sequence: number; yaw: number; seconds: number }
+  >();
   let accumulator = 0;
   let sinceSnapshot = 0;
   const acknowledged: Record<string, number> = {};
+  // Acknowledging an input the moment it lands would be a lie while its yaw is
+  // still being paid out: the client drops acknowledged inputs from the queue
+  // it replays over each snapshot, so the turn would vanish from its prediction
+  // and reappear a snapshot later, rocking the view back and forth. A sequence
+  // is only settled once the room has actually spent it.
+  const settle = (id: number): void => {
+    const pending = turning.get(id);
+    if (pending) acknowledged[id] = pending.sequence;
+    turning.delete(id);
+  };
   const match = {
     state: initial,
     acknowledged,
@@ -61,6 +74,7 @@ export const createNetworkMatch = (
           inputs.delete(player.id);
           received.delete(player.id);
           turning.delete(player.id);
+          delete acknowledged[player.id];
         }
       }
     },
@@ -75,17 +89,21 @@ export const createNetworkMatch = (
       const previous = received.get(id);
       // Clients report the interval they accumulated over; fall back to the gap
       // since their last message. Time left unspent from the previous message
-      // carries, so messages arriving faster than the room ticks still pay out
+      // carries, so messages arriving faster than the room steps still pay out
       // in full, and the backlog is capped so neither jitter nor a hostile
-      // value can leave a player turning through stale input.
+      // value can leave a player turning through stale input. Carrying forward
+      // settles the previous message, whose own window has by now elapsed.
       const pending = turning.get(id);
       const window = Math.max(
         duration ?? (previous ? initial.time - previous.time : STEP),
         STEP,
       );
+      const carried = pending ?? { yaw: 0, seconds: 0 };
+      settle(id);
       turning.set(id, {
-        yaw: Math.max(-4, Math.min(4, (pending?.yaw ?? 0) + controls.yawDelta)),
-        seconds: Math.min((pending?.seconds ?? 0) + window, 0.25),
+        sequence,
+        yaw: Math.max(-4, Math.min(4, carried.yaw + controls.yawDelta)),
+        seconds: Math.min(carried.seconds + window, 0.1),
       });
       const shot = Math.max(current.shot, controls.shot);
       const dive = current.dive || controls.dive;
@@ -105,7 +123,7 @@ export const createNetworkMatch = (
         for (const [id, controls] of inputs) {
           if (initial.time - (received.get(id)?.time ?? -1) > 0.5) {
             Object.assign(controls, freshControls());
-            turning.delete(id);
+            settle(id);
             continue;
           }
           const pending = turning.get(id);
@@ -118,9 +136,9 @@ export const createNetworkMatch = (
           controls.yawDelta = share;
           pending.yaw -= share;
           pending.seconds -= spent;
+          if (pending.seconds <= 0) settle(id);
         }
         stepSimulation(initial, inputs, STEP);
-        for (const [id, input] of received) acknowledged[id] = input.sequence;
         accumulator -= STEP;
         sinceSnapshot += STEP;
         if (initial.finished) {

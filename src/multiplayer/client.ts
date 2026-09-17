@@ -316,14 +316,22 @@ export const connectRoom = (
         peers?.ping(room.hostId);
       }
     }
-    if (room?.phase !== "playing" || view?.finished) return;
+    if (room?.phase !== "playing" || view?.finished) {
+      // Nothing is being sent, so the next message must not report the whole
+      // lobby as the interval it accumulated over.
+      sentAt = now;
+      return;
+    }
     const member = room.members.find((m) => m.id === self);
     if (!member) return;
     const input: ClientMessage = {
       type: "input",
       sequence: ++sequence,
       controls,
-      duration: (now - sentAt) / 1000,
+      // Capped to what the protocol accepts: a throttled timer in a background
+      // tab can leave a gap far longer than any interval worth crediting, and
+      // the room would reject the whole message over it.
+      duration: Math.min((now - sentAt) / 1000, 0.5),
     };
     sentAt = now;
     if (room.mode === "online") send(input);
