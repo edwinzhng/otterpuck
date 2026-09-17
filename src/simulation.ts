@@ -503,6 +503,7 @@ const CURL_TURN_SPEED = 2.795;
 const TURN_RESPONSE = 9;
 const HARD_TURN_RATE = 2.6;
 const HARD_TURN_FORWARD_RATE = 4.1;
+const HARD_TURN_CURL_RATE = 7.5;
 const HARD_TURN_RELEASE = 1.6;
 const AUTO_DUMMY_TIMING = 1.6;
 
@@ -512,13 +513,47 @@ const bodyTurnRate = (controls: Controls): number =>
 const turnDemand = (controls: Controls, dt: number): number =>
   (controls.yawDelta * 1.3) / dt - bodyTurnRate(controls);
 
-const turningHard = (player: Player, forward: number): boolean =>
-  Math.abs(player.turnRate) >
-  (player.curl === 0
-    ? forward > 0
-      ? HARD_TURN_FORWARD_RATE
-      : HARD_TURN_RATE
-    : HARD_TURN_RELEASE);
+// A handover is measured against the rate that starts it, and once it is
+// running against the gentler release rate that keeps it alive.
+const turningHard = (player: Player, rate: number): boolean =>
+  Math.abs(player.turnRate) > (player.curl === 0 ? rate : HARD_TURN_RELEASE);
+
+const handoverRate = (controls: Controls): number =>
+  controls.forward > 0 ? HARD_TURN_FORWARD_RATE : HARD_TURN_RATE;
+
+const sprintingForward = (
+  rules: Rules,
+  player: Player,
+  controls: Controls,
+): boolean =>
+  controls.sprint && controls.forward > 0 && canSprint(rules, player);
+
+const canHandOver = (
+  rules: Rules,
+  state: Simulation,
+  player: Player,
+  controls: Controls,
+): boolean =>
+  rules.autoCurl &&
+  state.puck.controlOwner === player.id &&
+  !controls.charging &&
+  !controls.dummyMode &&
+  !player.puckMove &&
+  !player.grab;
+
+// Swimming forward, a hard turn dummies; turning harder still curls instead,
+// abandoning a dummy already under way. A sprint stays with the dummy however
+// hard the turn, so the sprinter never loses the stride to a pivot.
+const curlsOverDummy = (
+  rules: Rules,
+  state: Simulation,
+  player: Player,
+  controls: Controls,
+): boolean =>
+  controls.forward > 0 &&
+  !sprintingForward(rules, player, controls) &&
+  canHandOver(rules, state, player, controls) &&
+  turningHard(player, HARD_TURN_CURL_RATE);
 
 const autoTurnDirection = (
   rules: Rules,
@@ -528,13 +563,8 @@ const autoTurnDirection = (
 ): number => {
   if (player.autoDummyLocked && controls.forward > 0)
     return state.time < player.autoDummyUntil ? player.dummy : 0;
-  return rules.autoCurl &&
-    state.puck.controlOwner === player.id &&
-    !controls.charging &&
-    !controls.dummyMode &&
-    !player.puckMove &&
-    !player.grab &&
-    turningHard(player, controls.forward)
+  return canHandOver(rules, state, player, controls) &&
+    turningHard(player, handoverRate(controls))
     ? Math.sign(player.turnRate) * bladeMirror(player)
     : 0;
 };
@@ -566,14 +596,24 @@ const updateHumanMovement = (
     player.autoDummyLocked = false;
     player.autoDummyUntil = 0;
   }
+  const curling = curlsOverDummy(rules, state, player, controls);
+  if (curling) {
+    player.autoDummyLocked = false;
+    player.autoDummyUntil = 0;
+  }
   const automatic = autoTurnDirection(rules, state, player, controls);
-  if (controls.forward > 0 && automatic !== 0 && !player.autoDummyLocked) {
+  if (
+    controls.forward > 0 &&
+    !curling &&
+    automatic !== 0 &&
+    !player.autoDummyLocked
+  ) {
     player.autoDummyLocked = true;
     player.autoDummyUntil =
       state.time +
       (SWERVE_PULL_DURATION + SWERVE_EXTEND_DURATION) * AUTO_DUMMY_TIMING;
   }
-  const forwardTurn = controls.forward > 0;
+  const forwardTurn = controls.forward > 0 && !curling;
   const curl =
     controls.curl !== 0 ? controls.curl : forwardTurn ? 0 : automatic;
   const locomotion =

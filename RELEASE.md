@@ -34,6 +34,10 @@ Picked in the lobby and remembered; **original** keeps the previous behaviour.
 - **Turning underwater costs a little forward speed.**
 - **A hard turn with the puck hands over to the curl**, and yaw is capped at the
   curl rate, so no puck action turns faster than the curl.
+- **Swimming forward, the same hard turn starts a dummy instead**, and turning
+  faster still curls — taking over from a dummy already under way. Sprinting
+  keeps the dummy however hard the turn, so a sprinter never loses the stride to
+  a pivot.
 
 ## Puck shielding
 
