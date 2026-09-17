@@ -35,6 +35,11 @@ export type Session = {
   alpha: () => number;
   room: () => RoomView | undefined;
 };
+// Input goes out at the rate the room advances. At half that, a message spans
+// two advances, so the room has applied only part of it while the client still
+// replays all of it over every snapshot: the turn rate wobbles for as long as
+// the turn lasts, then unwinds backwards once the mouse stops.
+const SEND_HZ = 60;
 export const connectRoom = (
   region: Region,
   request: ClientMessage,
@@ -358,7 +363,7 @@ export const connectRoom = (
       waitingForUpdates = true;
       callbacks.status("Waiting for match updates…");
     }
-  }, 1000 / 30);
+  }, 1000 / SEND_HZ);
   connect();
   return {
     start: (): void => send({ type: "start" }),
