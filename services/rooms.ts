@@ -318,7 +318,12 @@ export const createRooms = (
         return;
       }
       if (message.type === "input") {
-        room.match?.input(member.playerId, message.sequence, message.controls);
+        room.match?.input(
+          member.playerId,
+          message.sequence,
+          message.controls,
+          message.duration,
+        );
         return;
       }
       if (message.type === "signal") {

@@ -68,6 +68,9 @@ export const connectRoom = (
   let waitingForUpdates = false;
   let lastPong = performance.now();
   let pingAt = 0;
+  // When the last input went out, so each message can report the interval its
+  // accumulated yaw was made over rather than leaving the room to guess.
+  let sentAt = performance.now();
   let peerPingAt = 0;
   let peerPongAt = 0;
   const send = (message: ClientMessage): void => {
@@ -213,6 +216,7 @@ export const connectRoom = (
                       member.playerId,
                       parsed.data.sequence,
                       parsed.data.controls,
+                      parsed.data.duration,
                     );
                 } else if (
                   from === room.hostId &&
@@ -319,10 +323,12 @@ export const connectRoom = (
       type: "input",
       sequence: ++sequence,
       controls,
+      duration: (now - sentAt) / 1000,
     };
+    sentAt = now;
     if (room.mode === "online") send(input);
     else if (self === room.hostId && match) {
-      match.input(member.playerId, input.sequence, controls);
+      match.input(member.playerId, input.sequence, controls, input.duration);
       if (now - hostFrameAt > 100) advanceHost(now);
       if (now - checkpointAt > 1000) {
         checkpointAt = now;
