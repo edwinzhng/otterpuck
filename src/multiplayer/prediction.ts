@@ -13,11 +13,14 @@ export const createMovementPrediction = (): {
     seconds: number,
     sequence: number,
   ) => void;
+  // Returns the yaw correction the snapshot pulled the view through, which is
+  // the room and the prediction disagreeing about how far the mouse turned.
   reconcile: (
     state: Simulation,
     acknowledged: number | undefined,
     previous?: Simulation,
-  ) => void;
+  ) => number;
+  waiting: () => number;
 } => {
   let pending: Pending[] = [];
   let enabled = false;
@@ -70,15 +73,16 @@ export const createMovementPrediction = (): {
       }
       move(state, controls, duration);
     },
+    waiting: (): number => pending.length,
     reconcile: (
       state: Simulation,
       acknowledged: number | undefined,
       previous?: Simulation,
-    ): void => {
+    ): number => {
       enabled = acknowledged !== undefined;
       if (!enabled) {
         pending = [];
-        return;
+        return 0;
       }
       pending = pending.filter(
         (input) => input.sequence > (acknowledged ?? -1),
@@ -87,6 +91,7 @@ export const createMovementPrediction = (): {
       const player = state.players.at(0);
       const old = previous?.players.at(0);
       const beforeCorrection = player?.position.clone();
+      let correction = 0;
       const carrying =
         player &&
         state.puck.controlOwner === player.id &&
@@ -106,7 +111,10 @@ export const createMovementPrediction = (): {
           Math.sin(old.yaw - player.yaw),
           Math.cos(old.yaw - player.yaw),
         );
-        if (Math.abs(difference) < 0.5) player.yaw += difference * 0.8;
+        if (Math.abs(difference) < 0.5) {
+          correction = Math.abs(difference * 0.8);
+          player.yaw += difference * 0.8;
+        }
       }
       if (player) {
         updateStick(player, 0);
@@ -137,6 +145,7 @@ export const createMovementPrediction = (): {
         player.previous.copy(player.position);
         player.previousYaw = player.yaw;
       }
+      return correction;
     },
   };
 };

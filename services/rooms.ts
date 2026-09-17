@@ -3,6 +3,7 @@ import {
   createNetworkMatch,
   createRoomSimulation,
   type NetworkMatch,
+  type YawPayout,
 } from "../src/multiplayer/match";
 import { customPlayerName } from "../src/multiplayer/names";
 import type {
@@ -27,10 +28,16 @@ type Room = Omit<RoomView, "members"> & {
   checkpointAt: number;
   created: number;
   nextPlayerNumber: number;
+  yawPayout: YawPayout;
 };
+// Switching a room's yaw payout changes how a turn feels for everyone in it,
+// so it stays off unless the server was started for netcode debugging.
+const debuggingNetcode = (): boolean =>
+  process.env.OTTERPUCK_DEBUG_NETCODE === "1";
 export const createRooms = (
   region: string,
   now: () => number = Date.now,
+  debugging: () => boolean = debuggingNetcode,
 ): {
   message: (peer: Peer, message: ClientMessage) => void;
   disconnect: (peer: Peer) => void;
@@ -245,6 +252,7 @@ export const createRooms = (
           checkpointAt: 0,
           created: now(),
           nextPlayerNumber: 1,
+          yawPayout: "queued",
         };
         rooms.set(code, room);
         join(peer, room, message.name, message.team, message.handedness);
@@ -299,8 +307,10 @@ export const createRooms = (
         }
         if (room.phase !== "waiting") return;
         room.phase = "playing";
-        if (room.mode === "online")
+        if (room.mode === "online") {
           room.match = createNetworkMatch(createRoomSimulation(room.teamSize));
+          room.match.payout(room.yawPayout);
+        }
         updated(room);
         return;
       }
@@ -324,6 +334,19 @@ export const createRooms = (
           message.controls,
           message.duration,
         );
+        return;
+      }
+      if (message.type === "debug") {
+        if (!debugging()) {
+          error(peer, "Netcode debugging is off on this server.");
+          return;
+        }
+        if (member.id !== room.hostId) {
+          error(peer, "Only the room creator can change the yaw payout.");
+          return;
+        }
+        room.yawPayout = message.yawPayout;
+        room.match?.payout(message.yawPayout);
         return;
       }
       if (message.type === "signal") {

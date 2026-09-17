@@ -499,6 +499,27 @@ const updateStamina = (rules: Rules, player: Player, dt: number): void => {
   );
 };
 
+// A diagnostic for the turn cap below: how often, and by how much, the mouse
+// asks for more rotation than a step is allowed to give. Off unless a debug
+// readout turns it on, so a match pays nothing for it.
+export type TurnCap = { steps: number; clipped: number; discarded: number };
+const turnCap: TurnCap = { steps: 0, clipped: 0, discarded: 0 };
+let turnCapProbe = false;
+export const probeTurnCap = (on: boolean): void => {
+  turnCapProbe = on;
+};
+export const readTurnCap = (): TurnCap => {
+  const measured = { ...turnCap };
+  Object.assign(turnCap, { steps: 0, clipped: 0, discarded: 0 });
+  return measured;
+};
+const recordTurnCap = (asked: number, given: number): void => {
+  turnCap.steps += 1;
+  if (asked === given) return;
+  turnCap.clipped += 1;
+  turnCap.discarded += Math.abs(asked - given);
+};
+
 const CURL_TURN_SPEED = 2.795;
 // Free of the puck the body pivots well faster than a curl, still bounded so
 // a mouse flick cannot spin the otter on the spot.
@@ -647,9 +668,11 @@ const updateHumanMovement = (
     curl === 0 && state.puck.controlOwner !== player.id
       ? SWIM_TURN_SPEED
       : CURL_TURN_SPEED;
-  player.yaw += !rules.autoCurl
+  const steered = !rules.autoCurl
     ? steer
     : clamp(steer, -turnLimit * dt, turnLimit * dt);
+  if (turnCapProbe) recordTurnCap(steer, steered);
+  player.yaw += steered;
   player.sprint =
     canSprint(rules, player) &&
     ((locomotion.sprint && locomotion.forward > 0) ||

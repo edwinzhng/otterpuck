@@ -1,3 +1,4 @@
+import { probeTurnCap, readTurnCap } from "../simulation";
 import {
   type Controls,
   freshControls,
@@ -9,6 +10,7 @@ import {
   createNetworkMatch,
   createRoomSimulation,
   type NetworkMatch,
+  type YawPayout,
 } from "./match";
 import { createPeers } from "./peers";
 import { createMovementPrediction } from "./prediction";
@@ -22,6 +24,18 @@ import {
 } from "./protocol";
 import type { Region } from "./regions";
 import { localView, packSnapshot, parseSnapshot } from "./snapshot";
+// What a turn costs between the mouse and the room, sampled over a second:
+// how much yaw the snapshots pull back, how much of it the turn cap throws
+// away, and how far behind the room's acknowledgement is.
+export type NetworkStats = {
+  sends: number;
+  snapshots: number;
+  correction: number;
+  clipped: number;
+  discarded: number;
+  waiting: number;
+  payout: YawPayout;
+};
 export type Session = {
   start: () => void;
   settings: (teamSize: TeamSize) => void;
@@ -34,6 +48,9 @@ export type Session = {
   frame: () => void;
   alpha: () => number;
   room: () => RoomView | undefined;
+  debug: (on: boolean) => void;
+  payout: (mode: YawPayout) => void;
+  stats: () => NetworkStats | undefined;
 };
 // Input goes out at the rate the room advances. At half that, a message spans
 // two advances, so the room has applied only part of it while the client still
@@ -78,6 +95,35 @@ export const connectRoom = (
   let sentAt = performance.now();
   let peerPingAt = 0;
   let peerPongAt = 0;
+  let payout: YawPayout = "queued";
+  let debugging = false;
+  const counters = {
+    sends: 0,
+    snapshots: 0,
+    correction: 0,
+    since: performance.now(),
+  };
+  let measured: NetworkStats | undefined;
+  const sample = (now: number): void => {
+    if (!debugging || now - counters.since < 1000) return;
+    const seconds = (now - counters.since) / 1000;
+    const cap = readTurnCap();
+    measured = {
+      sends: counters.sends / seconds,
+      snapshots: counters.snapshots / seconds,
+      correction: counters.correction / seconds,
+      clipped: cap.steps > 0 ? cap.clipped / cap.steps : 0,
+      discarded: cap.discarded / seconds,
+      waiting: prediction.waiting(),
+      payout,
+    };
+    Object.assign(counters, {
+      sends: 0,
+      snapshots: 0,
+      correction: 0,
+      since: now,
+    });
+  };
   const send = (message: ClientMessage): void => {
     if (socket?.readyState === WebSocket.OPEN) {
       if (socket.bufferedAmount > 64000) {
@@ -97,11 +143,12 @@ export const connectRoom = (
     const previous = view;
     interpolation.push(parsed, performance.now());
     view = localView(parsed, player.playerId);
-    prediction.reconcile(
+    counters.correction += prediction.reconcile(
       view,
       acknowledged?.[player.playerId] ?? (acknowledged ? -1 : undefined),
       previous,
     );
+    counters.snapshots += 1;
     lastReceived = performance.now();
     if (waitingForUpdates) {
       waitingForUpdates = false;
@@ -307,6 +354,7 @@ export const connectRoom = (
   };
   const timer = setInterval((): void => {
     const now = performance.now();
+    sample(now);
     if (socket?.readyState === WebSocket.OPEN && now - pingAt > 2000) {
       pingAt = now;
       send({ type: "ping", nonce: now });
@@ -339,6 +387,7 @@ export const connectRoom = (
       duration: Math.min((now - sentAt) / 1000, 0.5),
     };
     sentAt = now;
+    counters.sends += 1;
     if (room.mode === "online") send(input);
     else if (self === room.hostId && match) {
       match.input(member.playerId, input.sequence, controls, input.duration);
@@ -435,5 +484,25 @@ export const connectRoom = (
     alpha: (): number =>
       room?.mode === "lan" && self === room.hostId ? (match?.alpha() ?? 1) : 1,
     room: () => room,
+    debug: (on): void => {
+      debugging = on;
+      probeTurnCap(on);
+      if (!on) measured = undefined;
+      Object.assign(counters, {
+        sends: 0,
+        snapshots: 0,
+        correction: 0,
+        since: performance.now(),
+      });
+    },
+    // A LAN host runs the room itself, so its switch is a local call; everyone
+    // else asks the server, which only listens when it was started for this.
+    payout: (mode): void => {
+      payout = mode;
+      if (match) match.payout(mode);
+      else if (room?.mode === "online")
+        send({ type: "debug", yawPayout: mode });
+    },
+    stats: () => measured,
   };
 };

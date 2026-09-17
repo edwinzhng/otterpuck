@@ -45,6 +45,7 @@ export type UI = {
     role: HTMLElement;
     handling: HTMLElement;
     fps: HTMLElement;
+    netcode: HTMLElement;
     tackleLog: HTMLElement;
     charge: HTMLElement;
     matchLabel: HTMLElement;

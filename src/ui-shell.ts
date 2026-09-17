@@ -51,7 +51,7 @@ export const uiShell = (): string => `
       ["1.7", "Sharp"],
       ["2", "Extra sharp"],
       ["0.85", "Battery saver"],
-    ])}${touchSettingsMarkup()}${["music", "effects"].map((kind): string => `<label class="volume-setting">${kind === "music" ? "Music" : "Effects"}<output id="${kind}-volume-value"></output><input id="${kind}-volume" type="range" min="0" max="100" step="1" aria-label="${kind === "music" ? "Music" : "Effects"} volume"/></label>`).join("")}<div class="settings-row">${button("sound", "Sound on", "secondary", 'aria-pressed="true"')}${button("music", "Music on", "secondary", 'aria-pressed="true"')}<label><input id="performance-toggle" type="checkbox"/> Frame rate</label></div>`,
+    ])}${touchSettingsMarkup()}${["music", "effects"].map((kind): string => `<label class="volume-setting">${kind === "music" ? "Music" : "Effects"}<output id="${kind}-volume-value"></output><input id="${kind}-volume" type="range" min="0" max="100" step="1" aria-label="${kind === "music" ? "Music" : "Effects"} volume"/></label>`).join("")}<div class="settings-row">${button("sound", "Sound on", "secondary", 'aria-pressed="true"')}${button("music", "Music on", "secondary", 'aria-pressed="true"')}<label><input id="performance-toggle" type="checkbox"/> Frame rate</label><label><input id="netcode-toggle" type="checkbox"/> Netcode readout</label><label><input id="instant-yaw-toggle" type="checkbox"/> Instant yaw payout</label></div>`,
     "close-settings",
   )}
   ${dialog("controls-dialog", "Controls", controlsMarkup(), "close-controls")}
@@ -59,6 +59,7 @@ export const uiShell = (): string => `
     <div class="hud-top"><div class="hud-actions">${button("touch-fullscreen", "⛶", "icon", 'aria-label="Enter fullscreen"')}${button("pause-button", "Ⅱ", "icon", 'aria-label="Pause"')}<div id="network-status" hidden><div class="network-server"><span class="network-dot" aria-hidden="true"></span><strong id="network-region"></strong><span id="network-ping">—</span></div><span id="network-issue" role="status" hidden></span></div><span class="desktop-shortcuts">Esc Pause · Ctrl F Fullscreen</span></div>
       <div class="scoreboard panel"><div class="score-team otters"><span>OTTERS</span><strong id="home-score">0</strong></div><time id="clock">03:00</time><div class="score-team beavers"><strong id="away-score">0</strong><span>BEAVERS</span></div><span id="match-label" hidden></span></div>
       <div id="fps" class="performance panel"></div>
+      <div id="netcode" class="netcode panel" aria-label="Netcode diagnostics"></div>
       <div id="tackle-log" class="tackle-log panel" aria-label="Tackle log"></div>
     </div>
     <div id="player-labels" aria-label="Player positions"></div><div class="crosshair" aria-hidden="true"></div>

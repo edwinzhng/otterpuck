@@ -5,7 +5,7 @@ import { createAudioEventTracker } from "./audio-events";
 import { createInput } from "./input";
 import { createLearning } from "./learning";
 import { matchResult } from "./match-result";
-import { bindMultiplayer } from "./multiplayer/ui";
+import { bindMultiplayer, netcodeReadout } from "./multiplayer/ui";
 import { enableOffline } from "./offline";
 import { createFrameMeter } from "./performance";
 import { renderPlayerLabels } from "./player-labels";
@@ -470,6 +470,8 @@ const boot = async (): Promise<void> => {
       ui.elements.fps.dataset.metrics = JSON.stringify(
         meter.read(world.renderer.info.render, world.renderer.info.memory),
       );
+      const stats = multiplayer?.stats();
+      ui.elements.netcode.innerHTML = stats ? netcodeReadout(stats) : "";
       app.metricsTime = now;
     }
     const human = app.state.players.at(0);
@@ -534,6 +536,21 @@ const boot = async (): Promise<void> => {
       getElement("#return-menu", HTMLButtonElement).click();
     },
   });
+  getElement("#netcode-toggle", HTMLInputElement).addEventListener(
+    "change",
+    (event): void => {
+      if (!(event.target instanceof HTMLInputElement)) return;
+      document.body.classList.toggle("show-netcode", event.target.checked);
+      multiplayer?.debug(event.target.checked);
+    },
+  );
+  getElement("#instant-yaw-toggle", HTMLInputElement).addEventListener(
+    "change",
+    (event): void => {
+      if (event.target instanceof HTMLInputElement)
+        multiplayer?.payout(event.target.checked ? "instant" : "queued");
+    },
+  );
   if (!location.hash.includes("room=")) learning.offer();
   enableOffline();
 };

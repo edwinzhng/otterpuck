@@ -82,6 +82,10 @@ export const clientMessageSchema = z.discriminatedUnion("type", [
     signal: signalSchema,
   }),
   z.object({ type: z.literal("checkpoint"), state: z.unknown() }),
+  z.object({
+    type: z.literal("debug"),
+    yawPayout: z.enum(["queued", "instant"]),
+  }),
 ]);
 export type ClientMessage = z.infer<typeof clientMessageSchema>;
 export const memberSchema = z.object({

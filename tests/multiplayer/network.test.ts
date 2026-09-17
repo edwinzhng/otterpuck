@@ -9,8 +9,10 @@ import {
   serverMessageSchema,
 } from "../../src/multiplayer/protocol";
 import { localView, parseSnapshot } from "../../src/multiplayer/snapshot";
+import { netcodeReadout } from "../../src/multiplayer/ui";
 import { createSimulation, stepSimulation } from "../../src/simulation";
 import { freshControls, STEP } from "../../src/types";
+import { uiShell } from "../../src/ui-shell";
 
 const peer = (): {
   messages: ServerMessage[];
@@ -489,4 +491,100 @@ test("curl and reverse curl turn in mirrored directions for left-handed network 
     }
     expect(turns[0]).toBeCloseTo(-(turns[1] ?? 0), 5);
   }
+});
+
+describe("netcode debugging", () => {
+  const roster = (): {
+    id: string;
+    name: string;
+    playerId: number;
+    connected: boolean;
+  }[] => [{ id: crypto.randomUUID(), name: "A", playerId: 0, connected: true }];
+  const turnedBy = (payout: "queued" | "instant", yawDelta: number): number => {
+    const match = createNetworkMatch();
+    match.state.faceoff = undefined;
+    match.roster(roster());
+    match.payout(payout);
+    const player = match.state.players.find((p) => p.id === 0);
+    const before = player?.yaw ?? 0;
+    match.input(0, 1, { ...freshControls(), yawDelta }, 8 * STEP);
+    for (let elapsed = 0; elapsed < 0.3; elapsed += 1 / 60)
+      match.advance(1 / 60);
+    return Math.abs((player?.yaw ?? 0) - before);
+  };
+  test("instant payout spends a message in the tick that receives it", () => {
+    // The switch exists to compare the room against what it did before the
+    // payout queue: one step of a capped turn instead of the whole interval.
+    const match = createNetworkMatch();
+    match.state.faceoff = undefined;
+    match.roster(roster());
+    match.payout("instant");
+    expect(match.mode()).toBe("instant");
+    const player = match.state.players.find((p) => p.id === 0);
+    const before = player?.yaw ?? 0;
+    match.input(0, 1, { ...freshControls(), yawDelta: 0.01 }, 8 * STEP);
+    match.advance(1 / 60);
+    expect(Math.abs((player?.yaw ?? 0) - before)).toBeCloseTo(0.013, 5);
+    expect(match.acknowledged[0]).toBe(1);
+  });
+  test("a queued payout keeps a capped turn the instant one throws away", () => {
+    const small = 0.01;
+    expect(turnedBy("instant", small)).toBeCloseTo(
+      turnedBy("queued", small),
+      3,
+    );
+    const capped = 1;
+    expect(turnedBy("instant", capped)).toBeLessThan(
+      turnedBy("queued", capped) * 0.5,
+    );
+  });
+  test("the readout names the rate, the fight and what the cap threw away", () => {
+    expect(
+      netcodeReadout({
+        sends: 41.7,
+        snapshots: 58.2,
+        correction: 0.042,
+        clipped: 0.38,
+        discarded: 0.71,
+        waiting: 3,
+        payout: "queued",
+      }),
+    ).toBe(
+      "queued payout<br/>42 in/s · 58 snap/s<br/>fix 2.4°/s · waiting 3<br/>cap hit 38% · lost 41°/s",
+    );
+  });
+  test("the shell carries the readout panel and both debug switches", () => {
+    const shell = uiShell();
+    expect(shell).toContain('id="netcode"');
+    expect(shell).toContain('id="netcode-toggle"');
+    expect(shell).toContain('id="instant-yaw-toggle"');
+  });
+  test("only the host changes the payout, and only when the server allows it", () => {
+    const off = createRooms("us");
+    const quiet = peer();
+    off.message(quiet, { type: "create", protocol: PROTOCOL, mode: "online" });
+    off.message(quiet, { type: "start" });
+    off.message(quiet, { type: "debug", yawPayout: "instant" });
+    expect(quiet.messages.at(-1)).toEqual({
+      type: "error",
+      message: "Netcode debugging is off on this server.",
+      fatal: false,
+    });
+
+    const rooms = createRooms("us", Date.now, () => true);
+    const host = peer();
+    rooms.message(host, { type: "create", protocol: PROTOCOL, mode: "online" });
+    const code = session(host).room.code;
+    const guest = peer();
+    rooms.message(guest, { type: "join", protocol: PROTOCOL, code });
+    rooms.message(host, { type: "start" });
+    rooms.message(guest, { type: "debug", yawPayout: "instant" });
+    expect(guest.messages.at(-1)).toEqual({
+      type: "error",
+      message: "Only the room creator can change the yaw payout.",
+      fatal: false,
+    });
+    rooms.message(host, { type: "debug", yawPayout: "instant" });
+    expect(host.messages.some((m) => m.type === "error")).toBe(false);
+  });
 });

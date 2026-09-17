@@ -1,6 +1,8 @@
 import { expect, test } from "bun:test";
 import {
   createSimulation,
+  probeTurnCap,
+  readTurnCap,
   stepSimulation,
   updateStick,
 } from "../src/simulation";
@@ -299,4 +301,25 @@ test("the mouse loses most of its authority while curling", (): void => {
     60 * GENTLE * 1.3 * 0.3,
     6,
   );
+});
+
+test("the turn cap probe counts what a step was not allowed to turn", (): void => {
+  // The readout needs to say how much of a turn the cap is discarding, and a
+  // match that is not being debugged must not pay for the measurement.
+  const { state } = setup(false);
+  drive(state, 10, swimming(), 0.5);
+  expect(readTurnCap()).toEqual({ steps: 0, clipped: 0, discarded: 0 });
+  probeTurnCap(true);
+  drive(state, 10, swimming(), 0.5);
+  const heavy = readTurnCap();
+  expect(heavy.steps).toBe(10);
+  expect(heavy.clipped).toBe(10);
+  expect(heavy.discarded).toBeGreaterThan(0);
+  expect(readTurnCap()).toEqual({ steps: 0, clipped: 0, discarded: 0 });
+  drive(state, 10, swimming(), GENTLE);
+  const gentle = readTurnCap();
+  expect(gentle.steps).toBe(10);
+  expect(gentle.clipped).toBe(0);
+  expect(gentle.discarded).toBe(0);
+  probeTurnCap(false);
 });

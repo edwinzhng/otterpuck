@@ -8,7 +8,8 @@ import {
 } from "../positions";
 import type { Controls, Handedness, Simulation } from "../types";
 import { button, dialog, field } from "../ui-components";
-import { connectRoom, type Session } from "./client";
+import { connectRoom, type NetworkStats, type Session } from "./client";
+import type { YawPayout } from "./match";
 import { customPlayerName } from "./names";
 import { PROTOCOL, type RoomView } from "./protocol";
 import { loadRegions, measurePing, type Region } from "./regions";
@@ -45,6 +46,17 @@ export const multiplayerMarkup = (): string =>
  `,
     "close-multiplayer",
   );
+const degrees = (radians: number): number => (radians * 180) / Math.PI;
+// One line per question the readout answers: is input actually leaving at the
+// rate it should, how hard is the snapshot fighting the prediction, and how
+// much of the turn is the cap throwing away.
+export const netcodeReadout = (stats: NetworkStats): string =>
+  [
+    `${stats.payout} payout`,
+    `${stats.sends.toFixed(0)} in/s · ${stats.snapshots.toFixed(0)} snap/s`,
+    `fix ${degrees(stats.correction).toFixed(1)}°/s · waiting ${stats.waiting}`,
+    `cap hit ${(stats.clipped * 100).toFixed(0)}% · lost ${degrees(stats.discarded).toFixed(0)}°/s`,
+  ].join("<br/>");
 export const bindMultiplayer = (callbacks: {
   handedness: () => Handedness;
   play: (state: Simulation) => void;
@@ -57,6 +69,9 @@ export const bindMultiplayer = (callbacks: {
   cancelInput: () => void;
   frame: () => void;
   alpha: () => number;
+  debug: (on: boolean) => void;
+  payout: (mode: YawPayout) => void;
+  stats: () => NetworkStats | undefined;
   leave: () => void;
 } => {
   const modal = getElement("#multiplayer-dialog", HTMLDialogElement);
@@ -67,6 +82,9 @@ export const bindMultiplayer = (callbacks: {
   const pings = new Map<string, number>();
   let regionChosen = false;
   let session: Session | undefined;
+  // Debug choices outlive a session, so a reconnect or a second room keeps the
+  // readout and the payout the tester picked.
+  const netcode = { debugging: false, payout: "queued" as YawPayout };
   let started = false;
   let connection: "online" | "lan" = "online";
   let hosting = false;
@@ -331,6 +349,8 @@ export const bindMultiplayer = (callbacks: {
         modal.showModal();
       },
     });
+    session.debug(netcode.debugging);
+    if (netcode.payout !== "queued") session.payout(netcode.payout);
   };
   const joinRoom = (code: string): void => {
     const invite = new URLSearchParams(location.hash.slice(1));
@@ -628,6 +648,15 @@ export const bindMultiplayer = (callbacks: {
     cancelInput: (): void => session?.cancelInput(),
     frame: (): void => session?.frame(),
     alpha: (): number => session?.alpha() ?? 1,
+    debug: (on: boolean): void => {
+      netcode.debugging = on;
+      session?.debug(on);
+    },
+    payout: (mode: YawPayout): void => {
+      netcode.payout = mode;
+      session?.payout(mode);
+    },
+    stats: (): NetworkStats | undefined => session?.stats(),
     leave,
   };
 };

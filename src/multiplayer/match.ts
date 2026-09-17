@@ -23,6 +23,11 @@ export const createRoomSimulation = (teamSize: TeamSize): Simulation => {
   const formation = defaultFormation(teamSize);
   return createSimulation(formation, formation);
 };
+// Spending a message's yaw over the interval it covers is what the room does;
+// spending all of it in the tick that receives it is what it did before, kept
+// as a switch so a heavy-feeling turn can be compared against both without
+// rebuilding the server.
+export type YawPayout = "queued" | "instant";
 export const createNetworkMatch = (
   initial = createRoomSimulation(6),
 ): {
@@ -37,6 +42,8 @@ export const createNetworkMatch = (
   ) => void;
   advance: (seconds: number) => boolean;
   alpha: () => number;
+  payout: (mode: YawPayout) => void;
+  mode: () => YawPayout;
 } => {
   const inputs = new Map<number, Controls>();
   const received = new Map<number, { sequence: number; time: number }>();
@@ -52,6 +59,7 @@ export const createNetworkMatch = (
   >();
   let accumulator = 0;
   let sinceSnapshot = 0;
+  let payout: YawPayout = "queued";
   const acknowledged: Record<string, number> = {};
   // Acknowledging an input the moment it lands would be a lie while its yaw is
   // still being paid out: the client drops acknowledged inputs from the queue
@@ -67,6 +75,10 @@ export const createNetworkMatch = (
     state: initial,
     acknowledged,
     alpha: (): number => accumulator / STEP,
+    mode: (): YawPayout => payout,
+    payout: (mode: YawPayout): void => {
+      payout = mode;
+    },
     roster: (members: RoomView["members"]): void => {
       for (const player of initial.players) {
         const member = members.find(
@@ -138,7 +150,10 @@ export const createNetworkMatch = (
             controls.yawDelta = 0;
             continue;
           }
-          const spent = Math.min(STEP, pending.seconds);
+          const spent =
+            payout === "instant"
+              ? pending.seconds
+              : Math.min(STEP, pending.seconds);
           const share = (pending.yaw * spent) / pending.seconds;
           controls.yawDelta = share;
           pending.yaw -= share;
