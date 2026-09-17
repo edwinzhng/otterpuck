@@ -502,7 +502,7 @@ const updateStamina = (rules: Rules, player: Player, dt: number): void => {
 const CURL_TURN_SPEED = 2.795;
 // Free of the puck the body pivots well faster than a curl, still bounded so
 // a mouse flick cannot spin the otter on the spot.
-const SWIM_TURN_SPEED = CURL_TURN_SPEED * 1.75;
+const SWIM_TURN_SPEED = CURL_TURN_SPEED * 3;
 const TURN_RESPONSE = 9;
 const HARD_TURN_RATE = 2.6;
 const HARD_TURN_FORWARD_RATE = 4.1;

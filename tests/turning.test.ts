@@ -234,7 +234,7 @@ test("a swim without the puck turns well faster than a curl", (): void => {
     const swung = (player.yaw - origin) / (120 * STEP);
     expect(player.curl).toBe(0);
     expect(swung).toBeGreaterThan(keyed);
-    expect(swung / keyed).toBeCloseTo(1.75, 2);
+    expect(swung / keyed).toBeCloseTo(3, 2);
     expect(horizontalSpeed(player)).toBeGreaterThan(1);
   }
 });
