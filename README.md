@@ -15,6 +15,8 @@ bun run dev
 
 Open http://127.0.0.1:3200. Set `PORT` to use another port.
 
+`bun run dev` rebuilds on every save and refreshes the open page itself, so there is nothing to reload by hand.
+
 For the production build:
 
 ```sh
