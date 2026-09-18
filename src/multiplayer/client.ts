@@ -27,6 +27,9 @@ import { localView, packSnapshot, parseSnapshot } from "./snapshot";
 // What a turn costs between the mouse and the room, sampled over a second:
 // how much yaw the snapshots pull back, how much of it the turn cap throws
 // away, and how far behind the room's acknowledgement is.
+// Whether a message goes out on its own timer or on the frame whose mouse
+// movement it carries.
+export type InputCadence = "timer" | "frame";
 export type NetworkStats = {
   sends: number;
   snapshots: number;
@@ -37,6 +40,7 @@ export type NetworkStats = {
   discarded: number;
   waiting: number;
   payout: YawPayout;
+  cadence: InputCadence;
 };
 export type Session = {
   start: () => void;
@@ -52,6 +56,7 @@ export type Session = {
   room: () => RoomView | undefined;
   debug: (on: boolean) => void;
   payout: (mode: YawPayout) => void;
+  cadence: (mode: InputCadence) => void;
   stats: () => NetworkStats | undefined;
 };
 // Input goes out at the rate the room advances. At half that, a message spans
@@ -98,6 +103,7 @@ export const connectRoom = (
   let peerPingAt = 0;
   let peerPongAt = 0;
   let payout: YawPayout = "queued";
+  let cadence: InputCadence = "timer";
   let debugging = false;
   const counters = {
     sends: 0,
@@ -122,6 +128,7 @@ export const connectRoom = (
       discarded: cap.discarded / seconds,
       waiting: prediction.waiting(),
       payout,
+      cadence,
     };
     Object.assign(counters, {
       sends: 0,
@@ -363,6 +370,42 @@ export const connectRoom = (
       reconnectTimer = setTimeout(connect, Math.min(500 * 2 ** attempts, 4000));
     };
   };
+  // The yaw in a message is made frame by frame, but a timer's windows do not
+  // line up with the frames that made it: at 55fps against a 60Hz timer some
+  // messages carry two frames of mouse movement and some carry none, and the
+  // room pays each out over the window it reports rather than the time the
+  // movement took. Sending on the frame that made it keeps the two together.
+  const dispatchInput = (now: number, seconds?: number): void => {
+    const member = room?.members.find((m) => m.id === self);
+    if (!room || !member) return;
+    const input: ClientMessage = {
+      type: "input",
+      sequence: ++sequence,
+      controls,
+      // Capped to what the protocol accepts: a throttled timer in a background
+      // tab can leave a gap far longer than any interval worth crediting, and
+      // the room would reject the whole message over it.
+      duration: Math.min(seconds ?? (now - sentAt) / 1000, 0.5),
+    };
+    sentAt = now;
+    counters.sends += 1;
+    if (room.mode === "online") send(input);
+    else if (self === room.hostId && match) {
+      match.input(member.playerId, input.sequence, controls, input.duration);
+      if (now - hostFrameAt > 100) advanceHost(now);
+      if (now - checkpointAt > 1000) {
+        checkpointAt = now;
+        send({ type: "checkpoint", state: match.state });
+      }
+    } else peers?.send(room.hostId, input);
+    controls = {
+      ...controls,
+      yawDelta: 0,
+      shot: 0,
+      dive: false,
+      knockdown: false,
+    };
+  };
   const timer = setInterval((): void => {
     const now = performance.now();
     sample(now);
@@ -386,35 +429,7 @@ export const connectRoom = (
       sentAt = now;
       return;
     }
-    const member = room.members.find((m) => m.id === self);
-    if (!member) return;
-    const input: ClientMessage = {
-      type: "input",
-      sequence: ++sequence,
-      controls,
-      // Capped to what the protocol accepts: a throttled timer in a background
-      // tab can leave a gap far longer than any interval worth crediting, and
-      // the room would reject the whole message over it.
-      duration: Math.min((now - sentAt) / 1000, 0.5),
-    };
-    sentAt = now;
-    counters.sends += 1;
-    if (room.mode === "online") send(input);
-    else if (self === room.hostId && match) {
-      match.input(member.playerId, input.sequence, controls, input.duration);
-      if (now - hostFrameAt > 100) advanceHost(now);
-      if (now - checkpointAt > 1000) {
-        checkpointAt = now;
-        send({ type: "checkpoint", state: match.state });
-      }
-    } else peers?.send(room.hostId, input);
-    controls = {
-      ...controls,
-      yawDelta: 0,
-      shot: 0,
-      dive: false,
-      knockdown: false,
-    };
+    if (cadence === "timer") dispatchInput(now);
     if (
       now - lastReceived > 3000 &&
       !(room.mode === "lan" && self === room.hostId) &&
@@ -491,6 +506,15 @@ export const connectRoom = (
       next.shot = 0;
       next.dive = false;
       next.knockdown = false;
+      // The prediction above ran against the sequence this send is about to
+      // claim, so the room and the client agree on what the message covers.
+      if (
+        cadence === "frame" &&
+        room?.phase === "playing" &&
+        !view?.finished &&
+        seconds > 0
+      )
+        dispatchInput(performance.now(), seconds);
     },
     alpha: (): number =>
       room?.mode === "lan" && self === room.hostId ? (match?.alpha() ?? 1) : 1,
@@ -515,6 +539,9 @@ export const connectRoom = (
       if (match) match.payout(mode);
       else if (room?.mode === "online")
         send({ type: "debug", yawPayout: mode });
+    },
+    cadence: (mode): void => {
+      cadence = mode;
     },
     stats: () => measured,
   };

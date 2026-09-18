@@ -8,7 +8,12 @@ import {
 } from "../positions";
 import type { Controls, Handedness, Simulation } from "../types";
 import { button, dialog, field } from "../ui-components";
-import { connectRoom, type NetworkStats, type Session } from "./client";
+import {
+  connectRoom,
+  type InputCadence,
+  type NetworkStats,
+  type Session,
+} from "./client";
 import type { YawPayout } from "./match";
 import { customPlayerName } from "./names";
 import { PROTOCOL, type RoomView } from "./protocol";
@@ -52,7 +57,7 @@ const degrees = (radians: number): number => (radians * 180) / Math.PI;
 // much of the turn is the cap throwing away.
 export const netcodeReadout = (stats: NetworkStats): string =>
   [
-    `${stats.payout} payout`,
+    `${stats.payout} payout · ${stats.cadence} input`,
     `${stats.sends.toFixed(0)} in/s · ${stats.snapshots.toFixed(0)} snap/s`,
     `smooth ${degrees(stats.applied).toFixed(0)}°/s · waiting ${stats.waiting}`,
     `miss ${degrees(stats.missed).toFixed(2)}° · short ${degrees(stats.short).toFixed(2)}°`,
@@ -72,6 +77,7 @@ export const bindMultiplayer = (callbacks: {
   alpha: () => number;
   debug: (on: boolean) => void;
   payout: (mode: YawPayout) => void;
+  cadence: (mode: InputCadence) => void;
   stats: () => NetworkStats | undefined;
   leave: () => void;
 } => {
@@ -85,7 +91,11 @@ export const bindMultiplayer = (callbacks: {
   let session: Session | undefined;
   // Debug choices outlive a session, so a reconnect or a second room keeps the
   // readout and the payout the tester picked.
-  const netcode = { debugging: false, payout: "queued" as YawPayout };
+  const netcode = {
+    debugging: false,
+    payout: "queued" as YawPayout,
+    cadence: "timer" as InputCadence,
+  };
   let started = false;
   let connection: "online" | "lan" = "online";
   let hosting = false;
@@ -352,6 +362,7 @@ export const bindMultiplayer = (callbacks: {
     });
     session.debug(netcode.debugging);
     if (netcode.payout !== "queued") session.payout(netcode.payout);
+    if (netcode.cadence !== "timer") session.cadence(netcode.cadence);
   };
   const joinRoom = (code: string): void => {
     const invite = new URLSearchParams(location.hash.slice(1));
@@ -656,6 +667,10 @@ export const bindMultiplayer = (callbacks: {
     payout: (mode: YawPayout): void => {
       netcode.payout = mode;
       session?.payout(mode);
+    },
+    cadence: (mode: InputCadence): void => {
+      netcode.cadence = mode;
+      session?.cadence(mode);
     },
     stats: (): NetworkStats | undefined => session?.stats(),
     leave,

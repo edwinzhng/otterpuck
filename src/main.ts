@@ -551,6 +551,13 @@ const boot = async (): Promise<void> => {
         multiplayer?.payout(event.target.checked ? "instant" : "queued");
     },
   );
+  getElement("#frame-input-toggle", HTMLInputElement).addEventListener(
+    "change",
+    (event): void => {
+      if (event.target instanceof HTMLInputElement)
+        multiplayer?.cadence(event.target.checked ? "frame" : "timer");
+    },
+  );
   if (!location.hash.includes("room=")) learning.offer();
   enableOffline();
 };

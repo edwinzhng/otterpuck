@@ -550,10 +550,11 @@ describe("netcode debugging", () => {
         discarded: 0.71,
         waiting: 3,
         payout: "queued",
+        cadence: "timer",
       }),
     ).toBe(
       [
-        "queued payout",
+        "queued payout · timer input",
         "42 in/s · 58 snap/s",
         "smooth 2°/s · waiting 3",
         "miss 0.18° · short 0.16°",
@@ -561,11 +562,12 @@ describe("netcode debugging", () => {
       ].join("<br/>"),
     );
   });
-  test("the shell carries the readout panel and both debug switches", () => {
+  test("the shell carries the readout panel and every debug switch", () => {
     const shell = uiShell();
     expect(shell).toContain('id="netcode"');
     expect(shell).toContain('id="netcode-toggle"');
     expect(shell).toContain('id="instant-yaw-toggle"');
+    expect(shell).toContain('id="frame-input-toggle"');
   });
   test("only the host changes the payout, and only when the server allows it", () => {
     const off = createRooms("us");
