@@ -190,3 +190,30 @@ test("a room that turned less than the prediction shows up as a miss", () => {
     4,
   );
 });
+
+test("a room that keeps turning less than the prediction reads as short", () => {
+  // A wobble averages to nothing; the room systematically under-delivering a
+  // turn does not, and only the second is worth chasing.
+  const shortfall = (direction: number, roomYaw: (yaw: number) => number) => {
+    const view = state();
+    const prediction = createMovementPrediction();
+    prediction.reconcile(view, -1);
+    prediction.advance(
+      view,
+      { ...freshControls(), yawDelta: 0.5 * direction },
+      1 / 60,
+      1,
+    );
+    const room = state();
+    const player = room.players.at(0);
+    if (!player) throw new Error("Missing player");
+    player.yaw = roomYaw(view.players.at(0)?.yaw ?? 0);
+    return prediction.reconcile(room, 1, view).short;
+  };
+  for (const direction of [-1, 1]) {
+    const behind = shortfall(direction, (yaw) => yaw - 0.1 * direction);
+    expect(degrees(behind)).toBeCloseTo(degrees(0.1), 4);
+    const ahead = shortfall(direction, (yaw) => yaw + 0.1 * direction);
+    expect(degrees(ahead)).toBeCloseTo(degrees(-0.1), 4);
+  }
+});

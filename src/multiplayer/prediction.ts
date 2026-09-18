@@ -17,8 +17,10 @@ type Pending = {
 // `applied` is the smoothing the view was dragged through, which grows with how
 // fast the turn is; `missed` is the room and the prediction disagreeing about
 // where the same input ended up, which should be near zero however hard you
-// turn.
-export type Reconciliation = { applied: number; missed: number };
+// turn. `short` is that disagreement signed against the way the mouse was
+// turning: a positive average means the room keeps delivering less of the turn
+// than the client predicted, which a zero-mean wobble would not.
+export type Reconciliation = { applied: number; missed: number; short: number };
 export const createMovementPrediction = (): {
   advance: (
     state: Simulation,
@@ -100,21 +102,22 @@ export const createMovementPrediction = (): {
       enabled = acknowledged !== undefined;
       if (!enabled) {
         pending = [];
-        return { applied: 0, missed: 0 };
+        return { applied: 0, missed: 0, short: 0 };
       }
       const settled = pending
         .filter((input) => input.sequence <= (acknowledged ?? -1))
         .at(-1);
       const authoritative = state.players.at(0)?.yaw;
-      const missed =
+      const delta =
         settled && authoritative !== undefined
-          ? Math.abs(
-              Math.atan2(
-                Math.sin(authoritative - settled.predicted),
-                Math.cos(authoritative - settled.predicted),
-              ),
+          ? Math.atan2(
+              Math.sin(authoritative - settled.predicted),
+              Math.cos(authoritative - settled.predicted),
             )
           : 0;
+      const turning = Math.sign(settled?.controls.yawDelta ?? 0);
+      const missed = Math.abs(delta);
+      const short = -delta * turning;
       pending = pending.filter(
         (input) => input.sequence > (acknowledged ?? -1),
       );
@@ -178,7 +181,7 @@ export const createMovementPrediction = (): {
         player.previous.copy(player.position);
         player.previousYaw = player.yaw;
       }
-      return { applied, missed };
+      return { applied, missed, short };
     },
   };
 };

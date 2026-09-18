@@ -55,7 +55,7 @@ export const netcodeReadout = (stats: NetworkStats): string =>
     `${stats.payout} payout`,
     `${stats.sends.toFixed(0)} in/s · ${stats.snapshots.toFixed(0)} snap/s`,
     `smooth ${degrees(stats.applied).toFixed(0)}°/s · waiting ${stats.waiting}`,
-    `miss ${degrees(stats.missed).toFixed(2)}° per snapshot`,
+    `miss ${degrees(stats.missed).toFixed(2)}° · short ${degrees(stats.short).toFixed(2)}°`,
     `cap hit ${(stats.clipped * 100).toFixed(0)}% · lost ${degrees(stats.discarded).toFixed(0)}°/s`,
   ].join("<br/>");
 export const bindMultiplayer = (callbacks: {

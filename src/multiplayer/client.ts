@@ -32,6 +32,7 @@ export type NetworkStats = {
   snapshots: number;
   applied: number;
   missed: number;
+  short: number;
   clipped: number;
   discarded: number;
   waiting: number;
@@ -103,6 +104,7 @@ export const connectRoom = (
     snapshots: 0,
     applied: 0,
     missed: 0,
+    short: 0,
     since: performance.now(),
   };
   let measured: NetworkStats | undefined;
@@ -115,6 +117,7 @@ export const connectRoom = (
       snapshots: counters.snapshots / seconds,
       applied: counters.applied / seconds,
       missed: counters.snapshots > 0 ? counters.missed / counters.snapshots : 0,
+      short: counters.snapshots > 0 ? counters.short / counters.snapshots : 0,
       clipped: cap.steps > 0 ? cap.clipped / cap.steps : 0,
       discarded: cap.discarded / seconds,
       waiting: prediction.waiting(),
@@ -125,6 +128,7 @@ export const connectRoom = (
       snapshots: 0,
       applied: 0,
       missed: 0,
+      short: 0,
       since: now,
     });
   };
@@ -154,6 +158,7 @@ export const connectRoom = (
     );
     counters.applied += reconciliation.applied;
     counters.missed += reconciliation.missed;
+    counters.short += reconciliation.short;
     counters.snapshots += 1;
     lastReceived = performance.now();
     if (waitingForUpdates) {
@@ -499,6 +504,7 @@ export const connectRoom = (
         snapshots: 0,
         applied: 0,
         missed: 0,
+        short: 0,
         since: performance.now(),
       });
     },

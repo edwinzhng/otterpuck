@@ -545,6 +545,7 @@ describe("netcode debugging", () => {
         snapshots: 58.2,
         applied: 0.042,
         missed: 0.0031,
+        short: 0.0028,
         clipped: 0.38,
         discarded: 0.71,
         waiting: 3,
@@ -555,7 +556,7 @@ describe("netcode debugging", () => {
         "queued payout",
         "42 in/s · 58 snap/s",
         "smooth 2°/s · waiting 3",
-        "miss 0.18° per snapshot",
+        "miss 0.18° · short 0.16°",
         "cap hit 38% · lost 41°/s",
       ].join("<br/>"),
     );
