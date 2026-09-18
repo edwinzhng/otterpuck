@@ -510,6 +510,18 @@ let turnCapProbe = false;
 export const probeTurnCap = (on: boolean): void => {
   turnCapProbe = on;
 };
+// Replaying an input the room has not acknowledged runs it through the cap
+// again, so a snapshot would count the same mouse movement a sixth time. Only
+// the live pass counts.
+export const withoutTurnCap = <T>(run: () => T): T => {
+  const previous = turnCapProbe;
+  turnCapProbe = false;
+  try {
+    return run();
+  } finally {
+    turnCapProbe = previous;
+  }
+};
 export const readTurnCap = (): TurnCap => {
   const measured = { ...turnCap };
   Object.assign(turnCap, { steps: 0, clipped: 0, discarded: 0 });

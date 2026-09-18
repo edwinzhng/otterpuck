@@ -30,7 +30,8 @@ import { localView, packSnapshot, parseSnapshot } from "./snapshot";
 export type NetworkStats = {
   sends: number;
   snapshots: number;
-  correction: number;
+  applied: number;
+  missed: number;
   clipped: number;
   discarded: number;
   waiting: number;
@@ -100,7 +101,8 @@ export const connectRoom = (
   const counters = {
     sends: 0,
     snapshots: 0,
-    correction: 0,
+    applied: 0,
+    missed: 0,
     since: performance.now(),
   };
   let measured: NetworkStats | undefined;
@@ -111,7 +113,8 @@ export const connectRoom = (
     measured = {
       sends: counters.sends / seconds,
       snapshots: counters.snapshots / seconds,
-      correction: counters.correction / seconds,
+      applied: counters.applied / seconds,
+      missed: counters.snapshots > 0 ? counters.missed / counters.snapshots : 0,
       clipped: cap.steps > 0 ? cap.clipped / cap.steps : 0,
       discarded: cap.discarded / seconds,
       waiting: prediction.waiting(),
@@ -120,7 +123,8 @@ export const connectRoom = (
     Object.assign(counters, {
       sends: 0,
       snapshots: 0,
-      correction: 0,
+      applied: 0,
+      missed: 0,
       since: now,
     });
   };
@@ -143,11 +147,13 @@ export const connectRoom = (
     const previous = view;
     interpolation.push(parsed, performance.now());
     view = localView(parsed, player.playerId);
-    counters.correction += prediction.reconcile(
+    const reconciliation = prediction.reconcile(
       view,
       acknowledged?.[player.playerId] ?? (acknowledged ? -1 : undefined),
       previous,
     );
+    counters.applied += reconciliation.applied;
+    counters.missed += reconciliation.missed;
     counters.snapshots += 1;
     lastReceived = performance.now();
     if (waitingForUpdates) {
@@ -491,7 +497,8 @@ export const connectRoom = (
       Object.assign(counters, {
         sends: 0,
         snapshots: 0,
-        correction: 0,
+        applied: 0,
+        missed: 0,
         since: performance.now(),
       });
     },

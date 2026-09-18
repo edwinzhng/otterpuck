@@ -543,14 +543,21 @@ describe("netcode debugging", () => {
       netcodeReadout({
         sends: 41.7,
         snapshots: 58.2,
-        correction: 0.042,
+        applied: 0.042,
+        missed: 0.0031,
         clipped: 0.38,
         discarded: 0.71,
         waiting: 3,
         payout: "queued",
       }),
     ).toBe(
-      "queued payout<br/>42 in/s · 58 snap/s<br/>fix 2.4°/s · waiting 3<br/>cap hit 38% · lost 41°/s",
+      [
+        "queued payout",
+        "42 in/s · 58 snap/s",
+        "smooth 2°/s · waiting 3",
+        "miss 0.18° per snapshot",
+        "cap hit 38% · lost 41°/s",
+      ].join("<br/>"),
     );
   });
   test("the shell carries the readout panel and both debug switches", () => {

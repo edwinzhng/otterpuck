@@ -4,6 +4,8 @@ import { createMovementPrediction } from "../../src/multiplayer/prediction";
 import {
   createSimulation,
   predictPlayerMovement,
+  probeTurnCap,
+  readTurnCap,
   stepSimulation,
   updateStick,
 } from "../../src/simulation";
@@ -15,6 +17,7 @@ import {
   STEP,
 } from "../../src/types";
 
+const degrees = (radians: number): number => (radians * 180) / Math.PI;
 const state = () => {
   const simulation = createSimulation();
   simulation.faceoff = undefined;
@@ -146,4 +149,44 @@ test("carry correction follows the player and a new owner immediately wins", () 
   prediction.reconcile(takeover, 1, authoritative);
   prediction.advance(takeover, { ...freshControls(), forward: 1 }, 1 / 60, 2);
   expect(takeover.puck.position.equals(position)).toBe(true);
+});
+
+test("a snapshot reports the room's disagreement, not the replay's", () => {
+  // The readout is only worth reading if a hard turn does not inflate it: an
+  // unacknowledged input is replayed on every snapshot, and the cap counted
+  // each replay as fresh mouse movement.
+  const view = state();
+  const prediction = createMovementPrediction();
+  prediction.reconcile(view, -1);
+  probeTurnCap(true);
+  readTurnCap();
+  const fast = { ...freshControls(), yawDelta: 0.5 };
+  for (let sequence = 1; sequence <= 6; sequence += 1)
+    prediction.advance(view, { ...fast }, 1 / 60, sequence);
+  const live = readTurnCap();
+  expect(live.clipped).toBeGreaterThan(0);
+
+  const agreeing = state();
+  const player = agreeing.players.at(0);
+  if (!player) throw new Error("Missing player");
+  player.yaw = view.players.at(0)?.yaw ?? 0;
+  const settled = prediction.reconcile(agreeing, 6, view);
+  expect(degrees(settled.missed)).toBeLessThan(0.01);
+  expect(readTurnCap().clipped).toBe(0);
+  probeTurnCap(false);
+});
+
+test("a room that turned less than the prediction shows up as a miss", () => {
+  const view = state();
+  const prediction = createMovementPrediction();
+  prediction.reconcile(view, -1);
+  prediction.advance(view, { ...freshControls(), yawDelta: 0.5 }, 1 / 60, 1);
+  const short = state();
+  const player = short.players.at(0);
+  if (!player) throw new Error("Missing player");
+  player.yaw = (view.players.at(0)?.yaw ?? 0) - 0.1;
+  expect(degrees(prediction.reconcile(short, 1, view).missed)).toBeCloseTo(
+    degrees(0.1),
+    4,
+  );
 });
