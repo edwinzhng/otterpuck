@@ -21,14 +21,14 @@ import { planTeam } from "./formations";
 import { teamSize } from "./positions";
 import { advancePuck, puckFloorHeight } from "./puck-physics";
 import { RULESETS, type Rules } from "./rules";
-import { announce } from "./simulation-events";
+import { announce, announceTo } from "./simulation-events";
 
 export {
   goalSurfaceHeight,
   puckFloorHeight,
   puckInsideGoal,
 } from "./puck-physics";
-export { announce } from "./simulation-events";
+export { announce, announceTo } from "./simulation-events";
 
 import {
   availablePuckMove,
@@ -155,6 +155,8 @@ const makePlayer = (
     curl: 0,
     curlTurnSpeed: 0,
     turnRate: 0,
+    event: "",
+    eventTime: 0,
     dummy: 0,
     lateral: 0,
     cradle: undefined,
@@ -860,8 +862,8 @@ const updateHuman = (
     controls.vertical <= 0
   )
     player.mode = "playing";
-  if (player.air < 24 && state.eventTime <= 0 && underwater)
-    announce(state, "Low air", 2);
+  if (player.air < 24 && player.eventTime <= 0 && underwater)
+    announceTo(player, "Low air", 2);
 };
 
 const prepareAI = (state: Simulation, player: Player): void => {
@@ -1125,7 +1127,7 @@ const updateAir = (state: Simulation, player: Player, dt: number): void => {
     if (player.mode !== "diving") player.mode = "recovering";
     if (player.emergency && player.air >= 80) {
       player.emergency = false;
-      if (player.human) announce(state, "Ready", 2);
+      if (player.human) announceTo(player, "Ready", 2);
     }
   } else {
     const engaged =
@@ -1153,7 +1155,7 @@ const updateAir = (state: Simulation, player: Player, dt: number): void => {
     if (player.air <= 0 && !player.emergency) {
       player.emergency = true;
       player.mode = "ascending";
-      if (player.human) announce(state, "Surfacing", 3);
+      if (player.human) announceTo(player, "Surfacing", 3);
     }
   }
 };
@@ -1934,6 +1936,8 @@ export const stepSimulation = (
   if (state.finished) return;
   state.time += dt;
   state.eventTime = Math.max(0, state.eventTime - dt);
+  for (const player of state.players)
+    player.eventTime = Math.max(0, player.eventTime - dt);
   if (state.restartTime > 0) {
     for (const player of state.players) {
       if (player.human)

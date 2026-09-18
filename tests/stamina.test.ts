@@ -146,3 +146,23 @@ test("bots share the stamina limit and stop sprinting when spent", (): void => {
   expect(bot.sprint).toBe(false);
   expect(bot.stamina).toBeGreaterThan(0);
 });
+
+test("running low on air announces to that otter alone", (): void => {
+  // Everyone in a room shares one simulation, so an announcement left on it
+  // told every client that their own air was running out.
+  const state = createSimulation("2-3-1", "2-3-1");
+  const player = state.players.at(0);
+  const other = state.players.at(1);
+  if (!player || !other) throw new Error("Nobody else in the pool");
+  state.faceoff = undefined;
+  state.restartTime = 0;
+  player.position.set(-7, FLOOR_HEIGHT, 0);
+  player.air = 25;
+  other.air = 100;
+  advance(state, 2, { ...freshControls(), forward: 1, sprint: true });
+  expect(player.air).toBeLessThan(24);
+  expect(player.event).toBe("Low air");
+  expect(player.eventTime).toBeGreaterThan(0);
+  expect(other.event).toBe("");
+  expect(state.event).not.toBe("Low air");
+});

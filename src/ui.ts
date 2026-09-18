@@ -78,10 +78,16 @@ export const updateUI = (
     ui.elements.descendCue.classList.toggle("hidden", !guidance.descend);
   }
   const celebrating = state.restartTime > 0 && state.eventTime > 0;
-  setText(
-    ui.elements.event,
-    celebrating ? "GOAL!" : state.eventTime > 0 ? state.event : "",
-  );
+  // A player's own announcement outranks the match-wide one, except while the
+  // room is celebrating a goal.
+  const announcement = celebrating
+    ? "GOAL!"
+    : player.eventTime > 0
+      ? player.event
+      : state.eventTime > 0
+        ? state.event
+        : "";
+  setText(ui.elements.event, announcement);
   ui.elements.event.classList.toggle("goal-celebration", celebrating);
   ui.elements.event.classList.toggle(
     "beaver-goal",
@@ -100,7 +106,7 @@ export const updateUI = (
     ui.elements.reactionLabel,
     reaction === "grab" ? "Grab" : "Knock down",
   );
-  ui.elements.event.classList.toggle("visible", state.eventTime > 0);
+  ui.elements.event.classList.toggle("visible", announcement !== "");
   setText(ui.elements.fps, `${Math.round(world.frameRate)} FPS`);
   ui.elements.charge.style.setProperty(
     "--charge",

@@ -46,6 +46,8 @@ const playerFields = z.object({
   curl: n,
   curlTurnSpeed: n,
   turnRate: n,
+  event: z.string().max(120).default(""),
+  eventTime: n.default(0),
   dummy: n,
   lateral: n,
   cradle: z
