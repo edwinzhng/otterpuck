@@ -30,6 +30,31 @@ import { localView, packSnapshot, parseSnapshot } from "./snapshot";
 // Whether a message goes out on its own timer or on the frame whose mouse
 // movement it carries.
 export type InputCadence = "timer" | "frame";
+// Input is gathered on every animation frame, which on a high refresh screen is
+// well past the hundred messages a second the room accepts. Frames are coalesced
+// up to this rate and report the interval they were actually made over, which is
+// the point of sending per frame in the first place.
+export const FRAME_SEND_LIMIT = 1 / 90;
+export const createFrameSends = (
+  limit = FRAME_SEND_LIMIT,
+): {
+  add: (seconds: number) => number | undefined;
+  reset: () => void;
+} => {
+  let pending = 0;
+  return {
+    reset: (): void => {
+      pending = 0;
+    },
+    add: (seconds): number | undefined => {
+      pending += seconds;
+      if (pending < limit) return undefined;
+      const window = pending;
+      pending = 0;
+      return window;
+    },
+  };
+};
 export type NetworkStats = {
   sends: number;
   snapshots: number;
@@ -104,6 +129,7 @@ export const connectRoom = (
   let peerPongAt = 0;
   let payout: YawPayout = "queued";
   let cadence: InputCadence = "timer";
+  const frameSends = createFrameSends();
   let debugging = false;
   const counters = {
     sends: 0,
@@ -508,13 +534,10 @@ export const connectRoom = (
       next.knockdown = false;
       // The prediction above ran against the sequence this send is about to
       // claim, so the room and the client agree on what the message covers.
-      if (
-        cadence === "frame" &&
-        room?.phase === "playing" &&
-        !view?.finished &&
-        seconds > 0
-      )
-        dispatchInput(performance.now(), seconds);
+      if (cadence !== "frame" || room?.phase !== "playing" || view?.finished)
+        return;
+      const window = frameSends.add(seconds);
+      if (window !== undefined) dispatchInput(performance.now(), window);
     },
     alpha: (): number =>
       room?.mode === "lan" && self === room.hostId ? (match?.alpha() ?? 1) : 1,
@@ -542,6 +565,8 @@ export const connectRoom = (
     },
     cadence: (mode): void => {
       cadence = mode;
+      frameSends.reset();
+      sentAt = performance.now();
     },
     stats: () => measured,
   };

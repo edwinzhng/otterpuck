@@ -1,4 +1,8 @@
 import { expect, test } from "bun:test";
+import {
+  createFrameSends,
+  FRAME_SEND_LIMIT,
+} from "../../src/multiplayer/client";
 import { createNetworkMatch } from "../../src/multiplayer/match";
 import { createMovementPrediction } from "../../src/multiplayer/prediction";
 import {
@@ -215,5 +219,24 @@ test("a room that keeps turning less than the prediction reads as short", () => 
     expect(degrees(behind)).toBeCloseTo(degrees(0.1), 4);
     const ahead = shortfall(direction, (yaw) => yaw + 0.1 * direction);
     expect(degrees(ahead)).toBeCloseTo(degrees(-0.1), 4);
+  }
+});
+
+test("per-frame input stays inside the room's message budget", () => {
+  // A high refresh screen renders far past the hundred messages a second the
+  // room accepts, and sending one per frame closed the socket. Frames coalesce
+  // instead, and must still report the interval they were made over.
+  for (const refresh of [60, 120, 144, 240]) {
+    const sends = createFrameSends();
+    const frame = 1 / refresh;
+    const windows: number[] = [];
+    for (let i = 0; i < refresh; i += 1) {
+      const window = sends.add(frame);
+      if (window !== undefined) windows.push(window);
+    }
+    expect(windows.length).toBeLessThanOrEqual(90);
+    expect(windows.reduce((sum, w) => sum + w, 0)).toBeCloseTo(1, 6);
+    for (const window of windows)
+      expect(window).toBeGreaterThanOrEqual(Math.min(frame, FRAME_SEND_LIMIT));
   }
 });
