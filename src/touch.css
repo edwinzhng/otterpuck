@@ -28,6 +28,7 @@ body:not(.touch-mode) .touch-help {
   --touch-status-width: 132px;
   --touch-score-height: 48px;
   --touch-panel-gap: 10px;
+  --touch-vitals-height: 81px;
   --touch-size: clamp(48px, 13vh, 60px);
   --touch-gap: 8px;
   --touch-bottom: max(16px, env(safe-area-inset-bottom));
@@ -428,6 +429,24 @@ body:not(.touch-mode) .touch-help {
   left: auto;
   width: var(--touch-status-width);
   overflow: hidden;
+}
+.touch-mode #network-status {
+  position: fixed;
+  top: calc(
+    var(--hud-top) + var(--touch-score-height) + var(--touch-panel-gap) +
+    var(--touch-vitals-height) + var(--touch-panel-gap)
+  );
+  right: var(--hud-right);
+  box-sizing: border-box;
+  width: var(--touch-status-width);
+  max-width: none;
+  margin: 0;
+  padding: 6px 9px;
+  line-height: 1.2;
+}
+.touch-mode #network-issue[hidden],
+.touch-mode #network-issue:empty {
+  display: none;
 }
 .touch-mode .vital-label {
   gap: 6px;

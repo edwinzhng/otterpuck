@@ -7,13 +7,6 @@ import {
   sizeLabel,
   TEAM_SIZES,
 } from "../positions";
-import {
-  SWIM_TURNS,
-  type SwimTurn,
-  savedSwimTurn,
-  saveSwimTurn,
-  swimTurnChoice,
-} from "../swim-turn";
 import type { Controls, Handedness, Simulation } from "../types";
 import { button, dialog, field } from "../ui-components";
 import { connectRoom, type Session } from "./client";
@@ -45,10 +38,6 @@ export const multiplayerMarkup = (): string =>
    "mp-team-size",
    "Match size",
    TEAM_SIZES.map((size): [string, string] => [String(size), sizeLabel(size)]),
- )}${field(
-   "mp-swim-turn",
-   "Turn rate",
-   SWIM_TURNS.map((turn): [string, string] => [String(turn), `${turn}×`]),
  )}${field("mp-difficulty", "Bot skill", BOT_DIFFICULTY_OPTIONS)}<p>Choose your team and position.</p></div>
  <div class="mp-teams" id="mp-teams"></div>
  </div>
@@ -84,7 +73,6 @@ export const bindMultiplayer = (callbacks: {
   let connection: "online" | "lan" = "online";
   let hosting = false;
   let assignedName = "";
-  let preferredSwimTurn: SwimTurn | undefined;
   let customName: string | undefined;
   try {
     const legacy = localStorage.getItem("otterpuck-name");
@@ -136,7 +124,10 @@ export const bindMultiplayer = (callbacks: {
         milliseconds < 100 ? "good" : milliseconds < 180 ? "fair" : "poor";
     } else delete summary.dataset.quality;
     getElement("#network-region", HTMLElement).textContent =
-      connection === "lan" ? "Local Network" : (region?.label ?? "Connecting");
+      connection === "lan"
+        ? "Local Network"
+        : (region?.label.replace(/^[\u{1f1e6}-\u{1f1ff}]{2}\s*/u, "") ??
+          "Connecting");
     getElement("#mp-mode-help", HTMLElement).hidden = connection !== "lan";
   };
   const setStatus = (text: string): void => {
@@ -208,15 +199,6 @@ export const bindMultiplayer = (callbacks: {
     size.value = String(room.teamSize);
     size.dispatchEvent(new Event("input"));
     size.disabled = locked;
-    if (!locked && preferredSwimTurn !== undefined) {
-      if (preferredSwimTurn !== room.swimTurn)
-        session?.settings({ swimTurn: preferredSwimTurn });
-      preferredSwimTurn = undefined;
-    }
-    const swimTurn = getElement("#mp-swim-turn", HTMLSelectElement);
-    swimTurn.value = String(room.swimTurn);
-    swimTurn.dispatchEvent(new Event("input"));
-    swimTurn.disabled = locked;
     const difficulty = getElement("#mp-difficulty", HTMLSelectElement);
     difficulty.value = room.difficulty;
     difficulty.dispatchEvent(new Event("input"));
@@ -484,7 +466,6 @@ export const bindMultiplayer = (callbacks: {
   getElement("#mp-create", HTMLButtonElement).addEventListener(
     "click",
     (): void => {
-      preferredSwimTurn = savedSwimTurn();
       open({
         type: "create",
         protocol: PROTOCOL,
@@ -517,13 +498,6 @@ export const bindMultiplayer = (callbacks: {
       (candidate): boolean => String(candidate) === sizeSelect.value,
     );
     if (next) session?.settings({ teamSize: next });
-  });
-  const swimTurnSelect = getElement("#mp-swim-turn", HTMLSelectElement);
-  swimTurnSelect.addEventListener("change", (): void => {
-    const next = swimTurnChoice(swimTurnSelect.value);
-    if (next === undefined) return;
-    saveSwimTurn(next);
-    session?.settings({ swimTurn: next });
   });
   const difficultySelect = getElement("#mp-difficulty", HTMLSelectElement);
   difficultySelect.addEventListener("change", (): void => {

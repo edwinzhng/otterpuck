@@ -333,7 +333,6 @@
   max-width: 280px;
 }
 .mp-player-bar .field:has(#mp-team-size),
-.mp-player-bar .field:has(#mp-swim-turn),
 .mp-player-bar .field:has(#mp-difficulty) {
   flex: 0 0 auto;
   min-width: 110px;
