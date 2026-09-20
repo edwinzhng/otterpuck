@@ -128,4 +128,16 @@ Play with friends supports US East and EU West online rooms, plus device-hosted 
 
 Run the room service locally with `bun run rooms`; configure browser endpoints in `public/multiplayer.json` and server variables using `.env.example`. Railway services, regions and automatic deployment from `main` are defined in `.railway/railway.ts`; frontend build and headers are in `vercel.json`.
 
+### Online rooms on one machine
+
+Start `bun run rooms` beside `bun run dev`, then open `http://localhost:3200` in two windows. A **Local development** region appears in the region list on localhost, so both windows join a real online room served by the local room service — the same code path as US East, not the LAN peer-to-peer one.
+
+A room on the same machine has almost no latency, which hides everything that only shows up over a real link. Give it one:
+
+```sh
+ROOM_LATENCY_MS=80 ROOM_JITTER_MS=15 bun run rooms
+```
+
+Both are one-way milliseconds, applied to traffic in each direction, and delivery stays ordered. They are ignored when `NODE_ENV=production`.
+
 Self-host the whole thing on a Raspberry Pi behind Caddy, reachable by friends over HTTPS, with `docker compose up -d --build`. See [self-hosting on a Raspberry Pi](docs/self-hosting.md).
