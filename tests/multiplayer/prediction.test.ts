@@ -151,16 +151,31 @@ test("carry correction follows the player and a new owner immediately wins", () 
 
 test("input coalesces to the room's message budget without losing time", () => {
   // Preserve each input interval when the frame rate exceeds the message limit.
+  // A window always covers whole room steps, so the room can acknowledge it on
+  // the step it finishes spending it. The part-step remainder waits for the
+  // next window instead of being dropped, so the shortfall stays below a single
+  // window no matter how long the match runs.
   for (const refresh of [55, 60, 120, 144, 240]) {
     const sends = createFrameSends();
     const frame = 1 / refresh;
-    const windows: number[] = [];
-    for (let i = 0; i < refresh; i += 1) {
-      const window = sends.add(frame);
-      if (window !== undefined) windows.push(window);
+    let reported = 0;
+    let elapsed = 0;
+    for (const seconds of [1, 10, 120]) {
+      const windows: number[] = [];
+      for (let i = 0; i < refresh * seconds; i += 1) {
+        const window = sends.add(frame);
+        elapsed += frame;
+        if (window !== undefined) windows.push(window);
+      }
+      reported += windows.reduce((sum, w) => sum + w, 0);
+      // Never report more time than passed, and never fall a window behind.
+      expect(reported).toBeLessThanOrEqual(elapsed + 1e-9);
+      expect(elapsed - reported).toBeLessThanOrEqual(2 * STEP + 1e-9);
+      expect(windows.length).toBeLessThanOrEqual(90 * seconds);
+      for (const window of windows) {
+        expect(window).toBeGreaterThanOrEqual(2 * STEP - 1e-9);
+        expect(window / STEP).toBeCloseTo(Math.round(window / STEP), 6);
+      }
     }
-    expect(windows.length).toBeLessThanOrEqual(90);
-    expect(windows.reduce((sum, w) => sum + w, 0)).toBeCloseTo(1, 6);
-    for (const window of windows) expect(window).toBeGreaterThan(0);
   }
 });
