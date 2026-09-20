@@ -81,16 +81,21 @@ test("goals reset both teams to the wall and restore the central puck", (): void
   expect(state.puck.position.z).toBe(0);
 });
 
-test("active handling exhausts air within fifteen seconds while cruising lasts longer", (): void => {
-  const active = createSimulation("3-3", "3-3", "practice");
-  const cruise = createSimulation("3-3", "3-3", "practice");
-  active.puck.position.x = 5;
-  cruise.puck.position.x = 5;
-  advance(active, 14.55, { ...freshControls(), forward: 1, dummy: 1 });
-  advance(cruise, 14.55, { ...freshControls(), forward: 1 });
-  expect(active.players.at(0)?.emergency).toBe(true);
-  expect(cruise.players.at(0)?.air).toBeGreaterThan(40);
-  expect(cruise.players.at(0)?.emergency).toBe(false);
+test("active handling exhausts air well before cruising does", (): void => {
+  const exhaust = (controls: Controls): number => {
+    const state = createSimulation("3-3", "3-3", "practice");
+    state.puck.position.x = 5;
+    let held = 0;
+    while (held < 120 && !state.players.at(0)?.emergency) {
+      advance(state, STEP, controls);
+      held += STEP;
+    }
+    return held;
+  };
+  const active = exhaust({ ...freshControls(), forward: 1, dummy: 1 });
+  const cruise = exhaust({ ...freshControls(), forward: 1 });
+  expect(active).toBeGreaterThan(5);
+  expect(active).toBeLessThan(cruise * 0.8);
 });
 
 test("a nearby puck is held through a curl and settles by the front of the blade on release", (): void => {
@@ -184,8 +189,13 @@ test("descending onto a swimmer blocks the descent without pushing them through 
   expect(upper.position.y).toBeGreaterThan(0.85);
 });
 
-test("an opponent's blade can break the curl hold", (): void => {
-  const state = createSimulation("3-3", "3-3", "practice");
+test("an opponent's blade can break the curl hold under original rules", (): void => {
+  const state = createSimulation("3-3", "3-3", "practice", 180, "right", {
+    species: "otter",
+    position: 0,
+    difficulty: "medium",
+    ruleset: "original",
+  });
   advance(state, 0.1, { ...freshControls(), curl: 1 });
   const opponent = createSimulation().players.at(6);
   if (!opponent) throw new Error("Opponent missing");

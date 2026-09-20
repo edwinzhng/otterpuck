@@ -164,6 +164,7 @@ const boot = async (): Promise<void> => {
           species: ui.species,
           position: ui.position,
           difficulty: ui.difficulty,
+          ruleset: ui.ruleset,
         },
       );
       input.clear();
@@ -180,6 +181,7 @@ const boot = async (): Promise<void> => {
     const playground = app.state.mode === "playground";
     ui.hud.classList.toggle("playground-hud", playground);
     ui.hud.classList.toggle("practice-hud", app.state.mode !== "match");
+    ui.hud.classList.toggle("original-rules", app.state.ruleset === "original");
     getElement("#lab-readout", HTMLElement).classList.toggle("hidden", true);
     ui.elements.matchLabel.textContent =
       ui.mode !== "match" ? "FREE SWIM" : `${ui.formation} / ${ui.opposition}`;

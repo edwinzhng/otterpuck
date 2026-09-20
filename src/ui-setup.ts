@@ -23,6 +23,10 @@ export const createUI = (): UI => {
     species: "otter",
     position: 0,
     difficulty: "medium",
+    ruleset:
+      localStorage.getItem("otterpuck-ruleset") === "original"
+        ? "original"
+        : "alternative",
     handedness:
       localStorage.getItem("otter-hockey-handedness") === "left"
         ? "left"
@@ -44,6 +48,7 @@ export const createUI = (): UI => {
       awayScore: element("away-score"),
       air: element("air"),
       airLabel: element("air-label"),
+      stamina: element("stamina-fill"),
       event: element("announcement"),
       puckIndicator: element("puck-indicator"),
       role: element("role"),

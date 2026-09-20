@@ -1,4 +1,6 @@
 import { Vector3 } from "three";
+import { RULESETS } from "./rules";
+import { puckProtection } from "./shielding";
 import { bladePoint, puckSeat, smoothMotion } from "./stick";
 import {
   CAMERA_OFFSET,
@@ -148,7 +150,15 @@ export const availablePuckMove = (
   return relative.z > 0.045 ? "push" : "pull";
 };
 
-const bladeChallengesPuck = (state: Simulation, player: Player): boolean => {
+const CHALLENGE_REACH = PUCK_RADIUS + 0.04;
+const MOST_SHIELDED = 0.42;
+const SEALED = 0.88;
+
+const bladeChallengesPuck = (
+  state: Simulation,
+  player: Player,
+  reach: number,
+): boolean => {
   const puck = state.puck.position;
   if (
     Math.abs(player.stick.y - puck.y) > 0.08 ||
@@ -166,10 +176,22 @@ const bladeChallengesPuck = (state: Simulation, player: Player): boolean => {
       1,
     );
     return (
-      a.addScaledVector(edge, fraction).distanceToSquared(puck) <
-      (PUCK_RADIUS + 0.04) ** 2
+      a.addScaledVector(edge, fraction).distanceToSquared(puck) < reach ** 2
     );
   });
+};
+
+// Cover makes the challenger lay the blade ever more exactly on the puck, and
+// past SEALED there is no placement that reaches it at all: the carrier's body
+// and blade are simply in the way.
+const challengeReach = (
+  state: Simulation,
+  player: Player,
+  other: Player,
+): number => {
+  const covered =
+    puckProtection(state, player, other) * RULESETS[state.ruleset].shielding;
+  return covered > SEALED ? 0 : CHALLENGE_REACH * (1 - covered * MOST_SHIELDED);
 };
 
 export const isPuckContested = (state: Simulation, player: Player): boolean =>
@@ -180,7 +202,7 @@ export const isPuckContested = (state: Simulation, player: Player): boolean =>
       other.mode !== "ascending" &&
       other.mode !== "recovering" &&
       other.position.y < 0.85 &&
-      bladeChallengesPuck(state, other),
+      bladeChallengesPuck(state, other, challengeReach(state, player, other)),
   );
 
 export const frontPuckPosition = (player: Player): Vector3 =>
