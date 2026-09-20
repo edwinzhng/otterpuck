@@ -23,6 +23,9 @@ body:not(.touch-mode) .touch-help {
 .touch-mode {
   --hud-top: max(10px, env(safe-area-inset-top));
   --hud-action-size: 48px;
+  --touch-status-width: 132px;
+  --touch-score-height: 48px;
+  --touch-panel-gap: 10px;
   overscroll-behavior: none;
 }
 .touch-playing {
@@ -210,8 +213,16 @@ body:not(.touch-mode) .touch-help {
   min-height: 48px;
 }
 .touch-mode .scoreboard {
-  padding: 7px 13px;
-  gap: 12px;
+  top: 0;
+  right: 0;
+  left: auto;
+  transform: none;
+  box-sizing: border-box;
+  width: var(--touch-status-width);
+  min-height: var(--touch-score-height);
+  justify-content: center;
+  padding: 7px 10px;
+  gap: 8px;
 }
 .touch-mode .score-team span {
   display: none;
@@ -287,6 +298,11 @@ body:not(.touch-mode) .touch-help {
 .touch-mode .announcement {
   font-size: clamp(24px, 5vw, 44px);
   top: 23%;
+}
+.touch-mode .announcement.countdown {
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: clamp(82px, 20vw, 140px);
 }
 .touch-mode .menu {
   padding: max(12px, env(safe-area-inset-top))
@@ -378,9 +394,18 @@ body:not(.touch-mode) .touch-help {
   border-radius: 14px;
 }
 .touch-mode .vitals {
-  left: auto;
+  top: calc(
+    var(--hud-top) +
+    var(--touch-score-height) +
+    var(--touch-panel-gap)
+  );
   right: max(16px, env(safe-area-inset-right));
-  width: 100px;
+  left: auto;
+  width: var(--touch-status-width);
+  overflow: hidden;
+}
+.touch-mode .vital-label {
+  gap: 6px;
 }
 .touch-mode .air-value {
   display: flex;
@@ -396,8 +421,9 @@ body:not(.touch-mode) .touch-help {
   font-size: 11px;
 }
 .touch-mode .map-wrap {
-  top: max(98px, calc(env(safe-area-inset-top) + 86px));
-  right: max(16px, env(safe-area-inset-right));
+  top: calc(var(--hud-top) + var(--hud-action-size) + 12px);
+  right: auto;
+  left: max(16px, env(safe-area-inset-left));
 }
 .fullscreen-help {
   max-width: min(340px, 85vw);
@@ -493,15 +519,12 @@ body:not(.touch-mode) .touch-help {
     gap: 12px;
   }
   .touch-mode .scoreboard {
-    position: absolute;
-    top: 66px;
-    left: 50%;
-    transform: translateX(-50%);
-    gap: 12px;
-    padding: 6px 12px;
+    top: 0;
+    right: 0;
+    left: auto;
+    transform: none;
   }
   .touch-mode .map-wrap {
-    top: max(128px, calc(env(safe-area-inset-top) + 116px));
     width: 62px;
   }
   .touch-mode .handling {
@@ -509,15 +532,22 @@ body:not(.touch-mode) .touch-help {
     left: 50%;
     max-width: 210px;
   }
-  .touch-mode .announcement {
-    top: 28%;
-  }
   .touch-mode .lobby-screen {
     top: max(88px, calc(env(safe-area-inset-top) + 76px));
   }
+  .touch-mode .setup-screen {
+    min-height: 0;
+    overflow: hidden;
+  }
   .touch-mode .setup-panel {
-    flex: 0 0 auto;
-    max-height: none;
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: 100%;
+    padding-bottom: max(20px, calc(env(safe-area-inset-bottom) + 12px));
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
   }
   .touch-mode .selected-map {
     flex: 0 0 140px;

@@ -2,7 +2,7 @@ import { join } from "node:path";
 import { blenderExecutable } from "./blender";
 
 const directory = import.meta.dir;
-const code = String.raw`
+const code = `
 import bpy, bmesh, math, json
 from mathutils import Vector, Quaternion
 rig=bpy.data.objects['Otter']
