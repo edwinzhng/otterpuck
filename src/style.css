@@ -22,6 +22,31 @@ body {
   overflow: hidden;
   overscroll-behavior: none;
 }
+body::after {
+  position: fixed;
+  z-index: 10000;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+  background: #000;
+  opacity: 0;
+}
+body.game-transition::after {
+  pointer-events: auto;
+  animation: game-transition 1.5s ease-in-out both;
+}
+@keyframes game-transition {
+  0% {
+    opacity: 0;
+  }
+  35%,
+  55% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
 button,
 select,
 input {

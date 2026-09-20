@@ -7,7 +7,10 @@ export type PoolAudio = {
   setEnabled: (enabled: boolean) => void;
   setMusicEnabled: (enabled: boolean) => void;
   setVolume: (kind: "music" | "effects", volume: number) => void;
+  setMenu: () => void;
+  startGameplayMusic: () => void;
   setPlaying: (playing: boolean) => void;
+  click: () => void;
   play: (cue: AudioCue) => void;
   dispose: () => void;
 };
@@ -29,14 +32,35 @@ export const createAudio = (): PoolAudio => {
   limiter.connect(context.destination);
   const musicGain = context.createGain();
   musicGain.gain.value = 0.21 * 0.56;
-  musicGain.connect(context.destination);
-  const musicState: {
+  musicGain.connect(limiter);
+  type MusicTrack = {
     buffer?: AudioBuffer;
     source?: AudioBufferSourceNode;
     offset: number;
     started: number;
     loading: boolean;
-  } = { offset: 0, started: 0, loading: false };
+    gain: GainNode;
+    url: string;
+    volume: number;
+    fadeTimer?: number;
+  };
+  const track = (url: string, volume: number): MusicTrack => {
+    const gain = context.createGain();
+    gain.gain.value = 0;
+    gain.connect(musicGain);
+    return { offset: 0, started: 0, loading: false, gain, url, volume };
+  };
+  const musicTracks = {
+    menu: track("/audio/menu.m4a", 1.76),
+    menuAlt: track("/audio/menu-2.m4a", 1.76),
+    game: track("/audio/electric-stream.m4a", 1),
+    gameAlt: track("/audio/electric-stream-2.m4a", 1),
+  };
+  type MusicName = keyof typeof musicTracks;
+  const menuTracks = ["menu", "menuAlt"] as const;
+  const gameTracks = ["game", "gameAlt"] as const;
+  let menuTrack = Math.floor(Math.random() * menuTracks.length);
+  let gameTrack = 0;
   const buffers = createEffectBuffers(context);
   const loading = new AbortController();
   const voices = new Set<AudioBufferSourceNode>();
@@ -48,7 +72,11 @@ export const createAudio = (): PoolAudio => {
     variation: 0,
     musicVolume: 0.5,
     musicDucked: false,
+    musicScene: "off" as "off" | "menu" | "game",
+    gameMusicTimer: undefined as number | undefined,
   };
+  const selectedMusic = (): MusicName =>
+    sound.musicScene === "menu" ? menuTracks[menuTrack] : gameTracks[gameTrack];
   const musicLevel = (ducked = sound.musicDucked): number =>
     sound.musicVolume * 0.42 * 0.56 * (ducked ? 0.6 : 1);
   const setMusicDuck = (ducked: boolean, delay = 0): void => {
@@ -67,8 +95,12 @@ export const createAudio = (): PoolAudio => {
     musicGain.gain.setValueAtTime(musicLevel(true), at);
     musicGain.gain.linearRampToValueAtTime(musicLevel(false), at + 1);
   };
-  for (const kind of ["dive", "surface"] as const) {
-    fetch(assetUrl(`/audio/${kind}.wav`), { signal: loading.signal })
+  for (const [kind, path] of [
+    ["dive", "/audio/dive.wav"],
+    ["surface", "/audio/surface.wav"],
+    ["click-0", "/audio/menu-click.mp3"],
+  ] as const) {
+    fetch(assetUrl(path), { signal: loading.signal })
       .then((response): Promise<ArrayBuffer> => {
         if (!response.ok) throw new Error(`Audio ${kind}: ${response.status}`);
         return response.arrayBuffer();
@@ -79,61 +111,115 @@ export const createAudio = (): PoolAudio => {
       })
       .catch((error: Error): void => {
         if (!sound.disposed)
-          console.warn("Splash could not load", error.message);
+          console.warn("Sound effect could not load", error.message);
       });
   }
-  const stopMusic = (): void => {
-    const source = musicState.source;
+  const stopTrack = (music: MusicTrack): void => {
+    if (music.fadeTimer !== undefined) window.clearTimeout(music.fadeTimer);
+    music.fadeTimer = undefined;
+    const source = music.source;
     if (!source) return;
-    musicState.offset =
-      (musicState.offset + context.currentTime - musicState.started) %
-      (musicState.buffer?.duration ?? 1);
-    musicState.source = undefined;
+    music.offset =
+      (music.offset + context.currentTime - music.started) %
+      (music.buffer?.duration ?? 1);
+    music.source = undefined;
     source.stop();
     source.disconnect();
   };
-  const syncPlayback = (): void => {
+  const stopMusic = (): void => {
+    for (const music of Object.values(musicTracks)) stopTrack(music);
+  };
+  const loadTrack = (music: MusicTrack): void => {
+    if (music.buffer || music.loading) return;
+    music.loading = true;
+    void fetch(assetUrl(music.url), { signal: loading.signal })
+      .then((response): Promise<ArrayBuffer> => {
+        if (!response.ok) throw new Error(`Music: ${response.status}`);
+        return response.arrayBuffer();
+      })
+      .then((data): Promise<AudioBuffer> => context.decodeAudioData(data))
+      .then((buffer): void => {
+        if (sound.disposed) return;
+        music.buffer = buffer;
+        music.loading = false;
+        syncPlayback();
+      })
+      .catch((error: Error): void => {
+        music.loading = false;
+        if (!sound.disposed)
+          console.warn("Music could not load", error.message);
+      });
+  };
+  const startTrack = (name: MusicName, music: MusicTrack): void => {
+    if (music.source || !music.buffer) return;
+    const source = context.createBufferSource();
+    source.buffer = music.buffer;
+    source.loop = false;
+    source.connect(music.gain);
+    music.started = context.currentTime;
+    music.source = source;
+    source.onended = (): void => {
+      source.disconnect();
+      if (music.source !== source) return;
+      music.source = undefined;
+      music.offset = 0;
+      if (sound.musicScene === "menu" && name === menuTracks[menuTrack]) {
+        menuTrack = (menuTrack + 1) % menuTracks.length;
+        syncPlayback();
+      } else if (
+        sound.musicScene === "game" &&
+        name === gameTracks[gameTrack]
+      ) {
+        gameTrack = (gameTrack + 1) % gameTracks.length;
+        syncPlayback();
+      }
+    };
+    source.start(0, music.offset);
+  };
+  const syncPlayback = (fadeSeconds = 1): void => {
     if (sound.disposed) return;
     const wanted =
-      sound.enabled && sound.music && sound.playing && !document.hidden;
+      sound.enabled &&
+      sound.music &&
+      sound.musicScene !== "off" &&
+      !document.hidden;
     if (!wanted) {
       stopMusic();
       return;
     }
-    if (musicState.source) return;
-    if (!musicState.buffer) {
-      if (musicState.loading) return;
-      musicState.loading = true;
-      void fetch(assetUrl("/audio/electric-stream.m4a"), {
-        signal: loading.signal,
-      })
-        .then((response): Promise<ArrayBuffer> => {
-          if (!response.ok) throw new Error(`Music: ${response.status}`);
-          return response.arrayBuffer();
-        })
-        .then((data): Promise<AudioBuffer> => context.decodeAudioData(data))
-        .then((buffer): void => {
-          if (sound.disposed) return;
-          musicState.buffer = buffer;
-          musicState.loading = false;
-          syncPlayback();
-        })
-        .catch((error: Error): void => {
-          musicState.loading = false;
-          if (!sound.disposed)
-            console.warn("Music could not load", error.message);
-        });
-      return;
+    const now = context.currentTime;
+    const selected = selectedMusic();
+    for (const [name, music] of Object.entries(musicTracks)) {
+      loadTrack(music);
+      const active = name === selected;
+      if (active) {
+        if (music.fadeTimer !== undefined) window.clearTimeout(music.fadeTimer);
+        music.fadeTimer = undefined;
+        startTrack(name as MusicName, music);
+      }
+      music.gain.gain.cancelScheduledValues(now);
+      music.gain.gain.setValueAtTime(music.gain.gain.value, now);
+      music.gain.gain.linearRampToValueAtTime(
+        active ? music.volume : 0,
+        now + fadeSeconds,
+      );
+      if (!active && music.source && music.fadeTimer === undefined)
+        music.fadeTimer = window.setTimeout((): void => {
+          music.fadeTimer = undefined;
+          if (selectedMusic() !== name) stopTrack(music);
+        }, 1100);
     }
-    const source = context.createBufferSource();
-    source.buffer = musicState.buffer;
-    source.loop = true;
-    source.playbackRate.value = 1;
-    source.connect(musicGain);
-    musicState.started = context.currentTime;
-    musicState.source = source;
-    source.start(0, musicState.offset);
   };
+  const beginGameplayMusic = (): void => {
+    if (!sound.playing) return;
+    const now = context.currentTime;
+    sound.musicDucked = false;
+    musicGain.gain.cancelScheduledValues(now);
+    musicGain.gain.setValueAtTime(musicLevel(false), now);
+    sound.musicScene = "game";
+    syncPlayback(0);
+  };
+  loadTrack(musicTracks[menuTracks[menuTrack]]);
   document.addEventListener(
     "visibilitychange",
     (): void => {
@@ -141,10 +227,10 @@ export const createAudio = (): PoolAudio => {
         stopMusic();
         for (const source of voices) source.stop();
         void context.suspend();
-      } else if (sound.playing && sound.enabled) {
+      } else if (sound.musicScene !== "off" && sound.enabled) {
         void context
           .resume()
-          .then(syncPlayback)
+          .then((): void => syncPlayback())
           .catch((error: Error): void =>
             console.warn("Audio could not resume", error.message),
           );
@@ -175,13 +261,67 @@ export const createAudio = (): PoolAudio => {
       } else
         effects.gain.setTargetAtTime(level * 0.85, context.currentTime, 0.04);
     },
+    setMenu: (): void => {
+      if (sound.gameMusicTimer !== undefined)
+        window.clearTimeout(sound.gameMusicTimer);
+      sound.gameMusicTimer = undefined;
+      sound.playing = false;
+      sound.musicScene = "menu";
+      sound.musicDucked = false;
+      syncPlayback();
+    },
+    startGameplayMusic: (): void => {
+      beginGameplayMusic();
+    },
     setPlaying: (playing): void => {
       sound.playing = playing;
-      if (!playing) {
+      sound.musicScene = "off";
+      if (playing) gameTrack = 0;
+      if (playing) {
+        const now = context.currentTime;
+        for (const music of Object.values(musicTracks)) {
+          music.gain.gain.cancelScheduledValues(now);
+          music.gain.gain.setValueAtTime(music.gain.gain.value, now);
+          music.gain.gain.linearRampToValueAtTime(0, now + 0.7);
+          if (music.source && music.fadeTimer === undefined)
+            music.fadeTimer = window.setTimeout((): void => {
+              music.fadeTimer = undefined;
+              if (sound.musicScene === "off") stopTrack(music);
+            }, 800);
+        }
+      } else {
+        if (sound.gameMusicTimer !== undefined)
+          window.clearTimeout(sound.gameMusicTimer);
+        sound.gameMusicTimer = undefined;
         for (const source of voices) source.stop();
         setMusicDuck(false);
+        stopMusic();
       }
-      syncPlayback();
+    },
+    click: (): void => {
+      if (
+        document.hidden ||
+        !sound.enabled ||
+        sound.disposed ||
+        context.state !== "running" ||
+        voices.size >= 10
+      )
+        return;
+      const buffer = buffers.get("click-0");
+      if (!buffer) return;
+      const source = context.createBufferSource();
+      const gain = context.createGain();
+      source.buffer = buffer;
+      gain.gain.value = 8;
+      source.connect(gain);
+      gain.connect(effects);
+      voices.add(source);
+      source.onended = (): void => {
+        voices.delete(source);
+        source.disconnect();
+        gain.disconnect();
+      };
+      source.start();
     },
     play: (cue): void => {
       if (
@@ -193,9 +333,12 @@ export const createAudio = (): PoolAudio => {
         voices.size >= 10
       )
         return;
-      if (cue.kind === "countdown") setMusicDuck(true);
-      else if (cue.kind === "go") setMusicDuck(false, 0.68);
-      else if (cue.kind === "goal") {
+      if (cue.kind === "countdown") {
+        if (sound.musicScene === "off") beginGameplayMusic();
+        setMusicDuck(true);
+      } else if (cue.kind === "go") {
+        setMusicDuck(false, 0.68);
+      } else if (cue.kind === "goal") {
         setMusicDuck(true);
         setMusicDuck(false, 2);
       }
@@ -248,9 +391,15 @@ export const createAudio = (): PoolAudio => {
     },
     dispose: (): void => {
       sound.disposed = true;
+      if (sound.gameMusicTimer !== undefined)
+        window.clearTimeout(sound.gameMusicTimer);
       loading.abort();
       stopMusic();
-      musicState.buffer = undefined;
+      for (const music of Object.values(musicTracks)) {
+        if (music.fadeTimer !== undefined) window.clearTimeout(music.fadeTimer);
+        music.buffer = undefined;
+        music.gain.disconnect();
+      }
       musicGain.disconnect();
       for (const source of voices) source.stop();
       voices.clear();

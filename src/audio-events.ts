@@ -1,7 +1,15 @@
 import { clamp, type Faceoff, type Simulation, SURFACE_HEIGHT } from "./types";
 
 export type AudioCue = {
-  kind: "tap" | "shot" | "dive" | "surface" | "countdown" | "go" | "goal";
+  kind:
+    | "click"
+    | "tap"
+    | "shot"
+    | "dive"
+    | "surface"
+    | "countdown"
+    | "go"
+    | "goal";
   strength: number;
   gain: number;
   pan: number;

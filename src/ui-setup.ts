@@ -82,6 +82,20 @@ export const createUI = (): UI => {
     },
   );
   bindSelectFields();
+  document.addEventListener("click", (event: MouseEvent): void => {
+    if (!(event.target instanceof HTMLDialogElement) || !event.target.open)
+      return;
+    const dialog = event.target;
+    const bounds = dialog.getBoundingClientRect();
+    const inside =
+      event.clientX >= bounds.left &&
+      event.clientX <= bounds.right &&
+      event.clientY >= bounds.top &&
+      event.clientY <= bounds.bottom;
+    if (inside) return;
+    const cancel = new Event("cancel", { cancelable: true });
+    if (dialog.dispatchEvent(cancel)) dialog.close();
+  });
   for (const name of ["controls", "settings"]) {
     getElement(`#show-${name}`, HTMLButtonElement).addEventListener(
       "click",

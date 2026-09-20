@@ -111,7 +111,14 @@ test("contacts are spatially attenuated and throttled instead of firing at the s
 });
 
 test("synthesized effects have a bounded transient and a quiet tail", (): void => {
-  for (const kind of ["tap", "shot", "countdown", "go", "goal"] as const) {
+  for (const kind of [
+    "click",
+    "tap",
+    "shot",
+    "countdown",
+    "go",
+    "goal",
+  ] as const) {
     const samples = effectSamples(kind, 1, 24000);
     expect(samples.every(Number.isFinite)).toBe(true);
     expect(

@@ -129,6 +129,56 @@ const boot = async (): Promise<void> => {
     },
   );
   const applyVolumes = bindVolumeSettings(() => app.audio);
+  const prepareAudio = (): PoolAudio => {
+    app.audio ??= createAudio();
+    app.audio.setMusicEnabled(ui.music);
+    applyVolumes();
+    app.audio.setEnabled(ui.sound);
+    return app.audio;
+  };
+  prepareAudio();
+  const startMenuMusic = (): void => {
+    if (app.phase !== "menu" || !ui.sound) return;
+    const audio = prepareAudio();
+    audio.setMenu();
+    audio.context.resume().catch(console.error);
+  };
+  document.addEventListener("pointerdown", startMenuMusic, { once: true });
+  document.addEventListener("keydown", startMenuMusic, { once: true });
+  const menuSoundControl = (
+    target: EventTarget | null,
+  ): Element | undefined => {
+    if (!(target instanceof Element)) return;
+    const control = target.closest("button, [role='option']");
+    if (
+      !control ||
+      control.matches(":disabled, .touch-button, .select-field-trigger") ||
+      control.closest("[hidden]")
+    )
+      return;
+    return control;
+  };
+  document.addEventListener(
+    "click",
+    (event: MouseEvent): void => {
+      const control = menuSoundControl(event.target);
+      if (!control) return;
+      app.audio?.click();
+    },
+    { capture: true },
+  );
+  const coverGameStart = async (): Promise<void> => {
+    document.body.classList.remove("game-transition");
+    void document.body.offsetWidth;
+    document.body.classList.add("game-transition");
+    const finish = (): void =>
+      document.body.classList.remove("game-transition");
+    document.body.addEventListener("animationend", finish, { once: true });
+    window.setTimeout(finish, 1600);
+    await new Promise<void>((resolve): void => {
+      window.setTimeout(resolve, 525);
+    });
+  };
   getElement("#pause-settings", HTMLButtonElement).addEventListener(
     "click",
     (): void => getElement("#settings-dialog", HTMLDialogElement).showModal(),
@@ -151,13 +201,11 @@ const boot = async (): Promise<void> => {
       return;
     ui.status.textContent = "";
     if (ui.sound) {
-      if (!app.audio) app.audio = createAudio();
-      app.audio.context.resume().catch(console.error);
-      app.audio.setEnabled(true);
-      app.audio.setMusicEnabled(ui.music);
-      applyVolumes();
-      app.audio.setPlaying(true);
+      const audio = prepareAudio();
+      audio.context.resume().catch(console.error);
+      audio.setPlaying(true);
     }
+    await coverGameStart();
     await requestMouseCapture();
     input.setActive(true);
     if (fresh) {
@@ -183,6 +231,7 @@ const boot = async (): Promise<void> => {
     }
     input.touch.update(app.state);
     app.phase = "playing";
+    if (!app.state.faceoff) app.audio?.startGameplayMusic();
     meter.reset();
     ui.menu.classList.add("hidden");
     ui.pause.classList.add("hidden");
@@ -226,9 +275,10 @@ const boot = async (): Promise<void> => {
     state: () => app.state,
     touch: () => input.touch.enabled,
     suspend: (): void => {
+      const openedFromMenu = app.phase === "menu";
       app.phase = "learning";
       input.setActive(false);
-      app.audio?.setPlaying(false);
+      if (!openedFromMenu) app.audio?.setPlaying(false);
       if (document.pointerLockElement) document.exitPointerLock();
     },
     resume: (): void => enterWithFeedback(false),
@@ -284,8 +334,10 @@ const boot = async (): Promise<void> => {
       ui.hud.classList.add("hidden");
       ui.menu.classList.remove("hidden");
       ui.menu.dispatchEvent(new Event("lobby-home"));
-      app.audio?.setEnabled(false);
-      app.audio?.setPlaying(false);
+      if (app.audio) {
+        app.audio.setEnabled(ui.sound);
+        app.audio.setMenu();
+      }
     },
   );
   getElement("#sound", HTMLButtonElement).addEventListener(
@@ -295,13 +347,12 @@ const boot = async (): Promise<void> => {
       const button = getElement("#sound", HTMLButtonElement);
       button.textContent = ui.sound ? "Sound on" : "Sound off";
       button.setAttribute("aria-pressed", String(ui.sound));
-      if (!app.audio) app.audio = createAudio();
-      app.audio.setMusicEnabled(ui.music);
-      applyVolumes();
-      app.audio.setPlaying(app.phase === "playing");
-      app.audio.context
+      const audio = prepareAudio();
+      if (app.phase === "menu") audio.setMenu();
+      else audio.setPlaying(app.phase === "playing");
+      audio.context
         .resume()
-        .then((): void => app.audio?.setEnabled(ui.sound))
+        .then((): void => audio.setEnabled(ui.sound))
         .catch(console.error);
     },
   );
@@ -313,6 +364,7 @@ const boot = async (): Promise<void> => {
       button.textContent = ui.music ? "Music on" : "Music off";
       button.setAttribute("aria-pressed", String(ui.music));
       app.audio?.setMusicEnabled(ui.music);
+      if (ui.music && app.phase === "menu") app.audio?.setMenu();
     },
   );
   const resize = (): void => resizeWorld(world);

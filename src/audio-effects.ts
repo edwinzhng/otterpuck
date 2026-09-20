@@ -45,21 +45,42 @@ export const effectSamples = (
   sampleRate: number,
 ): Float32Array => {
   const duration =
-    kind === "tap"
-      ? 0.11
-      : kind === "shot"
-        ? 0.3
-        : kind === "countdown"
-          ? 0.48
-          : kind === "go"
-            ? 0.82
-            : 2;
+    kind === "click"
+      ? 0.045
+      : kind === "tap"
+        ? 0.11
+        : kind === "shot"
+          ? 0.3
+          : kind === "countdown"
+            ? 0.48
+            : kind === "go"
+              ? 0.82
+              : 2;
   const random = { value: 1987 + variation * 7919, low: 0 };
   const pitch = 0.94 + variation * 0.04;
   return Float32Array.from(
     { length: Math.ceil(duration * sampleRate) },
     (_, index): number => {
       const t = index / sampleRate;
+      random.value = (Math.imul(random.value, 1664525) + 1013904223) >>> 0;
+      const noise = random.value / 2147483648 - 1;
+      random.low += (noise - random.low) * 0.18;
+      if (kind === "click") {
+        const attack = Math.min(1, t / 0.0004);
+        const tick =
+          (Math.sin(t * Math.PI * 2 * 1150) * 0.055 +
+            Math.sin(t * Math.PI * 2 * 2300) * 0.024 +
+            Math.sin(t * Math.PI * 2 * 420) * 0.025) *
+          Math.exp(-t * 125);
+        const snap = (noise - random.low) * Math.exp(-t * 185) * 0.13;
+        const catchTick =
+          t < 0.014
+            ? 0
+            : Math.sin((t - 0.014) * Math.PI * 2 * 1700) *
+              Math.exp(-(t - 0.014) * 210) *
+              0.025;
+        return (tick + snap + catchTick) * attack;
+      }
       if (kind === "countdown")
         return (
           arcadeTone(t, 440, duration) + arcadeTone(t, 220, duration) * 0.48
@@ -68,9 +89,6 @@ export const effectSamples = (
         return (
           arcadeTone(t, 880, duration) + arcadeTone(t, 440, duration) * 0.62
         );
-      random.value = (Math.imul(random.value, 1664525) + 1013904223) >>> 0;
-      const noise = random.value / 2147483648 - 1;
-      random.low += (noise - random.low) * 0.18;
       const attack = Math.min(1, t / 0.002);
       const click = (noise - random.low) * Math.exp(-t * 105) * 0.54;
       const body =
@@ -106,7 +124,14 @@ export const createEffectBuffers = (
   context: BaseAudioContext,
 ): Map<string, AudioBuffer> => {
   const buffers = new Map<string, AudioBuffer>();
-  for (const kind of ["tap", "shot", "countdown", "go", "goal"] as const)
+  for (const kind of [
+    "click",
+    "tap",
+    "shot",
+    "countdown",
+    "go",
+    "goal",
+  ] as const)
     for (const variation of [0, 1, 2]) {
       const samples = effectSamples(kind, variation, context.sampleRate);
       const buffer = context.createBuffer(

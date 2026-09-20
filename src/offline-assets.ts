@@ -22,5 +22,9 @@ export const runtimeContent = [
   "/art/learn/shot-toon-v1.webp",
   "/audio/dive.wav",
   "/audio/surface.wav",
+  "/audio/menu-click.mp3",
+  "/audio/menu.m4a",
+  "/audio/menu-2.m4a",
   "/audio/electric-stream.m4a",
+  "/audio/electric-stream-2.m4a",
 ] as const;
