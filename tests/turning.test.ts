@@ -177,7 +177,7 @@ test("a turn without the puck keeps full mouse authority under the cap", (): voi
   const origin = player.yaw;
   drive(state, 60, swimming(), GENTLE);
   expect(player.curl).toBe(0);
-  expect(player.yaw - origin).toBeCloseTo(60 * GENTLE * 1.3 * 1.45, 6);
+  expect(player.yaw - origin).toBeCloseTo(60 * GENTLE * 1.3 * 2.05, 6);
   expect(horizontalSpeed(player)).toBeGreaterThan(1);
 });
 
@@ -221,20 +221,18 @@ test("the auto curl never turns faster than a Q/E curl", (): void => {
   }
 });
 
-test("normal swimming and curling share the default turn cap", (): void => {
-  const manual = setup(true);
-  const keyed = peakTurnRate(manual.state, manual.player, 240, {
-    ...freshControls(),
-    curl: 1,
-  });
+test("free swimming turns faster than a side key under a hard pointer turn", (): void => {
+  const keyed = setup(false);
+  const keyedOrigin = keyed.player.yaw;
+  drive(keyed.state, 120, { ...swimming(), lateral: 1 });
+  const keyedTurn = Math.abs(keyed.player.yaw - keyedOrigin);
 
   for (const flick of [FASTER, FASTER * 20]) {
     const { state, player } = setup(false);
     const origin = player.yaw;
     drive(state, 120, swimming(), flick);
-    const swung = (player.yaw - origin) / (120 * STEP);
     expect(player.curl).toBe(0);
-    expect(swung / keyed).toBeCloseTo(1, 6);
+    expect(Math.abs(player.yaw - origin)).toBeGreaterThan(keyedTurn);
     expect(horizontalSpeed(player)).toBeGreaterThan(1);
   }
 });
@@ -257,7 +255,7 @@ test("a lower room swim turn setting caps the free swim yaw change tighter than 
   expect(tightSwing).toBeLessThan(looseSwing);
 });
 
-test("normal swimming uses the same turn cap while carrying", (): void => {
+test("free swimming turns faster than swimming with the puck", (): void => {
   const carrying = setup(true);
   const carryingOrigin = carrying.player.yaw;
   drive(carrying.state, 240, swimming(), HARD * 4);
@@ -270,7 +268,7 @@ test("normal swimming uses the same turn cap while carrying", (): void => {
   const curlOrigin = curling.player.yaw;
   drive(curling.state, 240, { ...freshControls(), curl: 1 });
   const curlTurn = Math.abs(curling.player.yaw - curlOrigin);
-  expect(carryingTurn).toBeCloseTo(freeTurn, 6);
+  expect(freeTurn).toBeGreaterThan(carryingTurn);
   expect(carryingTurn / curlTurn).toBeCloseTo(1, 1);
 });
 

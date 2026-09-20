@@ -47,6 +47,25 @@ export const createAudio = (): PoolAudio => {
     disposed: false,
     variation: 0,
     musicVolume: 0.5,
+    musicDucked: false,
+  };
+  const musicLevel = (ducked = sound.musicDucked): number =>
+    sound.musicVolume * 0.42 * 0.56 * (ducked ? 0.6 : 1);
+  const setMusicDuck = (ducked: boolean, delay = 0): void => {
+    if (ducked && sound.musicDucked) return;
+    const now = context.currentTime;
+    const current = musicGain.gain.value;
+    sound.musicDucked = ducked;
+    if (ducked) {
+      musicGain.gain.cancelScheduledValues(now);
+      musicGain.gain.setValueAtTime(current, now);
+      musicGain.gain.linearRampToValueAtTime(musicLevel(true), now + 1);
+      return;
+    }
+    const at = now + delay;
+    musicGain.gain.cancelScheduledValues(at);
+    musicGain.gain.setValueAtTime(musicLevel(true), at);
+    musicGain.gain.linearRampToValueAtTime(musicLevel(false), at + 1);
   };
   for (const kind of ["dive", "surface"] as const) {
     fetch(assetUrl(`/audio/${kind}.wav`), { signal: loading.signal })
@@ -152,17 +171,16 @@ export const createAudio = (): PoolAudio => {
       const level = Math.max(0, Math.min(1, volume));
       if (kind === "music") {
         sound.musicVolume = level;
-        musicGain.gain.setTargetAtTime(
-          level * 0.42 * 0.56,
-          context.currentTime,
-          0.04,
-        );
+        musicGain.gain.setTargetAtTime(musicLevel(), context.currentTime, 0.04);
       } else
         effects.gain.setTargetAtTime(level * 0.85, context.currentTime, 0.04);
     },
     setPlaying: (playing): void => {
       sound.playing = playing;
-      if (!playing) for (const source of voices) source.stop();
+      if (!playing) {
+        for (const source of voices) source.stop();
+        setMusicDuck(false);
+      }
       syncPlayback();
     },
     play: (cue): void => {
@@ -175,10 +193,22 @@ export const createAudio = (): PoolAudio => {
         voices.size >= 10
       )
         return;
+      if (cue.kind === "countdown") setMusicDuck(true);
+      else if (cue.kind === "go") setMusicDuck(false, 0.68);
+      else if (cue.kind === "goal") {
+        setMusicDuck(true);
+        setMusicDuck(false, 2);
+      }
       const buffer = buffers.get(
         cue.kind === "dive" || cue.kind === "surface"
           ? cue.kind
-          : `${cue.kind}-${sound.variation++ % 3}`,
+          : `${cue.kind}-${
+              cue.kind === "goal"
+                ? 1
+                : cue.kind === "countdown"
+                  ? 0
+                  : sound.variation++ % 3
+            }`,
       );
       if (!buffer) return;
       const source = context.createBufferSource();
@@ -194,7 +224,15 @@ export const createAudio = (): PoolAudio => {
       gain.gain.value =
         cue.gain *
         (0.45 + cue.strength * 0.55) *
-        (splash ? 0.85 : cue.kind === "shot" ? 0.9 : 0.65);
+        (splash
+          ? 0.85
+          : cue.kind === "shot"
+            ? 0.9
+            : cue.kind === "countdown" || cue.kind === "go"
+              ? 0.96
+              : cue.kind === "goal"
+                ? 0.94
+                : 0.65);
       pan.pan.value = cue.pan;
       source.connect(gain);
       gain.connect(pan);

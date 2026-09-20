@@ -52,7 +52,7 @@ test("a goal holds one stable pose and resets every interpolation transform at t
 
 test("faceoffs hold all otters horizontally until they swim off the wall", (): void => {
   const state = createSimulation();
-  for (const unused of Array.from({ length: 355 })) {
+  for (const unused of Array.from({ length: 415 })) {
     void unused;
     stepSimulation(state, { ...freshControls(), dive: true, forward: 1 }, STEP);
     for (const player of state.players) {

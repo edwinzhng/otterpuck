@@ -47,7 +47,7 @@ test("every swimmer waits at their own wall until the strike signal", (): void =
     expect(player.wallReady).toBe(true);
     expect(player.air).toBe(100);
   }
-  advance(state, 0.6);
+  advance(state, 1.1);
   expect(state.faceoff?.phase).toBe("strike");
   expect(state.players.every((player): boolean => !player.wallReady)).toBe(
     true,

@@ -94,6 +94,8 @@ import {
 } from "./types";
 
 export const TEAM_STRIDE = 6;
+const FACEOFF_COUNTDOWN = 3;
+const FACEOFF_SETTLE = 0.5;
 
 const playerTeam = (id: number): Team => (id < TEAM_STRIDE ? 0 : 1);
 
@@ -267,15 +269,18 @@ export const createSimulation = (
     time: 0,
     decisionTime: 0,
     restartTime: 0,
-    faceoff: mode === "match" ? { phase: "ready", remaining: 3 } : undefined,
+    faceoff:
+      mode === "match"
+        ? { phase: "ready", remaining: FACEOFF_COUNTDOWN + FACEOFF_SETTLE }
+        : undefined,
     finished: false,
     mode,
     backLeads: [5, 11],
     puckChasers: [undefined, undefined],
     airRotations: [[], []],
     strongSides: [1, -1],
-    event: mode === "match" ? "3" : "",
-    eventTime: 4,
+    event: "",
+    eventTime: 0,
     contacts: 0,
     shots: 0,
   };
@@ -490,12 +495,14 @@ const updateStamina = (rules: Rules, player: Player, dt: number): void => {
 };
 
 const CURL_TURN_SPEED = 2.795;
-const TURN_RESPONSE = 9;
+const FREE_SWIM_TURN_SPEED = 3.6;
+const TURN_RELEASE_RESPONSE = 18;
 const HARD_TURN_RATE = 2.6;
 const HARD_TURN_FORWARD_RATE = 4.1;
 const HARD_TURN_RELEASE = 1.6;
 const AUTO_DUMMY_TIMING = 1.6;
 const POINTER_TURN_GAIN = 1.45;
+const FREE_SWIM_POINTER_TURN_GAIN = 2.05;
 
 const bodyTurnRate = (controls: Controls): number =>
   controls.lateral * (controls.sprint && controls.forward > 0 ? 2.08 : 2.47);
@@ -565,10 +572,15 @@ const updateHumanMovement = (
   dt: number,
 ): void => {
   const rules = rulesFor(state);
-  const pointerGain = POINTER_TURN_GAIN;
-  player.turnRate +=
-    (requestedTurnRate(controls, dt, pointerGain) - player.turnRate) *
-    (1 - Math.exp(-TURN_RESPONSE * dt));
+  const carrying = state.puck.controlOwner === player.id;
+  const pointerGain = carrying
+    ? POINTER_TURN_GAIN
+    : FREE_SWIM_POINTER_TURN_GAIN;
+  const requestedRate = requestedTurnRate(controls, dt, pointerGain);
+  player.turnRate =
+    Math.abs(requestedRate) > 0.01
+      ? requestedRate
+      : player.turnRate * Math.exp(-TURN_RELEASE_RESPONSE * dt);
   if (
     player.autoDummyLocked &&
     Math.abs(player.turnRate) <= HARD_TURN_RELEASE
@@ -618,13 +630,17 @@ const updateHumanMovement = (
   if (Math.abs(player.curlTurnSpeed) < 0.01) player.curlTurnSpeed = 0;
   const steer =
     curl === 0
-      ? requestedTurnRate(controls, dt, pointerGain) * dt
+      ? requestedRate * dt
       : controls.yawDelta * 1.3 * pointerGain * rules.curlMouseTurn -
         bodyTurnRate(locomotion) * dt +
         player.curlTurnSpeed * bladeMirror(player) * dt;
   // Normal swimming uses the room turn rate. Curling keeps its own limit.
   const turnLimit =
-    curl === 0 ? CURL_TURN_SPEED * state.swimTurn : CURL_TURN_SPEED;
+    curl === 0
+      ? carrying
+        ? CURL_TURN_SPEED * state.swimTurn
+        : Math.max(FREE_SWIM_TURN_SPEED, CURL_TURN_SPEED * state.swimTurn)
+      : CURL_TURN_SPEED;
   player.yaw += !rules.autoCurl
     ? steer
     : clamp(steer, -turnLimit * dt, turnLimit * dt);
@@ -1596,10 +1612,13 @@ const resetPositions = (state: Simulation): void => {
   state.puck.previousOrientation.identity();
   state.puck.angularVelocity.set(0, 0, 0);
   state.faceoff =
-    state.mode === "match" ? { phase: "ready", remaining: 3 } : undefined;
+    state.mode === "match"
+      ? { phase: "ready", remaining: FACEOFF_COUNTDOWN + FACEOFF_SETTLE }
+      : undefined;
   state.decisionTime = 0;
   syncInterpolation(state);
-  announce(state, "3", 3);
+  state.event = "";
+  state.eventTime = 0;
 };
 
 const syncInterpolation = (state: Simulation): void => {
@@ -1726,7 +1745,8 @@ const updateWallStart = (
     return false;
   }
   faceoff.remaining = Math.max(0, faceoff.remaining - dt);
-  announce(state, String(Math.ceil(faceoff.remaining)), 1);
+  if (faceoff.remaining <= FACEOFF_COUNTDOWN)
+    announce(state, String(Math.ceil(faceoff.remaining)), 1);
   for (const player of state.players) {
     player.role = player.slot === 0 ? "Striker · at the wall" : "At the wall";
     player.air = 100;

@@ -1,7 +1,7 @@
-import { clamp, type Simulation, SURFACE_HEIGHT } from "./types";
+import { clamp, type Faceoff, type Simulation, SURFACE_HEIGHT } from "./types";
 
 export type AudioCue = {
-  kind: "tap" | "shot" | "dive" | "surface" | "goal";
+  kind: "tap" | "shot" | "dive" | "surface" | "countdown" | "go" | "goal";
   strength: number;
   gain: number;
   pan: number;
@@ -17,6 +17,8 @@ export const createAudioEventTracker = (): AudioEventTracker => {
     contacts: number;
     shots: number;
     goals: number;
+    faceoffPhase: Faceoff["phase"] | undefined;
+    faceoffSecond: number | undefined;
     time: number;
     touch: number | undefined;
     tapAt: number;
@@ -27,6 +29,8 @@ export const createAudioEventTracker = (): AudioEventTracker => {
     contacts: 0,
     shots: 0,
     goals: 0,
+    faceoffPhase: undefined,
+    faceoffSecond: undefined,
     time: 0,
     touch: undefined,
     tapAt: -1,
@@ -40,6 +44,8 @@ export const createAudioEventTracker = (): AudioEventTracker => {
       contacts: state.contacts,
       shots: state.shots,
       goals: state.scores[0] + state.scores[1],
+      faceoffPhase: state.faceoff?.phase,
+      faceoffSecond: state.faceoff?.phase === "ready" ? 4 : undefined,
       time: state.time,
       touch: state.puck.lastTouch,
       tapAt: -1,
@@ -64,6 +70,27 @@ export const createAudioEventTracker = (): AudioEventTracker => {
         return [];
       }
       const cues: AudioCue[] = [];
+      const faceoffSecond =
+        state.faceoff?.phase === "ready"
+          ? Math.ceil(state.faceoff.remaining)
+          : undefined;
+      if (
+        faceoffSecond !== undefined &&
+        faceoffSecond >= 1 &&
+        faceoffSecond <= 3 &&
+        faceoffSecond !== previous.faceoffSecond
+      )
+        cues.push({
+          kind: "countdown",
+          strength: (4 - faceoffSecond) / 3,
+          gain: 1,
+          pan: 0,
+        });
+      if (
+        state.faceoff?.phase === "strike" &&
+        previous.faceoffPhase === "ready"
+      )
+        cues.push({ kind: "go", strength: 1, gain: 1, pan: 0 });
       const offset = state.puck.position.clone().sub(human.position);
       const distance = offset.length();
       const gain = distance > 8 ? 0 : 1 / (1 + distance * distance * 0.32);
@@ -132,6 +159,8 @@ export const createAudioEventTracker = (): AudioEventTracker => {
         contacts: state.contacts,
         shots: state.shots,
         goals,
+        faceoffPhase: state.faceoff?.phase,
+        faceoffSecond,
         time: state.time,
         touch: state.puck.lastTouch,
         speed,

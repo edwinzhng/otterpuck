@@ -727,6 +727,23 @@ legend {
   --stamina: 100%;
   color: var(--ink);
 }
+.hud::after {
+  position: fixed;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+  opacity: 0;
+  box-shadow: inset 0 0 110px 32px rgb(255 199 48 / 0%);
+}
+.hud.low-air::after {
+  animation: low-air-warning 1.25s ease-in-out infinite;
+}
+@keyframes low-air-warning {
+  50% {
+    opacity: 0.78;
+    box-shadow: inset 0 0 110px 32px rgb(255 199 48 / 42%);
+  }
+}
 .hud-top {
   position: absolute;
   inset: 20px 24px auto;
@@ -1211,23 +1228,35 @@ legend {
   margin-left: auto;
 }
 @media (min-width: 851px) {
-  .vitals {
-    width: 215px;
-    padding: 15px 17px;
+  body:not(.touch-mode) .scoreboard {
+    top: 28px;
   }
-  .vital-label {
-    font-size: 12px;
-    letter-spacing: 0.5px;
+  body:not(.touch-mode) .hud-status-stack > .vitals {
+    left: 24px;
+    bottom: 28px;
+    width: 340px;
+    padding: 20px 22px;
+    transform: none;
   }
-  .vital-value {
+  body:not(.touch-mode) .hud-bottom .map-wrap {
+    position: fixed;
+    top: 28px;
+    right: 24px;
+    margin: 0;
+  }
+  body:not(.touch-mode) .vital-label {
     font-size: 15px;
+    letter-spacing: 0.6px;
   }
-  .air-track,
-  .stamina-track {
-    height: 9px;
+  body:not(.touch-mode) .vital-value {
+    font-size: 18px;
   }
-  .stamina-row {
-    margin-top: 13px;
+  body:not(.touch-mode) .air-track,
+  body:not(.touch-mode) .stamina-track {
+    height: 12px;
+  }
+  body:not(.touch-mode) .stamina-row {
+    margin-top: 18px;
   }
 }
 @media (max-width: 850px) {

@@ -110,8 +110,8 @@ test("contacts are spatially attenuated and throttled instead of firing at the s
   expect(tracker.sample(state)).toEqual([]);
 });
 
-test("synthesized impacts have a bounded transient, a quiet tail, and no continuous oscillator", (): void => {
-  for (const kind of ["tap", "shot", "goal"] as const) {
+test("synthesized effects have a bounded transient and a quiet tail", (): void => {
+  for (const kind of ["tap", "shot", "countdown", "go", "goal"] as const) {
     const samples = effectSamples(kind, 1, 24000);
     expect(samples.every(Number.isFinite)).toBe(true);
     expect(
@@ -127,8 +127,21 @@ test("synthesized impacts have a bounded transient, a quiet tail, and no continu
     expect(rms).toBeGreaterThan(0.015);
     expect(Math.abs(samples.at(0) ?? 1)).toBeLessThan(0.001);
     expect(Math.abs(samples.at(-1) ?? 1)).toBeLessThan(0.01);
-    expect(samples.length / 24000).toBeLessThanOrEqual(0.7);
+    expect(samples.length / 24000).toBeLessThanOrEqual(2);
   }
+});
+
+test("faceoffs play each count once, then play the strike cue", (): void => {
+  const state = createSimulation();
+  const tracker = createAudioEventTracker();
+  tracker.reset(state);
+  const kinds: string[] = [];
+  for (let index = 0; index < 460; index++) {
+    stepSimulation(state, freshControls(), STEP);
+    kinds.push(...tracker.sample(state).map((cue): string => cue.kind));
+  }
+  expect(kinds.filter((kind): boolean => kind === "countdown")).toHaveLength(3);
+  expect(kinds.filter((kind): boolean => kind === "go")).toHaveLength(1);
 });
 
 test("water assets have immediate onset and remain short mono PCM samples", async (): Promise<void> => {

@@ -338,6 +338,10 @@ body:not(.touch-mode) .touch-help {
   transform: translate(-50%, -50%);
   font-size: clamp(82px, 20vw, 140px);
 }
+.touch-mode .announcement.goal-celebration {
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
 .touch-mode .menu {
   padding: max(12px, env(safe-area-inset-top))
     max(20px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom))
