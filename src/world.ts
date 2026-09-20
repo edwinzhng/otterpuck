@@ -700,9 +700,11 @@ export const disposeWorld = (world: World): void => {
       for (const mat of mats) mat.dispose();
     }
   });
-  world.renderer.dispose();
   if (world.shadows.material instanceof MeshBasicMaterial)
     world.shadows.material.map?.dispose();
+  // Before the renderer: disposing a render target tells the renderer to free
+  // what it allocated for it, which it cannot do once it has torn itself down.
   world.water.reflection.dispose();
   world.visorReflection?.dispose();
+  world.renderer.dispose();
 };

@@ -35,6 +35,39 @@ export type Session = {
   alpha: () => number;
   room: () => RoomView | undefined;
 };
+// A message's yaw is made frame by frame, and the room spends it over the
+// interval the message reports. A timer of its own never lines those up: at
+// 144Hz against a 60Hz timer some windows carry two frames of mouse movement
+// and some carry none, so the room pays a doubled window out at twice the rate
+// the mouse moved at and the turn cap discards the difference. How often that
+// happens depends on how the two clocks sit relative to each other, which is
+// fixed for a session, which is why the same turn felt different game to game.
+// Input goes out on the frame that made it instead, carrying that frame's own
+// duration, so nothing is ever compressed into a window shorter than the one it
+// was made in.
+//
+// Frames are coalesced up to this rate: input is gathered on every animation
+// frame, not every rendered one, and a high refresh screen runs past the
+// hundred messages a second the room accepts.
+const FRAME_SEND_LIMIT = 1 / 90;
+export const createFrameSends = (
+  limit = FRAME_SEND_LIMIT,
+): {
+  add: (seconds: number) => number | undefined;
+} => {
+  let pending = 0;
+  return {
+    add: (seconds): number | undefined => {
+      pending += seconds;
+      if (pending < limit) return undefined;
+      const window = pending;
+      pending = 0;
+      return window;
+    },
+  };
+};
+// What is left for the timer: pings, socket health and the host's safety net.
+const HOUSEKEEPING_HZ = 10;
 export const connectRoom = (
   region: Region,
   request: ClientMessage,
@@ -68,6 +101,7 @@ export const connectRoom = (
   let waitingForUpdates = false;
   let lastPong = performance.now();
   let pingAt = 0;
+  const frameSends = createFrameSends();
   let peerPingAt = 0;
   let peerPongAt = 0;
   const send = (message: ClientMessage): void => {
@@ -213,6 +247,7 @@ export const connectRoom = (
                       member.playerId,
                       parsed.data.sequence,
                       parsed.data.controls,
+                      parsed.data.duration,
                     );
                 } else if (
                   from === room.hostId &&
@@ -296,6 +331,28 @@ export const connectRoom = (
       reconnectTimer = setTimeout(connect, Math.min(500 * 2 ** attempts, 4000));
     };
   };
+  const dispatchInput = (seconds: number): void => {
+    const member = room?.members.find((m) => m.id === self);
+    if (!room || !member) return;
+    const input: ClientMessage = {
+      type: "input",
+      sequence: ++sequence,
+      controls,
+      // Capped to what the protocol accepts: a stalled frame can leave a gap
+      // longer than any interval worth crediting, and the room would reject the
+      // whole message over it.
+      duration: Math.min(seconds, 0.5),
+    };
+    if (room.mode === "online") send(input);
+    else peers?.send(room.hostId, input);
+    controls = {
+      ...controls,
+      yawDelta: 0,
+      shot: 0,
+      dive: false,
+      knockdown: false,
+    };
+  };
   const timer = setInterval((): void => {
     const now = performance.now();
     if (socket?.readyState === WebSocket.OPEN && now - pingAt > 2000) {
@@ -313,29 +370,15 @@ export const connectRoom = (
       }
     }
     if (room?.phase !== "playing" || view?.finished) return;
-    const member = room.members.find((m) => m.id === self);
-    if (!member) return;
-    const input: ClientMessage = {
-      type: "input",
-      sequence: ++sequence,
-      controls,
-    };
-    if (room.mode === "online") send(input);
-    else if (self === room.hostId && match) {
-      match.input(member.playerId, input.sequence, controls);
+    // A host advances its own room on the frame; this keeps it going if frames
+    // stall, and is where its checkpoints go out from.
+    if (room.mode === "lan" && self === room.hostId && match) {
       if (now - hostFrameAt > 100) advanceHost(now);
       if (now - checkpointAt > 1000) {
         checkpointAt = now;
         send({ type: "checkpoint", state: match.state });
       }
-    } else peers?.send(room.hostId, input);
-    controls = {
-      ...controls,
-      yawDelta: 0,
-      shot: 0,
-      dive: false,
-      knockdown: false,
-    };
+    }
     if (
       now - lastReceived > 3000 &&
       !(room.mode === "lan" && self === room.hostId) &&
@@ -344,7 +387,7 @@ export const connectRoom = (
       waitingForUpdates = true;
       callbacks.status("Waiting for match updates…");
     }
-  }, 1000 / 30);
+  }, 1000 / HOUSEKEEPING_HZ);
   connect();
   return {
     start: (): void => send({ type: "start" }),
@@ -412,6 +455,11 @@ export const connectRoom = (
       next.shot = 0;
       next.dive = false;
       next.knockdown = false;
+      // The prediction above ran against the sequence this send is about to
+      // claim, so the room and the client agree on what the message covers.
+      if (room?.phase !== "playing" || view?.finished) return;
+      const window = frameSends.add(seconds);
+      if (window !== undefined) dispatchInput(window);
     },
     alpha: (): number =>
       room?.mode === "lan" && self === room.hostId ? (match?.alpha() ?? 1) : 1,

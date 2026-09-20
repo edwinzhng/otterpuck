@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { createFrameSends } from "../../src/multiplayer/client";
 import { createNetworkMatch } from "../../src/multiplayer/match";
 import { createMovementPrediction } from "../../src/multiplayer/prediction";
 import {
@@ -146,4 +147,23 @@ test("carry correction follows the player and a new owner immediately wins", () 
   prediction.reconcile(takeover, 1, authoritative);
   prediction.advance(takeover, { ...freshControls(), forward: 1 }, 1 / 60, 2);
   expect(takeover.puck.position.equals(position)).toBe(true);
+});
+
+test("input coalesces to the room's message budget without losing time", () => {
+  // Input is gathered on every animation frame, not every rendered one, so a
+  // high refresh screen runs past the hundred messages a second the room
+  // accepts. Each window must still report the interval it was made over, or
+  // the room pays its yaw out at the wrong rate.
+  for (const refresh of [55, 60, 120, 144, 240]) {
+    const sends = createFrameSends();
+    const frame = 1 / refresh;
+    const windows: number[] = [];
+    for (let i = 0; i < refresh; i += 1) {
+      const window = sends.add(frame);
+      if (window !== undefined) windows.push(window);
+    }
+    expect(windows.length).toBeLessThanOrEqual(90);
+    expect(windows.reduce((sum, w) => sum + w, 0)).toBeCloseTo(1, 6);
+    for (const window of windows) expect(window).toBeGreaterThan(0);
+  }
 });

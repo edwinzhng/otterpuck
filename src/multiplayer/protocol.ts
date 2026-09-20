@@ -74,6 +74,7 @@ export const clientMessageSchema = z.discriminatedUnion("type", [
     type: z.literal("input"),
     sequence: z.number().int().nonnegative(),
     controls: controlsSchema,
+    duration: z.number().min(0).max(0.5).optional(),
   }),
   z.object({
     type: z.literal("signal"),
