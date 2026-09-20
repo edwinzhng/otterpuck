@@ -6,12 +6,26 @@ import {
   sizeLabel,
   TEAM_SIZES,
 } from "../positions";
-import type { Controls, Handedness, Simulation } from "../types";
+import {
+  SWIM_TURNS,
+  type SwimTurn,
+  savedSwimTurn,
+  saveSwimTurn,
+  swimTurnChoice,
+} from "../swim-turn";
+import type { BotDifficulty, Controls, Handedness, Simulation } from "../types";
 import { button, dialog, field } from "../ui-components";
 import { connectRoom, type Session } from "./client";
 import { customPlayerName } from "./names";
 import { PROTOCOL, type RoomView } from "./protocol";
 import { loadRegions, measurePing, type Region } from "./regions";
+
+const DIFFICULTIES: readonly (readonly [BotDifficulty, string])[] = [
+  ["easy", "Easy"],
+  ["medium", "Medium"],
+  ["hard", "Hard"],
+  ["elite", "Elite"],
+];
 export const multiplayerMarkup = (): string =>
   dialog(
     "multiplayer-dialog",
@@ -36,7 +50,11 @@ export const multiplayerMarkup = (): string =>
    "mp-team-size",
    "Match size",
    TEAM_SIZES.map((size): [string, string] => [String(size), sizeLabel(size)]),
- )}<p>Choose a team and a position.</p></div>
+ )}${field(
+   "mp-swim-turn",
+   "Turn rate",
+   SWIM_TURNS.map((turn): [string, string] => [String(turn), `${turn}×`]),
+ )}${field("mp-difficulty", "Bots", DIFFICULTIES)}<p>Choose a team and a position.</p></div>
  <div class="mp-teams" id="mp-teams"></div>
  </div>
  <div class="mp-room-footer"><span id="mp-waiting" class="mp-room-hint">Empty positions are filled by bots.</span><div class="mp-actions">${button("mp-leave", "Leave", "secondary")}${button("mp-start", "Start match", "primary")}</div></div>
@@ -71,6 +89,7 @@ export const bindMultiplayer = (callbacks: {
   let connection: "online" | "lan" = "online";
   let hosting = false;
   let assignedName = "";
+  let preferredSwimTurn: SwimTurn | undefined;
   let customName: string | undefined;
   try {
     const legacy = localStorage.getItem("otterpuck-name");
@@ -189,9 +208,24 @@ export const bindMultiplayer = (callbacks: {
       room.mode === "lan"
         ? "Local Network"
         : (regions.find((r) => r.id === selected)?.label ?? selected);
+    const locked = room.hostId !== self || room.phase !== "waiting";
     const size = getElement("#mp-team-size", HTMLSelectElement);
     size.value = String(room.teamSize);
-    size.disabled = room.hostId !== self || room.phase !== "waiting";
+    size.dispatchEvent(new Event("input"));
+    size.disabled = locked;
+    if (!locked && preferredSwimTurn !== undefined) {
+      if (preferredSwimTurn !== room.swimTurn)
+        session?.settings({ swimTurn: preferredSwimTurn });
+      preferredSwimTurn = undefined;
+    }
+    const swimTurn = getElement("#mp-swim-turn", HTMLSelectElement);
+    swimTurn.value = String(room.swimTurn);
+    swimTurn.dispatchEvent(new Event("input"));
+    swimTurn.disabled = locked;
+    const difficulty = getElement("#mp-difficulty", HTMLSelectElement);
+    difficulty.value = room.difficulty;
+    difficulty.dispatchEvent(new Event("input"));
+    difficulty.disabled = locked;
     const me = room.members.find((member) => member.id === self);
     assignedName = me?.name ?? "";
     const name = getElement("#mp-name", HTMLInputElement);
@@ -454,14 +488,16 @@ export const bindMultiplayer = (callbacks: {
   );
   getElement("#mp-create", HTMLButtonElement).addEventListener(
     "click",
-    (): void =>
+    (): void => {
+      preferredSwimTurn = savedSwimTurn();
       open({
         type: "create",
         protocol: PROTOCOL,
         name: customName,
         handedness: callbacks.handedness(),
         mode: connection,
-      }),
+      });
+    },
   );
   getElement("#mp-join", HTMLButtonElement).addEventListener(
     "click",
@@ -485,7 +521,21 @@ export const bindMultiplayer = (callbacks: {
     const next = TEAM_SIZES.find(
       (candidate): boolean => String(candidate) === sizeSelect.value,
     );
-    if (next) session?.settings(next);
+    if (next) session?.settings({ teamSize: next });
+  });
+  const swimTurnSelect = getElement("#mp-swim-turn", HTMLSelectElement);
+  swimTurnSelect.addEventListener("change", (): void => {
+    const next = swimTurnChoice(swimTurnSelect.value);
+    if (next === undefined) return;
+    saveSwimTurn(next);
+    session?.settings({ swimTurn: next });
+  });
+  const difficultySelect = getElement("#mp-difficulty", HTMLSelectElement);
+  difficultySelect.addEventListener("change", (): void => {
+    const match = DIFFICULTIES.find(
+      ([candidate]): boolean => candidate === difficultySelect.value,
+    );
+    if (match) session?.settings({ difficulty: match[0] });
   });
   getElement("#mp-leave", HTMLButtonElement).addEventListener(
     "click",

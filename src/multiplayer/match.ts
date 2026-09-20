@@ -5,6 +5,7 @@ import {
   stepSimulation,
 } from "../simulation";
 import {
+  type BotDifficulty,
   type Controls,
   freshControls,
   type Simulation,
@@ -19,12 +20,25 @@ import type { RoomView } from "./protocol";
 // snapshot per advance. They deflate to about a ninth of their size, which is
 // what makes the rate affordable.
 const SNAPSHOT_HZ = 60;
-export const createRoomSimulation = (teamSize: TeamSize): Simulation => {
-  const formation = defaultFormation(teamSize);
-  return createSimulation(formation, formation);
+export const createRoomSimulation = (settings: {
+  teamSize: TeamSize;
+  swimTurn: number;
+  difficulty: BotDifficulty;
+}): Simulation => {
+  const formation = defaultFormation(settings.teamSize);
+  return createSimulation(formation, formation, "match", 180, "right", {
+    species: "otter",
+    position: 0,
+    difficulty: settings.difficulty,
+    swimTurn: settings.swimTurn,
+  });
 };
 export const createNetworkMatch = (
-  initial = createRoomSimulation(6),
+  initial = createRoomSimulation({
+    teamSize: 6,
+    swimTurn: 3,
+    difficulty: "medium",
+  }),
 ): {
   state: Simulation;
   acknowledged: Record<string, number>;

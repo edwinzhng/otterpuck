@@ -21,6 +21,7 @@ const lessons: Record<
     hint: string;
     touch: string;
     image?: string;
+    study?: boolean;
   }
 > = {
   swim: {
@@ -37,34 +38,51 @@ const lessons: Record<
     desktop: "X",
     touch: "Grab",
   },
-  shot: {
-    title: "Shoot",
-    hint: "Bring the puck to your stick. Hold, then release to shoot.",
-    text: "Hold to charge. Release to lift the puck.",
-    desktop: "Hold left mouse · Release",
-    touch: "Hold Shoot · Release",
+  flick: {
+    title: "Flick",
+    hint: "Bring the puck to your stick. Hold, aim, then release.",
+    text: "Hold to charge, aim where you face, release to flick the puck up and away. A longer charge sends it further.",
+    desktop: "Hold left mouse · turn to aim · release",
+    touch: "Hold Shoot · drag to aim · release",
     image: "shot",
   },
   curl: {
     title: "Curl",
-    hint: "Keep it going for one full turn with the puck.",
-    text: "Make one full turn with the puck inside your stick.",
-    desktop: "Turn hard toward your stick hand",
+    hint: "Keep the turn going for one full circle with the puck.",
+    text: "Swim forward without sprinting and turn hard: the puck rides inside your blade and comes around with you. Make one full turn.",
+    desktop: "W + turn hard toward your stick hand",
     touch: "Hold Curl",
     image: "curl",
   },
   reverse: {
     title: "Reverse curl",
     hint: "Keep it going for one full turn the other way.",
-    text: "Same hand. Make a full turn the other way.",
-    desktop: "Turn hard away from your stick hand",
+    text: "Same hand, turning the other way. Make a full turn.",
+    desktop: "W + turn hard away from your stick hand",
     touch: "Hold Reverse",
     image: "curl",
+  },
+  shield: {
+    title: "Cover the puck",
+    hint: "",
+    text: "While an opposing blade can reach your puck it is contested: no grab, no easy carry, and the handling readout says CONTESTED. Curling puts your body and blade in the way, so their blade has to sit ever more exactly on the puck, and a well covered puck cannot be reached at all. A regular curl guards both sides evenly, a reverse curl seals your stick side and the front, and turning while caught between two opponents loses it.",
+    desktop: "Curl to cover · Watch for CONTESTED",
+    touch: "Curl to cover · Watch for CONTESTED",
+    image: "curl",
+    study: true,
+  },
+  swerve: {
+    title: "Swerve",
+    hint: "Keep swimming forward and hold the hard turn until the swerve plays out.",
+    text: "Carrying the puck, swim forward and turn hard: you swing the puck out and back around the check on your own. Turn harder still and you curl instead.",
+    desktop: "W + turn hard",
+    touch: "Swim forward · swing your look hard",
+    image: "dummy",
   },
   dummy: {
     title: "Dummy",
     hint: "Keep steering through the swerve until the sprint kicks in.",
-    text: "Pull in, then swerve out to start a sprint burst.",
+    text: "Held by hand the same swerve is sharper, and it ends in a sprint burst out of the turn. Pull in, then swerve out.",
     desktop: "Hold right mouse + A or D",
     touch: "Hold Dummy + steer",
     image: "dummy",
@@ -84,7 +102,7 @@ const lessons: Record<
     touch: "Hold Dive",
   },
 };
-const prefix = "otterpuck-learn-v1";
+const prefix = "otterpuck-learn-v2";
 const read = (key: string): string | null => {
   try {
     return localStorage.getItem(key);
@@ -174,7 +192,7 @@ export const createLearning = (hooks: {
           : lesson.title;
     getElement("#lesson-text", HTMLElement).textContent =
       kind === "intro"
-        ? "Eight quick exercises. Go at your own pace."
+        ? String(lessonIds.length) + " quick lessons. Go at your own pace."
         : kind === "complete"
           ? "Take your skills into the pool."
           : lesson.text;
@@ -187,7 +205,9 @@ export const createLearning = (hooks: {
           : "Start"
         : kind === "complete"
           ? "Free swim"
-          : "Try it";
+          : lesson.study
+            ? "Got it"
+            : "Try it";
     getElement("#lesson-close", HTMLButtonElement).textContent =
       kind === "intro" ? "Not now" : "Menu";
     card.showModal();
@@ -205,6 +225,18 @@ export const createLearning = (hooks: {
     if (!session.active) return;
     prepare();
     progress.value = 0;
+  };
+  const advance = (): void => {
+    session.index += 1;
+    if (session.index >= lessonIds.length) {
+      save(prefix + "-complete", "1");
+      save(prefix + "-step", "0");
+      display("complete");
+      return;
+    }
+    save(prefix + "-step", String(session.index));
+    prepare();
+    display("lesson");
   };
   window.addEventListener("keydown", (event: KeyboardEvent): void => {
     if (session.active && !card.open && event.code === "KeyH")
@@ -235,6 +267,8 @@ export const createLearning = (hooks: {
       } else if (session.card === "complete") {
         stop();
         hooks.resume();
+      } else if (lessons[id()].study) {
+        advance();
       } else {
         card.close();
         objective.hidden = false;
@@ -300,17 +334,7 @@ export const createLearning = (hooks: {
           : "";
       if (feedback.textContent !== message) feedback.textContent = message;
       feedback.hidden = !message;
-      if (!result.advance) return;
-      session.index += 1;
-      if (session.index >= lessonIds.length) {
-        save(prefix + "-complete", "1");
-        save(prefix + "-step", "0");
-        display("complete");
-      } else {
-        save(prefix + "-step", String(session.index));
-        prepare();
-        display("lesson");
-      }
+      if (result.advance) advance();
     },
   };
 };

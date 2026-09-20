@@ -46,6 +46,8 @@ const playerFields = z.object({
   curl: n,
   curlTurnSpeed: n,
   turnRate: n,
+  event: z.string().max(120).default(""),
+  eventTime: n.default(0),
   dummy: n,
   lateral: n,
   cradle: z
@@ -196,6 +198,7 @@ export const snapshotSchema = z.object({
   eventTime: n,
   contacts: n,
   shots: n,
+  swimTurn: n.default(3),
 });
 const rosterSchema = snapshotSchema.refine((state): boolean =>
   ([0, 1] as const).every(

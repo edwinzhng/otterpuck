@@ -1,9 +1,4 @@
-import {
-  type Controls,
-  freshControls,
-  type Simulation,
-  type TeamSize,
-} from "../types";
+import { type Controls, freshControls, type Simulation } from "../types";
 import { createSnapshotInterpolation } from "./interpolation";
 import {
   createNetworkMatch,
@@ -24,7 +19,9 @@ import type { Region } from "./regions";
 import { localView, packSnapshot, parseSnapshot } from "./snapshot";
 export type Session = {
   start: () => void;
-  settings: (teamSize: TeamSize) => void;
+  settings: (
+    change: Omit<Extract<ClientMessage, { type: "settings" }>, "type">,
+  ) => void;
   profile: (
     change: Omit<Extract<ClientMessage, { type: "profile" }>, "type">,
   ) => void;
@@ -272,7 +269,7 @@ export const connectRoom = (
             );
           peers.sync(room);
           if (room.phase === "playing" && self === room.hostId && !match) {
-            match = createNetworkMatch(createRoomSimulation(room.teamSize));
+            match = createNetworkMatch(createRoomSimulation(room));
             hostAdvancedAt = performance.now();
           }
           match?.roster(room.members);
@@ -391,7 +388,7 @@ export const connectRoom = (
   connect();
   return {
     start: (): void => send({ type: "start" }),
-    settings: (teamSize): void => send({ type: "settings", teamSize }),
+    settings: (change): void => send({ type: "settings", ...change }),
     profile: (change): void => send({ type: "profile", ...change }),
     leave: (): void => {
       send({ type: "leave" });

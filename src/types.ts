@@ -10,6 +10,7 @@ export type MatchSelection = {
   position: number;
   difficulty: BotDifficulty;
   ruleset?: Ruleset;
+  swimTurn?: number;
 };
 export type Handedness = "right" | "left";
 export type WaterMode = "playing" | "ascending" | "recovering" | "diving";
@@ -57,6 +58,10 @@ export type Player = {
   evadeTarget: Vector3;
   air: number;
   stamina: number;
+  // An announcement meant for this player alone. The match-wide one on the
+  // simulation reaches every client, which is wrong for a player's own air.
+  event: string;
+  eventTime: number;
   mode: WaterMode;
   duty: Duty;
   role: string;
@@ -167,6 +172,7 @@ export type Controls = {
 export type Simulation = {
   difficulty: BotDifficulty;
   ruleset: Ruleset;
+  swimTurn: number;
   physics: { drag: number; lift: number };
   playground: {
     slowMotion: boolean;

@@ -175,6 +175,7 @@ const boot = async (): Promise<void> => {
           species: ui.species,
           position: ui.position,
           difficulty: ui.difficulty,
+          swimTurn: ui.swimTurn,
         },
       );
       input.clear();

@@ -1130,6 +1130,26 @@ legend {
 .review-toolbar output {
   margin-left: auto;
 }
+@media (min-width: 851px) {
+  .vitals {
+    width: 215px;
+    padding: 15px 17px;
+  }
+  .vital-label {
+    font-size: 12px;
+    letter-spacing: 0.5px;
+  }
+  .vital-value {
+    font-size: 15px;
+  }
+  .air-track,
+  .stamina-track {
+    height: 9px;
+  }
+  .stamina-row {
+    margin-top: 13px;
+  }
+}
 @media (max-width: 850px) {
   .menu {
     padding: 20px 4vw;

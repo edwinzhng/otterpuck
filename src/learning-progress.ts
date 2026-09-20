@@ -8,9 +8,11 @@ import {
 export const lessonIds = [
   "swim",
   "grab",
-  "shot",
+  "flick",
   "curl",
   "reverse",
+  "shield",
+  "swerve",
   "dummy",
   "rise",
   "dive",
@@ -26,6 +28,7 @@ export type LessonProgress = {
   startedAt: number;
   successAt: number | undefined;
   burstEndsAt: number | undefined;
+  swerveAt: number | undefined;
 };
 export const beginProgress = (state: Simulation): LessonProgress => ({
   value: 0,
@@ -37,7 +40,9 @@ export const beginProgress = (state: Simulation): LessonProgress => ({
   startedAt: state.time,
   successAt: undefined,
   burstEndsAt: undefined,
+  swerveAt: undefined,
 });
+const SWERVE_CARRY_SECONDS = 0.9;
 export const advanceProgress = (
   id: LessonId,
   progress: LessonProgress,
@@ -57,7 +62,7 @@ export const advanceProgress = (
     progress.action ||= attemptedGrab || Boolean(player.grab);
     if (progress.action && owns) progress.value = 1;
   }
-  if (id === "shot") {
+  if (id === "flick") {
     progress.action ||= state.shots > progress.shots && player.shotFired;
     if (progress.action)
       progress.value =
@@ -71,6 +76,17 @@ export const advanceProgress = (
     owns
   )
     progress.value += turn / (Math.PI * 2);
+  // The automatic swerve asks only that the carrier ride it out with the puck:
+  // it has no sprint burst to wait for, unlike the dummy held by hand.
+  if (id === "swerve") {
+    if (!owns) progress.swerveAt = undefined;
+    else if (player.autoDummyLocked && player.dummy !== 0)
+      progress.swerveAt ??= state.time;
+    progress.value =
+      progress.swerveAt === undefined
+        ? 0
+        : (state.time - progress.swerveAt) / SWERVE_CARRY_SECONDS;
+  }
   if (id === "dummy") {
     progress.action ||= player.dummy !== 0 && owns;
     if (progress.action && owns) {

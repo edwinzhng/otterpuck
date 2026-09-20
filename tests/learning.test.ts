@@ -4,6 +4,7 @@ import {
   beginProgress,
   type LessonId,
   lessonFeedback,
+  lessonIds,
   savedLesson,
 } from "../src/learning-progress";
 import { prepareLesson } from "../src/learning-setup";
@@ -21,9 +22,15 @@ const exercise = (id: LessonId): { passed: boolean; value: number } => {
   for (const frame of Array.from({ length: 1200 }, (_, i): number => i)) {
     if (id === "swim") controls.forward = 1;
     if (id === "grab" && frame === 12) controls.knockdown = true;
-    if (id === "shot" && frame === 60) controls.shot = 0.7;
+    if (id === "flick" && frame === 60) controls.shot = 0.7;
     if (id === "curl") controls.curl = 1;
     if (id === "reverse") controls.curl = -1;
+    // A hard forward turn with the puck hands over to the automatic swerve,
+    // short of the harder turn that would curl instead.
+    if (id === "swerve") {
+      controls.forward = 1;
+      if (frame > 40) controls.yawDelta = 0.04;
+    }
     if (id === "dummy") {
       controls.dummy = 1;
       controls.dummyMode = true;
@@ -42,30 +49,45 @@ const exercise = (id: LessonId): { passed: boolean; value: number } => {
   }
   return result;
 };
+const exercised: readonly LessonId[] = [
+  "swim",
+  "grab",
+  "flick",
+  "curl",
+  "reverse",
+  "swerve",
+  "dummy",
+  "rise",
+  "dive",
+];
 describe("learning exercises", () => {
-  for (const id of [
-    "swim",
-    "grab",
-    "shot",
-    "curl",
-    "reverse",
-    "dummy",
-    "rise",
-    "dive",
-  ] as const)
+  for (const id of exercised)
     test(id + " completes through gameplay", () =>
       expect(exercise(id).passed).toBe(true),
     );
   test("idle cannot complete puck skills", () => {
     const s = createSimulation("2-3-1", "2-3-1", "playground");
-    for (const id of ["grab", "shot", "curl", "reverse", "dummy"] as const) {
+    for (const id of [
+      "grab",
+      "flick",
+      "curl",
+      "reverse",
+      "swerve",
+      "dummy",
+    ] as const) {
       const p = beginProgress(s);
       expect(advanceProgress(id, p, s)).toBe(0);
     }
   });
+  test("every lesson is either practised or a study card", () => {
+    for (const id of lessonIds)
+      expect(exercised.includes(id) || id === "shield").toBe(true);
+  });
   test("progress restoration rejects malformed values", () => {
-    expect(savedLesson("7")).toBe(7);
-    for (const v of ["-1", "8", "NaN", "1.5", null])
+    expect(savedLesson(String(lessonIds.length - 1))).toBe(
+      lessonIds.length - 1,
+    );
+    for (const v of ["-1", String(lessonIds.length), "NaN", "1.5", null])
       expect(savedLesson(v)).toBe(0);
   });
 });

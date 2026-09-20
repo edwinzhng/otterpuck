@@ -48,6 +48,8 @@ export const createRooms = (
     phase: room.phase,
     hostId: room.hostId,
     teamSize: room.teamSize,
+    swimTurn: room.swimTurn,
+    difficulty: room.difficulty,
     members: room.members.map(({ id, name, playerId, peer, handedness }) => ({
       id,
       name,
@@ -241,6 +243,8 @@ export const createRooms = (
           phase: "waiting",
           hostId: "",
           teamSize: 6,
+          swimTurn: 3,
+          difficulty: "medium",
           members: [],
           checkpointAt: 0,
           created: now(),
@@ -300,20 +304,25 @@ export const createRooms = (
         if (room.phase !== "waiting") return;
         room.phase = "playing";
         if (room.mode === "online")
-          room.match = createNetworkMatch(createRoomSimulation(room.teamSize));
+          room.match = createNetworkMatch(createRoomSimulation(room));
         updated(room);
         return;
       }
       if (message.type === "settings") {
         if (member.id !== room.hostId) {
-          error(peer, "Only the room creator can change the match size.");
+          error(peer, "Only the room creator can change the match settings.");
           return;
         }
         if (room.phase !== "waiting") return;
-        room.teamSize = message.teamSize;
-        for (const other of room.members)
-          if (other.playerId % 6 >= room.teamSize)
-            other.playerId = freeSeat(room, other) ?? other.playerId;
+        if (message.teamSize !== undefined) {
+          room.teamSize = message.teamSize;
+          for (const other of room.members)
+            if (other.playerId % 6 >= room.teamSize)
+              other.playerId = freeSeat(room, other) ?? other.playerId;
+        }
+        if (message.swimTurn !== undefined) room.swimTurn = message.swimTurn;
+        if (message.difficulty !== undefined)
+          room.difficulty = message.difficulty;
         updated(room);
         return;
       }

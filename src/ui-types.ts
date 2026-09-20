@@ -1,3 +1,4 @@
+import type { SwimTurn } from "./swim-turn";
 import type {
   BotDifficulty,
   Formation,
@@ -18,6 +19,7 @@ export type UI = {
   species: Species;
   position: number;
   difficulty: BotDifficulty;
+  swimTurn: SwimTurn;
   formation: Formation;
   opposition: Formation;
   teamSize: TeamSize;

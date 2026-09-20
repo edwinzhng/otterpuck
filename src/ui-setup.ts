@@ -1,6 +1,7 @@
 import { getElement } from "./dom";
 import { bindLobby } from "./lobby";
 import { bindSelectFields } from "./select-fields";
+import { savedSwimTurn } from "./swim-turn";
 import { uiShell } from "./ui-shell";
 import type { UI } from "./ui-types";
 
@@ -24,6 +25,7 @@ export const createUI = (): UI => {
     species: "otter",
     position: 0,
     difficulty: "medium",
+    swimTurn: savedSwimTurn(),
     handedness:
       localStorage.getItem("otter-hockey-handedness") === "left"
         ? "left"
