@@ -741,6 +741,31 @@ legend {
 .show-performance .performance {
   display: block;
 }
+.tackle-log {
+  display: none;
+  margin-left: auto;
+  margin-top: 8px;
+  padding: 9px 11px;
+  max-width: 230px;
+  font-size: 10px;
+  line-height: 1.5;
+  color: #5c8397;
+  font-variant-numeric: tabular-nums;
+}
+.tackle-log b {
+  font-weight: 850;
+  letter-spacing: 0.4px;
+  color: var(--ink);
+}
+.tackle-log div + div {
+  opacity: 0.55;
+}
+.show-tackles .tackle-log {
+  display: block;
+}
+.tackle-log:empty {
+  display: none;
+}
 .hud-bottom {
   position: absolute;
   inset: auto 24px 24px;
@@ -958,6 +983,46 @@ legend {
 }
 .announcement.visible {
   opacity: 1;
+}
+.turnover {
+  position: absolute;
+  top: 46%;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  transform: translateX(-50%);
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.turnover.visible {
+  opacity: var(--turnover-fade, 1);
+  transform: translateX(-50%) scale(calc(1.22 - 0.22 * var(--turnover-pop, 1)));
+}
+.turnover-title {
+  font-size: clamp(26px, 4vw, 50px);
+  font-weight: 950;
+  letter-spacing: 1px;
+  color: #eafdff;
+  text-shadow: 0 3px 0 #0d3c59;
+}
+.turnover-detail {
+  font-size: clamp(10px, 1.2vw, 14px);
+  font-weight: 800;
+  letter-spacing: 2.4px;
+  color: #cfeefb;
+  text-shadow: 0 2px 0 #0d3c5999;
+}
+.turnover[data-outcome="won"] .turnover-title {
+  color: #b9f5cd;
+  text-shadow: 0 3px 0 #11624a;
+}
+.turnover[data-outcome="lost"] .turnover-title {
+  color: #ffd3d6;
+  text-shadow: 0 3px 0 #7a1f2c;
 }
 .player-position {
   position: fixed;

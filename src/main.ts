@@ -17,6 +17,8 @@ import {
   setPlayerHandedness,
   stepSimulation,
 } from "./simulation";
+import { createTackleTracker } from "./tackle-events";
+import { createTurnoverBanner } from "./turnover-banner";
 import { freshControls, POOL, STEP } from "./types";
 import { createUI, getElement, updateUI } from "./ui";
 import { createSpeedLines } from "./view-effects";
@@ -36,6 +38,8 @@ const boot = async (): Promise<void> => {
   const speedLines = createSpeedLines();
   const meter = createFrameMeter();
   const audioEvents = createAudioEventTracker();
+  const tackleEvents = createTackleTracker();
+  const turnoverBanner = createTurnoverBanner();
   let multiplayer: ReturnType<typeof bindMultiplayer> | undefined;
   let backgroundElapsed = 0;
   let backgroundLoading = false;
@@ -64,6 +68,7 @@ const boot = async (): Promise<void> => {
     renderTime: number;
     uiTime: number;
     metricsTime: number;
+    tackleMarkup: string;
     audio: PoolAudio | undefined;
   } = {
     phase: "menu",
@@ -73,6 +78,7 @@ const boot = async (): Promise<void> => {
     renderTime: 0,
     uiTime: 0,
     metricsTime: 0,
+    tackleMarkup: "",
     audio: undefined,
   };
   const pause = (): void => {
@@ -109,6 +115,10 @@ const boot = async (): Promise<void> => {
     (): void =>
       learning.active() ? learning.retry() : resetPracticePuck(app.state),
     (action): void => {
+      if (action === "log") {
+        ui.hud.classList.toggle("show-tackles");
+        return;
+      }
       if (app.state.mode !== "playground") return;
       if (action === "feed") feedPracticePuck(app.state);
       else if (action === "slow")
@@ -171,6 +181,7 @@ const boot = async (): Promise<void> => {
       Object.assign(input.controls, freshControls());
       app.accumulator = 0;
       audioEvents.reset(app.state);
+      tackleEvents.reset(app.state);
     }
     input.touch.update(app.state);
     app.phase = "playing";
@@ -415,6 +426,18 @@ const boot = async (): Promise<void> => {
       }
       app.accumulator -= steps * STEP;
       for (const cue of audioEvents.sample(app.state)) app.audio?.play(cue);
+      tackleEvents.sample(app.state);
+      turnoverBanner.render(ui, app.state, tackleEvents.events());
+      const tackleMarkup = tackleEvents
+        .events()
+        .map(
+          (event): string => `<div><b>${event.label}</b> ${event.detail}</div>`,
+        )
+        .join("");
+      if (tackleMarkup !== app.tackleMarkup) {
+        app.tackleMarkup = tackleMarkup;
+        ui.elements.tackleLog.innerHTML = tackleMarkup;
+      }
       if (app.state.finished) finish();
     }
     const renderDt = (now - app.renderTime) / 1000;

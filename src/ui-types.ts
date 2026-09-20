@@ -38,10 +38,14 @@ export type UI = {
     airLabel: HTMLElement;
     stamina: HTMLElement;
     event: HTMLElement;
+    turnover: HTMLElement;
+    turnoverTitle: HTMLElement;
+    turnoverDetail: HTMLElement;
     puckIndicator: HTMLElement;
     role: HTMLElement;
     handling: HTMLElement;
     fps: HTMLElement;
+    tackleLog: HTMLElement;
     charge: HTMLElement;
     matchLabel: HTMLElement;
     knockdown: HTMLElement;
