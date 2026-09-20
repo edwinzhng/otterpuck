@@ -3,6 +3,12 @@
 Gameplay changes on this branch, newest first. Infrastructure work (self-hosting,
 room service limits, snapshot compression) is left out.
 
+## Looking around
+
+- **`Q` and `E` glance left and right**, turning the head about 75° without
+  turning the swimmer, so you can watch a teammate or a challenger while still
+  swimming your line. They no longer curl: the mouse starts a curl now.
+
 ## Turnovers
 
 - **Turnovers you are in briefly show a small cue.** Puck lost appears when the
@@ -34,6 +40,12 @@ Picked in the lobby and remembered; **original** keeps the previous behaviour.
 - **Turning underwater costs a little forward speed.**
 - **A hard turn with the puck hands over to the curl**, and yaw is capped at the
   curl rate, so no puck action turns faster than the curl.
+- **Swimming free of the puck is capped too**, at 1.75 times the curl rate, so a
+  mouse flick can no longer spin a swimmer on the spot.
+- **Swimming forward, the same hard turn starts a dummy instead**, and turning
+  faster still curls — taking over from a dummy already under way. Sprinting
+  keeps the dummy however hard the turn, so a sprinter never loses the stride to
+  a pivot.
 
 ## Puck shielding
 

@@ -7,7 +7,7 @@ const root = join(import.meta.dir, production ? "dist" : "public");
 const server = Bun.serve({
   hostname: process.env.HOST ?? "127.0.0.1",
   port: Number(process.env.PORT ?? 3200),
-  development: false,
+  development: production ? false : { hmr: true },
   routes: production ? undefined : { "/": homepage },
   fetch: (request: Request): Promise<Response> => serveAsset(root, request),
 });

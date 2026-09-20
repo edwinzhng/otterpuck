@@ -32,6 +32,7 @@ export const createMovementPrediction = (): {
     let remaining = seconds;
     while (remaining > 0.000001) {
       const dt = Math.min(STEP, remaining);
+      input.yawDelta = (controls.yawDelta * dt) / seconds;
       player.previous.copy(player.position);
       const puckPrevious = state.puck.previous.clone();
       const orientationPrevious = state.puck.previousOrientation.clone();
@@ -44,7 +45,6 @@ export const createMovementPrediction = (): {
         state.puck.previous.copy(puckPrevious);
         state.puck.previousOrientation.copy(orientationPrevious);
       }
-      input.yawDelta = 0;
       input.dive = false;
       remaining -= dt;
     }

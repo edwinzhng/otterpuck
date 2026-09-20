@@ -6,6 +6,7 @@ import {
   sizeLabel,
   TEAM_SIZES,
 } from "./positions";
+import { refreshSelectField } from "./select-fields";
 import type { Formation, TeamSize } from "./types";
 import { button, field } from "./ui-components";
 import type { UI } from "./ui-types";
@@ -134,6 +135,7 @@ export const bindLobby = (ui: UI): void => {
           `<option value="${choice.slot}">${choice.code} · ${choice.name}</option>`,
       )
       .join("");
+    refreshSelectField(position);
   };
   const chooseFormation = (next: Formation): void => {
     ui.formation = next;
@@ -152,6 +154,7 @@ export const bindLobby = (ui: UI): void => {
             `<option value="${choice}">${formationLabel(choice)}</option>`,
         )
         .join("");
+      refreshSelectField(formation);
       formation.parentElement?.classList.toggle("hidden", choices.length < 2);
     }
     chooseFormation(defaultFormation(next));

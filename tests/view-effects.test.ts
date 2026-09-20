@@ -8,7 +8,10 @@ import {
   SURFACE_HEIGHT,
 } from "../src/types";
 import {
+  approachGlance,
   approachHeadLift,
+  GLANCE_YAW,
+  glanceYaw,
   headLiftTarget,
   speedLineIntensity,
 } from "../src/view-effects";
@@ -58,4 +61,30 @@ test("the reduced sprint stays athletic and speed cues remain quiet below sprint
   expect(speedLineIntensity(1.55)).toBe(0);
   expect(speedLineIntensity(2.9)).toBeCloseTo(0.5);
   expect(speedLineIntensity(8)).toBe(0.5);
+});
+
+test("a glance turns the head the way the key points, and no further", (): void => {
+  expect(glanceYaw(0)).toBeCloseTo(0, 12);
+  expect(glanceYaw(1)).toBeCloseTo(-GLANCE_YAW, 12);
+  expect(glanceYaw(-1)).toBeCloseTo(GLANCE_YAW, 12);
+  expect(glanceYaw(4)).toBe(glanceYaw(1));
+  expect(GLANCE_YAW).toBeGreaterThan(Math.PI / 4);
+  expect(GLANCE_YAW).toBeLessThanOrEqual(Math.PI / 2);
+});
+
+test("a glance swings out and settles back within a moment", (): void => {
+  const turn = { yaw: 0 };
+  for (const unused of Array.from({ length: 30 })) {
+    void unused;
+    turn.yaw = approachGlance(turn.yaw, glanceYaw(1), STEP);
+  }
+  expect(turn.yaw).toBeLessThan(glanceYaw(1) * 0.9);
+  expect(turn.yaw).toBeGreaterThanOrEqual(glanceYaw(1));
+
+  for (const unused of Array.from({ length: 60 })) {
+    void unused;
+    turn.yaw = approachGlance(turn.yaw, 0, STEP);
+  }
+  expect(Math.abs(turn.yaw)).toBeLessThan(0.01);
+  expect(approachGlance(0.4, 0, 0)).toBe(0.4);
 });
