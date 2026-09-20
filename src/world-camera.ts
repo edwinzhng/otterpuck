@@ -1,11 +1,17 @@
 import { type PerspectiveCamera, Vector3 } from "three";
 import { confineCameraToPool } from "./camera-bounds";
 import { CAMERA_OFFSET, type Simulation } from "./types";
-import { approachHeadLift, headLiftTarget } from "./view-effects";
+import {
+  approachGlance,
+  approachHeadLift,
+  glanceYaw,
+  headLiftTarget,
+} from "./view-effects";
 
 export type CameraRig = {
   camera: PerspectiveCamera;
   headLift: number;
+  glance: number;
   puck: { position: Vector3 };
   reviewCamera?: { position: Vector3; target: Vector3; firstPerson: boolean };
 };
@@ -23,6 +29,7 @@ export const updateWorldCamera = (
   pitch: number,
   alpha: number,
   liftHead: boolean,
+  glance: number,
 ): void => {
   const human = state.players.at(0);
   if (active && human) {
@@ -44,8 +51,9 @@ export const updateWorldCamera = (
       dt,
     );
     world.camera.position.y += world.headLift;
+    world.glance = approachGlance(world.glance, glanceYaw(glance), dt);
     world.camera.rotation.order = "YXZ";
-    world.camera.rotation.set(pitch, viewYaw, 0);
+    world.camera.rotation.set(pitch, viewYaw + world.glance, 0);
     world.camera.fov +=
       (Math.min(
         110,

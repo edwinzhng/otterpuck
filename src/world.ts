@@ -94,6 +94,7 @@ export type World = {
   arena?: ArenaView;
   arenaRequest: number;
   headLift: number;
+  glance: number;
   reviewCamera?: CameraRig["reviewCamera"];
   visorReflection?: ReturnType<typeof createCharacterVisorReflection>;
 };
@@ -241,6 +242,7 @@ export const createWorld = (canvas: HTMLCanvasElement): World => {
     swimmers: [],
     arenaRequest: 0,
     headLift: 0,
+    glance: 0,
     puck,
     shaders,
     bubbles,
@@ -619,6 +621,7 @@ export const renderWorld = (
   pitch: number,
   alpha = 1,
   liftHead = false,
+  glance = 0,
 ): void => {
   if (world.arena) world.arena.time.value = time;
   updateShaderTime(world.shaders, time);
@@ -661,7 +664,7 @@ export const renderWorld = (
     positions.needsUpdate = true;
     world.trail.geometry.setDrawRange(0, state.playground.trace.length);
   }
-  updateWorldCamera(world, state, dt, active, pitch, alpha, liftHead);
+  updateWorldCamera(world, state, dt, active, pitch, alpha, liftHead, glance);
   updateShadows(world.shadows, state);
   updateBubbles(world.bubbles, state.players, dt, time);
   const heightUniform = world.bubbles.points.material.uniforms.uHeight;

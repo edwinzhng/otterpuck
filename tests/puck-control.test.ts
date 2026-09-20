@@ -63,6 +63,20 @@ const addOpponent = (state: Simulation, distance: number): Player => {
   return opponent;
 };
 
+test("Q and E glance rather than curl", (): void => {
+  const controls = freshControls();
+  pollMovement(controls, new Set(["KeyE"]));
+  expect(controls.glance).toBe(1);
+  expect(controls.curl).toBe(0);
+  pollMovement(controls, new Set(["KeyQ"]));
+  expect(controls.glance).toBe(-1);
+  expect(controls.curl).toBe(0);
+  pollMovement(controls, new Set(["KeyQ", "KeyE"]));
+  expect(controls.glance).toBe(0);
+  pollMovement(controls, new Set());
+  expect(controls.glance).toBe(0);
+});
+
 test("Z is the single held push/pull input and B has no action", (): void => {
   const controls = freshControls();
   pollMovement(controls, new Set(["KeyB"]));

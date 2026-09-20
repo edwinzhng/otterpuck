@@ -23,7 +23,7 @@ export const controlsMarkup = (): string =>
     ["C", "Duck dive"],
     ["LMB", "Hold to charge · release to shoot"],
     ["RMB + A / D", "Swerve"],
-    ["Q / E", "Reverse / regular curl"],
+    ["Q / E", "Glance left / right"],
     ["Z", "Pull / push puck"],
     ["X", "Grab / knock down"],
     ["R", "Backhand"],

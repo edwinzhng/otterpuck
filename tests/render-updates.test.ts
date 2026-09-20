@@ -25,10 +25,11 @@ test("camera interpolation preserves simulation positions and shared offsets", (
   const world = {
     camera: new PerspectiveCamera(77, 16 / 9, 0.045, 800),
     headLift: 0,
+    glance: 0,
     puck: new Group(),
   };
   for (const alpha of [0, 0.5, 1]) {
-    updateWorldCamera(world, state, 1 / 60, true, 0, alpha, false);
+    updateWorldCamera(world, state, 1 / 60, true, 0, alpha, false, 0);
     const expected = new Vector3()
       .lerpVectors(human.previous, human.position, alpha)
       .add(offset);
@@ -36,7 +37,7 @@ test("camera interpolation preserves simulation positions and shared offsets", (
   }
   expect(human.position.equals(position)).toBe(true);
   expect(CAMERA_OFFSET.equals(offset)).toBe(true);
-  updateWorldCamera(world, state, 1 / 60, false, 0, 1, false);
+  updateWorldCamera(world, state, 1 / 60, false, 0, 1, false, 0);
   expect(world.camera.position.toArray()).toEqual([10.3, 7.6, 15.7]);
 });
 
@@ -80,4 +81,36 @@ test("label projection supports reusable output without changing player coordina
   expect(player.position.toArray()).toEqual([0, 0, -5]);
   player.position.z = -40;
   expect(projectPlayerLabel(player, camera, 1, target)).toBeUndefined();
+});
+
+test("a glance turns the view without turning the swimmer", (): void => {
+  const state = createSimulation();
+  const human = state.players.at(0);
+  if (!human) throw new Error("Missing human");
+  human.previousYaw = human.yaw = 0.4;
+  human.previousBodyPitch = human.bodyPitch = 0;
+  const world = {
+    camera: new PerspectiveCamera(77, 16 / 9, 0.045, 800),
+    headLift: 0,
+    glance: 0,
+    puck: new Group(),
+  };
+  const straight = new Vector3();
+  updateWorldCamera(world, state, 1 / 60, true, 0, 1, false, 0);
+  straight.copy(world.camera.position);
+  expect(world.camera.rotation.y).toBeCloseTo(human.yaw, 6);
+
+  for (const unused of Array.from({ length: 30 })) {
+    void unused;
+    updateWorldCamera(world, state, 1 / 60, true, 0, 1, false, 1);
+  }
+  expect(world.camera.rotation.y).toBeLessThan(human.yaw - 1);
+  expect(human.yaw).toBe(0.4);
+  expect(world.camera.position.distanceTo(straight)).toBeLessThan(0.000001);
+
+  for (const unused of Array.from({ length: 90 })) {
+    void unused;
+    updateWorldCamera(world, state, 1 / 60, true, 0, 1, false, 0);
+  }
+  expect(world.camera.rotation.y).toBeCloseTo(human.yaw, 3);
 });

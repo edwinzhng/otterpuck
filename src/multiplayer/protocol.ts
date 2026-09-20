@@ -12,6 +12,8 @@ export const controlsSchema = z.object({
   vertical: axis,
   sprint: z.boolean(),
   curl: axis,
+  // View only, and absent from packets sent by older builds.
+  glance: axis.default(0),
   yawDelta: z.number().finite().min(-4).max(4),
   pitch: z.number().finite().min(-2).max(2),
   dummyMode: z.boolean(),
