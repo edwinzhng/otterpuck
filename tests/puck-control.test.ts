@@ -1,10 +1,6 @@
 import { expect, test } from "bun:test";
 import { Vector3 } from "three";
-import {
-  availablePuckMove,
-  isPuckContested,
-  pollMovement,
-} from "../src/handling";
+import { isPuckContested, pollMovement } from "../src/handling";
 import {
   createSimulation,
   resetPracticePuck,
@@ -75,101 +71,6 @@ test("Q and E glance rather than curl", (): void => {
   expect(controls.glance).toBe(0);
   pollMovement(controls, new Set());
   expect(controls.glance).toBe(0);
-});
-
-test("Z is the single held push/pull input and B has no action", (): void => {
-  const controls = freshControls();
-  pollMovement(controls, new Set(["KeyB"]));
-  expect(controls.pushPull).toBe(false);
-  pollMovement(controls, new Set(["KeyZ"]));
-  expect(controls.pushPull).toBe(true);
-  pollMovement(controls, new Set());
-  expect(controls.pushPull).toBe(false);
-});
-
-test("Z draws a front puck back, holds it, then returns it to the front on release", (): void => {
-  const { state, player } = setup();
-  advance(state, 0.1);
-  const origin = state.puck.position.clone();
-  expect(availablePuckMove(state, player)).toBe("pull");
-  advance(state, 0.9, { ...freshControls(), pushPull: true });
-  expect(state.puck.position.z - origin.z).toBeGreaterThan(0.15);
-  expect(player.puckMove?.phase).toBe("hold");
-  const held = state.puck.position.clone();
-  advance(state, 0.5, { ...freshControls(), pushPull: true });
-  expect(state.puck.position.distanceTo(held)).toBeLessThan(0.015);
-  advance(state, 1.2);
-  expect(player.puckMove).toBeUndefined();
-  expect(state.puck.controlKind).toBe("carry");
-  expect(
-    state.puck.position.distanceTo(puckSeat(player).setY(PUCK_HEIGHT)),
-  ).toBeLessThan(0.01);
-  expect(state.puck.position.z).toBeLessThan(held.z - 0.15);
-});
-
-test("Z reaches around a rear puck before pushing it forward without snapping it", (): void => {
-  const { state, player } = setup();
-  state.puck.position
-    .copy(puckSeat(player))
-    .add(new Vector3(0, 0, 0.21))
-    .setY(PUCK_HEIGHT);
-  const origin = state.puck.position.clone();
-  expect(availablePuckMove(state, player)).toBe("push");
-  const controls = { ...freshControls(), pushPull: true };
-  advance(state, 0.1, controls);
-  expect(state.puck.position.distanceTo(origin)).toBeLessThan(0.001);
-  const motion = { maximumStep: 0 };
-  for (const unused of Array.from({ length: 150 })) {
-    void unused;
-    const previous = state.puck.position.clone();
-    stepSimulation(state, controls, STEP);
-    motion.maximumStep = Math.max(
-      motion.maximumStep,
-      previous.distanceTo(state.puck.position),
-    );
-  }
-  expect(motion.maximumStep).toBeLessThan(0.035);
-  expect(state.puck.position.z).toBeLessThan(origin.z - 0.15);
-  advance(state, 0.5);
-  expect(player.puckMove).toBeUndefined();
-  expect(state.puck.controlKind).toBe("carry");
-});
-
-test("Z cannot take airborne or distant pucks and reset cancels a held move", (): void => {
-  for (const position of [
-    new Vector3(0, 0.6, 2.2),
-    new Vector3(3, PUCK_HEIGHT, 2),
-    new Vector3(0, PUCK_HEIGHT, 3.5),
-  ]) {
-    const { state, player } = setup();
-    state.puck.position.copy(position);
-    stepSimulation(state, { ...freshControls(), pushPull: true }, STEP);
-    expect(player.puckMove).toBeUndefined();
-  }
-  const { state, player } = setup();
-  advance(state, 0.8, { ...freshControls(), pushPull: true });
-  resetPracticePuck(state);
-  expect(player.puckMove).toBeUndefined();
-  expect(player.puckWorkHeld).toBe(false);
-});
-
-test("a quick Z tap returns the puck and a shot can interrupt a held pull", (): void => {
-  const { state, player } = setup();
-  stepSimulation(state, { ...freshControls(), pushPull: true }, STEP);
-  advance(state, 1.2);
-  expect(player.puckMove).toBeUndefined();
-  expect(state.puck.controlKind).toBe("carry");
-  advance(state, 0.8, { ...freshControls(), pushPull: true });
-  expect(player.puckMove?.phase).toBe("hold");
-  stepSimulation(
-    state,
-    { ...freshControls(), pushPull: true, shot: 0.8 },
-    STEP,
-  );
-  advance(state, 0.25);
-  expect(player.puckMove).toBeUndefined();
-  expect(state.shots).toBe(1);
-  expect(state.puck.controlOwner).toBeUndefined();
 });
 
 test("uncontested contact keeps a puck at the blade while accelerating and turning", (): void => {

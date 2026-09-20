@@ -91,7 +91,6 @@ export const createMovementPrediction = (): {
         player &&
         state.puck.controlOwner === player.id &&
         state.puck.shotOwner === undefined &&
-        !player.puckMove &&
         player.shotTime <= 0;
       if (
         player &&

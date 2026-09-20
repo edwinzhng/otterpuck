@@ -17,18 +17,6 @@ export type WaterMode = "playing" | "ascending" | "recovering" | "diving";
 export type Duty = "pressure" | "support" | "cover" | "recover";
 export type GameMode = "match" | "practice" | "playground";
 export type Ruleset = "alternative" | "original";
-export type PuckMoveKind = "push" | "pull";
-export type PuckMove = {
-  kind: PuckMoveKind;
-  phase: "approach" | "stroke" | "hold";
-  elapsed: number;
-  yaw: number;
-  startOffset: Vector3;
-  origin: Vector3;
-  end: Vector3;
-  holdOffset: Vector3;
-  returning: boolean;
-};
 export type PuckCradle = {
   kind: "curl" | "charge" | "dummy" | "settling";
   elapsed: number;
@@ -82,9 +70,6 @@ export type Player = {
   lateral: number;
   cradle: PuckCradle | undefined;
   grab: { elapsed: number; target: Vector3 } | undefined;
-  puckMove: PuckMove | undefined;
-  puckMoveCooldown: number;
-  puckWorkHeld: boolean;
   knockdownTime: number;
   knockdownCooldown: number;
   knockdownAttempted: boolean;
@@ -130,14 +115,7 @@ export type Puck = {
   lastTouch: number | undefined;
   touchTime: number;
   controlOwner: number | undefined;
-  controlKind:
-    | "carry"
-    | "curl"
-    | "dummy"
-    | "settling"
-    | "charge"
-    | PuckMoveKind
-    | undefined;
+  controlKind: "carry" | "curl" | "dummy" | "settling" | "charge" | undefined;
   controlUntil: number;
 };
 export type Faceoff =
@@ -161,7 +139,6 @@ export type Controls = {
   dummyMode: boolean;
   dummy: number;
   knockdown: boolean;
-  pushPull: boolean;
   backhand: boolean;
   dive: boolean;
   shot: number;
@@ -254,7 +231,6 @@ export const freshControls = (): Controls => ({
   dummyMode: false,
   dummy: 0,
   knockdown: false,
-  pushPull: false,
   backhand: false,
   dive: false,
   shot: 0,

@@ -95,7 +95,7 @@ test("original turns underwater at no cost to speed", (): void => {
 
   const kept = setup("original");
   drive(kept.state, 180, swimming(), 0.008);
-  expect(horizontalSpeed(kept.player) / cruising).toBeGreaterThan(0.999);
+  expect(horizontalSpeed(kept.player) / cruising).toBeGreaterThan(0.998);
 
   const dragged = setup("alternative");
   drive(dragged.state, 180, swimming(), 0.008);

@@ -61,21 +61,6 @@ const playerFields = z.object({
     })
     .optional(),
   grab: z.object({ elapsed: n, target: vector }).optional(),
-  puckMove: z
-    .object({
-      kind: z.enum(["push", "pull"]),
-      phase: z.enum(["approach", "stroke", "hold"]),
-      elapsed: n,
-      yaw: n,
-      startOffset: vector,
-      origin: vector,
-      end: vector,
-      holdOffset: vector,
-      returning: z.boolean(),
-    })
-    .optional(),
-  puckMoveCooldown: n,
-  puckWorkHeld: z.boolean(),
   knockdownTime: n,
   knockdownCooldown: n,
   knockdownAttempted: z.boolean(),
@@ -112,7 +97,6 @@ const playerSchema = playerFields.transform((p) => ({
   aimYaw: p.aimYaw,
   cradle: p.cradle,
   grab: p.grab,
-  puckMove: p.puckMove,
   shotOrigin: p.shotOrigin,
 }));
 const puckFields = z.object({
@@ -130,7 +114,7 @@ const puckFields = z.object({
   touchTime: n,
   controlOwner: n.optional(),
   controlKind: z
-    .enum(["carry", "curl", "dummy", "settling", "charge", "push", "pull"])
+    .enum(["carry", "curl", "dummy", "settling", "charge"])
     .optional(),
   controlUntil: n,
 });

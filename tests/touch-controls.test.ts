@@ -83,7 +83,6 @@ test("pause, blur, orientation and mode resets clear every held action and pendi
     "descend",
     "curl",
     "dummy",
-    "pull",
   ].entries()) {
     if (
       action === "move" ||
@@ -91,8 +90,7 @@ test("pause, blur, orientation and mode resets clear every held action and pendi
       action === "react" ||
       action === "descend" ||
       action === "curl" ||
-      action === "dummy" ||
-      action === "pull"
+      action === "dummy"
     )
       touch.begin(id, action, point(), 0);
   }
@@ -100,12 +98,11 @@ test("pause, blur, orientation and mode resets clear every held action and pendi
   touch.move(1, point(20, 0));
   touch.poll(650);
   touch.end(1, 650);
-  controls.backhand = true;
   const pitch = controls.pitch;
   touch.clear();
   touch.end(1, 1000);
   touch.poll(1000);
-  expect(controls).toEqual({ ...freshControls(), pitch, backhand: true });
+  expect(controls).toEqual({ ...freshControls(), pitch });
 });
 
 test("joystick dead zone, analog strength, sprint hysteresis and braking are stable", (): void => {
@@ -155,12 +152,6 @@ test("skill holds preserve movement and stop independently", (): void => {
   touch.poll(20);
   expect(controls.curl).toBe(1);
   touch.end(2, 30);
-  touch.begin(2, "pull", point(), 30);
-  touch.poll(30);
-  expect(controls.pushPull).toBe(true);
-  touch.end(2, 40);
-  touch.poll(40);
-  expect(controls.pushPull).toBe(false);
   expect(controls.forward).toBeGreaterThan(0.5);
 });
 
@@ -185,16 +176,15 @@ test("reaction and dive fire once per press, while depth remains held", (): void
   expect(controls.vertical).toBe(1);
 });
 
-test("a second finger cannot steal a held button or toggle backhand repeatedly", (): void => {
+test("a second finger cannot steal a held button", (): void => {
   const controls = freshControls();
   const touch = createTouchController(controls);
-  expect(touch.begin(1, "backhand", point(), 0)).toBe(true);
-  expect(touch.begin(2, "backhand", point(), 0)).toBe(false);
+  expect(touch.begin(1, "curl", point(), 0)).toBe(true);
+  expect(touch.begin(2, "curl", point(), 0)).toBe(false);
   touch.poll(500);
-  expect(controls.backhand).toBe(true);
+  expect(controls.curl).toBe(1);
   touch.end(1, 600);
-  touch.begin(2, "backhand", point(), 700);
-  expect(controls.backhand).toBe(false);
+  expect(touch.begin(2, "curl", point(), 700)).toBe(true);
 });
 
 test("ascending cancels loaded puck actions while leaving look and swimming responsive", (): void => {

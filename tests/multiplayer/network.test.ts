@@ -101,7 +101,7 @@ describe("multiplayer", () => {
       [6, freshControls()],
     ]);
     stepSimulation(state, controls, STEP);
-    expect(first.yaw).toBeCloseTo(0.026);
+    expect(first.yaw).toBeCloseTo(0.02 * 1.3 * 1.45);
     expect(second.yaw).toBe(yaw);
     expect(controls.get(0)?.yawDelta).toBe(0);
     state.faceoff = { phase: "ready", remaining: 3 };
@@ -305,10 +305,10 @@ describe("multiplayer", () => {
     match.input(0, 1, { ...freshControls(), yawDelta: 0.02 });
     match.advance(0.1);
     const player = match.state.players.find((p) => p.id === 0);
-    expect(player?.yaw).toBeCloseTo(0.026);
+    expect(player?.yaw).toBeCloseTo(0.02 * 1.3 * 1.45);
     match.input(0, 1, { ...freshControls(), yawDelta: 0.02 });
     match.advance(0.1);
-    expect(player?.yaw).toBeCloseTo(0.026);
+    expect(player?.yaw).toBeCloseTo(0.02 * 1.3 * 1.45);
     match.input(0, 2, { ...freshControls(), forward: 1, sprint: true });
     match.advance(0.1);
     expect(player?.sprint).toBe(true);

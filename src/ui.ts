@@ -52,11 +52,7 @@ export const updateUI = (
   ui.elements.role.title = player.role;
   setText(
     ui.elements.handling,
-    player.charging ||
-      player.curl !== 0 ||
-      player.grab ||
-      player.puckMove ||
-      player.dummy !== 0
+    player.charging || player.curl !== 0 || player.grab || player.dummy !== 0
       ? handlingLabel(state, player)
       : "",
   );

@@ -10,8 +10,6 @@ export const TOUCH_ACTIONS = [
   "glanceLeft",
   "glanceRight",
   "dummy",
-  "pull",
-  "backhand",
 ] as const;
 
 export type TouchAction = (typeof TOUCH_ACTIONS)[number];
@@ -78,8 +76,6 @@ export const DESKTOP_CONTROL_HELP = [
   ["RMB + A / D", "Dummy"],
   ["Q / E", "Glance"],
   ["X", "Grab / knock down"],
-  ["Z", "Push / pull puck"],
-  ["R", "Backhand"],
   ["Esc", "Pause"],
 ] as const;
 

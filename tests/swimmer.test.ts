@@ -155,7 +155,7 @@ test("each rendered paw grips the stick through handling, shots, swimming, and i
       { ...freshControls(), curl: -1 },
       { ...freshControls(), dummy: -1 },
       { ...freshControls(), dummy: 1 },
-      { ...freshControls(), pushPull: true },
+      freshControls(),
       { ...freshControls(), charging: true, charge: 1 },
       { ...freshControls(), shot: 1 },
       { ...freshControls(), vertical: 1 },

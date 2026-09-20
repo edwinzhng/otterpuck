@@ -1,7 +1,7 @@
 import { Vector3 } from "three";
 import { RULESETS } from "./rules";
 import { puckProtection } from "./shielding";
-import { bladePoint, puckSeat, smoothMotion } from "./stick";
+import { bladePoint } from "./stick";
 import {
   CAMERA_OFFSET,
   type Controls,
@@ -10,7 +10,6 @@ import {
   handSide,
   type Player,
   PUCK_RADIUS,
-  type PuckMoveKind,
   type Simulation,
   STICK_EDGE,
   STICK_REACH,
@@ -45,7 +44,6 @@ export const canKnockdown = (state: Simulation, player: Player): boolean =>
   player.shotTime <= 0 &&
   player.knockdownTime <= 0 &&
   player.knockdownCooldown <= 0 &&
-  player.puckMove === undefined &&
   puckInKnockdownBox(state, player);
 
 export const puckInGrabReach = (
@@ -90,7 +88,6 @@ export const canGrabPuck = (
   player.cooldown <= 0 &&
   player.knockdownTime <= 0 &&
   player.knockdownCooldown <= 0 &&
-  !player.puckMove &&
   player.curl === 0 &&
   player.dummy === 0 &&
   state.puck.controlOwner === undefined &&
@@ -124,30 +121,6 @@ export const puckInMoveReach = (state: Simulation, player: Player): boolean => {
     local.z > -1.25 &&
     local.z < -0.22
   );
-};
-
-export const availablePuckMove = (
-  state: Simulation,
-  player: Player,
-): PuckMoveKind | undefined => {
-  if (
-    !puckInMoveReach(state, player) ||
-    player.puckMove ||
-    player.puckMoveCooldown > 0 ||
-    player.shotTime > 0 ||
-    player.cooldown > 0 ||
-    player.knockdownTime > 0 ||
-    player.curl !== 0 ||
-    player.dummy !== 0 ||
-    state.puck.shotOwner !== undefined ||
-    state.time < player.curlBlockedUntil
-  )
-    return undefined;
-  const relative = state.puck.position
-    .clone()
-    .sub(puckSeat(player))
-    .applyAxisAngle(new Vector3(0, 1, 0), -player.yaw);
-  return relative.z > 0.045 ? "push" : "pull";
 };
 
 const CHALLENGE_REACH = PUCK_RADIUS + 0.04;
@@ -203,52 +176,7 @@ export const isPuckContested = (state: Simulation, player: Player): boolean =>
       bladeChallengesPuck(state, other, challengeReach(state, player, other)),
   );
 
-export const frontPuckPosition = (player: Player): Vector3 =>
-  puckSeat(player)
-    .sub(player.stick)
-    .add(
-      new Vector3(0.13 * handSide(player), 0, -STICK_REACH).applyAxisAngle(
-        new Vector3(0, 1, 0),
-        player.yaw,
-      ),
-    )
-    .add(player.position)
-    .setY(0.018);
-
-export const puckMoveOffset = (
-  state: Simulation,
-  player: Player,
-  rest: Vector3,
-): Vector3 => {
-  const move = player.puckMove;
-  if (!move) return rest;
-  const target =
-    move.phase === "approach"
-      ? state.puck.position.clone()
-      : move.phase === "hold"
-        ? move.holdOffset
-            .clone()
-            .applyAxisAngle(new Vector3(0, 1, 0), player.yaw)
-            .add(player.position)
-        : move.origin.clone().lerp(move.end, smoothMotion(move.elapsed / 0.22));
-  const seatOffset = puckSeat(player).sub(player.stick);
-  const contactOffset = target
-    .sub(seatOffset)
-    .sub(player.position)
-    .applyAxisAngle(new Vector3(0, 1, 0), -player.yaw)
-    .setY(0);
-  if (move.phase !== "approach") return contactOffset;
-  const progress = clamp(move.elapsed / 0.15, 0, 1);
-  const offset = move.startOffset
-    .clone()
-    .lerp(contactOffset, smoothMotion(progress));
-  offset.x += Math.sin(progress * Math.PI) * 0.22 * handSide(player);
-  offset.y = 0;
-  return offset;
-};
-
 export const pollMovement = (controls: Controls, keys: Set<string>): void => {
-  controls.pushPull = keys.has("KeyZ");
   const sideways = Number(keys.has("KeyD")) - Number(keys.has("KeyA"));
   controls.forward = Number(keys.has("KeyW")) - Number(keys.has("KeyS"));
   controls.lateral = sideways;
@@ -264,8 +192,6 @@ export const handlingLabel = (state: Simulation, player: Player): string => {
   if (player.grab) return "GRAB PUCK";
   if (player.charging) return "CHARGING SHOT";
   if (player.knockdownTime > 0) return "KNOCKDOWN";
-  if (player.puckMove)
-    return player.puckMove.kind === "push" ? "PUSH FORWARD" : "PULL & HOLD";
   if (player.curl !== 0)
     return player.curl > 0 ? "REGULAR CURL" : "REVERSE CURL";
   if (player.dummy !== 0)
@@ -273,5 +199,5 @@ export const handlingLabel = (state: Simulation, player: Player): string => {
   if (state.puck.controlOwner === player.id) return "PUCK CONTROL";
   if (puckInMoveReach(state, player) && isPuckContested(state, player))
     return "CONTESTED";
-  return player.backhand ? "BACKHAND" : "FOREHAND";
+  return "READY";
 };

@@ -60,9 +60,7 @@ Updates download in the background and take over after existing game tabs/window
 | Left mouse | Hold to charge; release to shoot |
 | Right mouse + A / D | Swerve |
 | Q / E | Glance left / right without turning |
-| Z | Hold to pull back; release to push forward |
 | X | Grab a nearby puck or knock down an incoming shot |
-| R | Toggle backhand |
 | T | Tactics |
 | Esc | Pause / release mouse |
 | Ctrl + F | Toggle fullscreen |
@@ -71,7 +69,7 @@ Updates download in the background and take over after existing game tabs/window
 
 ## Gameplay rules
 
-Sprinting spends stamina, which returns slowly and faster at the surface. A drained swimmer drops out of the sprint until stamina rebuilds, and replenishes air more slowly, so a hard sprint costs breath time afterwards. A full breath lasts 30 seconds holding still, 20 while swimming and 10 at a full sprint, and an empty stamina bar shortens all of those further. Turning underwater costs a little forward speed, the more so the harder you turn. Yaw is capped either way: at the curl rate whenever you have the puck, and swimming free of it at the match's turn rate multiple of that rate, so a mouse flick cannot spin you on the spot. A bot match and a multiplayer room both offer 1.5×, 2× and 3×, defaulting to 3×, and the choice is remembered. Carrying the puck, a hard forward turn starts a dummy in that direction, and turning faster still curls instead — abandoning a dummy already under way — so the mouse chooses between the two. A sprint stays with the dummy however hard you turn, and low-speed pivots still hand over to a curl.
+Sprinting spends stamina, which returns slowly and faster at the surface. A drained swimmer drops out of the sprint until stamina rebuilds and replenishes air more slowly afterwards. A full breath lasts 30 seconds holding still and 20 while swimming, including while sprinting. Turning underwater costs a little forward speed, the more so the harder you turn. Normal swimming uses the match turn rate with or without the puck, so pointer steering matches A / D. Curling keeps its tighter turn limit. A bot match and a multiplayer room both offer 1.5×, 2× and 3×, defaulting to 2×, and the choice is remembered. Turning from a stop curls, while a hard sprinting turn starts the slower automatic dummy. The dedicated Dummy control keeps its faster move and sprint burst.
 
 A curl also shields the puck. A reverse curl seals the stick side and the front and leaves the far side open, a regular curl guards both sides evenly, and a challenger facing the same way as the carrier gets a far better angle than one coming head-on. Cover makes the challenging blade sit ever more exactly on the puck, and past a point no placement reaches it. Caught between two opponents facing your way, turning loses the puck.
 
