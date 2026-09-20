@@ -71,16 +71,37 @@ test("a gentle turn underwater costs a little forward speed", (): void => {
   expect(turning).toBeGreaterThan(cruising * 0.85);
 });
 
-test("a hard turn while carrying hands over to the curl mechanic", (): void => {
+test("a hard turn from a stop hands over to the curl mechanic", (): void => {
   for (const direction of [-1, 1]) {
     const { state, player } = setup(true);
-    drive(state, 60, swimming(), HARD * direction);
+    drive(state, 60, freshControls(), HARD * direction);
     expect(player.curl).not.toBe(0);
     expect(Math.sign(player.turnRate)).toBe(direction);
     expect(Math.sign(player.curlTurnSpeed * -1)).toBe(direction);
     expect(horizontalSpeed(player)).toBe(0);
     expect(player.sprint).toBe(false);
     expect(state.puck.controlOwner).toBe(player.id);
+  }
+});
+
+test("forward swimming allows a wider turn before an automatic puck move", (): void => {
+  const { state, player } = setup(true);
+  drive(state, 60, swimming(), 0.025);
+  expect(player.curl).toBe(0);
+  expect(player.dummy).toBe(0);
+  expect(horizontalSpeed(player)).toBeGreaterThan(1);
+});
+
+test("a hard forward turn turns the puck into a dummy instead of a curl", (): void => {
+  for (const direction of [-1, 1]) {
+    const { state, player } = setup(true);
+    drive(state, 30, swimming(), HARD * direction);
+    expect(player.curl).toBe(0);
+    expect(Math.sign(player.dummy * -1)).toBe(direction);
+    expect(state.puck.controlKind).toBe("dummy");
+    expect(horizontalSpeed(player)).toBeGreaterThan(1);
+    expect(player.sprint).toBe(false);
+    expect(player.dummyBurstUntil).toBe(0);
   }
 });
 
@@ -136,7 +157,13 @@ test("the auto curl never turns faster than a Q/E curl", (): void => {
 
   for (const flick of [HARD, HARD * 4, HARD * 20]) {
     const auto = setup(true);
-    const swung = peakTurnRate(auto.state, auto.player, 120, swimming(), flick);
+    const swung = peakTurnRate(
+      auto.state,
+      auto.player,
+      120,
+      freshControls(),
+      flick,
+    );
     expect(auto.player.curl).not.toBe(0);
     expect(swung).toBeLessThanOrEqual(keyed + 1e-9);
   }
@@ -157,7 +184,7 @@ test("no puck action unlocks a faster turn than a curl while carrying", (): void
   ];
   for (const action of actions) {
     const { state, player } = setup(true);
-    const controls = { ...swimming(), ...action };
+    const controls = { ...freshControls(), ...action };
     let peak = 0;
     for (const unused of Array.from({ length: 120 })) {
       void unused;
@@ -171,12 +198,20 @@ test("no puck action unlocks a faster turn than a curl while carrying", (): void
   }
 });
 
-test("easing off the turn releases the auto curl and swimming resumes", (): void => {
+test("a sustained turn finishes one automatic dummy before it can rearm", (): void => {
   const { state, player } = setup(true);
-  drive(state, 60, swimming(), HARD);
-  expect(player.curl).not.toBe(0);
+  drive(state, 30, swimming(), HARD);
+  expect(player.dummy).not.toBe(0);
+  drive(state, 90, swimming(), HARD);
+  expect(player.dummy).toBe(0);
+  expect(player.autoDummyLocked).toBe(true);
+  drive(state, 90, swimming());
+  expect(player.autoDummyLocked).toBe(false);
+  drive(state, 30, swimming(), HARD);
+  expect(player.dummy).not.toBe(0);
   drive(state, 90, swimming());
   expect(player.curl).toBe(0);
+  expect(player.dummy).toBe(0);
   expect(horizontalSpeed(player)).toBeGreaterThan(1);
 });
 

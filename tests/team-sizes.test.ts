@@ -137,11 +137,11 @@ test("a small side never sends its whole team up for air at once", (): void => {
 
 test("the lobby offers every match size and names the quick match after it", (): void => {
   const markup = uiShell();
-  expect(markup).toContain('<select id="team-size">');
+  expect(markup).toContain('<select id="team-size" hidden>');
   for (const size of TEAM_SIZES)
     expect(markup).toContain(`<option value="${size}">${sizeLabel(size)}`);
-  expect(markup).toContain("Quick match vs AI");
-  expect(markup).toContain('<select id="mp-team-size">');
+  expect(markup).toContain("Play vs AI");
+  expect(markup).toContain('<select id="mp-team-size" hidden>');
 });
 
 test("a room starts at 6v6, follows the host's match size and seats guests within it", (): void => {

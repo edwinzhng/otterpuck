@@ -19,6 +19,8 @@ const playerFields = z.object({
   previousYaw: n,
   previousBodyPitch: n,
   dummyBurstUntil: n,
+  autoDummyUntil: n.default(0),
+  autoDummyLocked: z.boolean().default(false),
   velocity: vector,
   yaw: n,
   aimYaw: n.optional(),
