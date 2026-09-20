@@ -38,7 +38,12 @@ const facingAlignment = (carrier: Player, other: Player): number =>
 const turning = (carrier: Player): boolean =>
   carrier.curl !== 0 || Math.abs(carrier.turnRate) > SANDWICH_TURN;
 
-export const inSandwich = (state: Simulation, carrier: Player): boolean => {
+// The opponents closing from both sides at once, or none when only one side is
+// covered and the carrier still has a way out.
+export const sandwichPartners = (
+  state: Simulation,
+  carrier: Player,
+): Player[] => {
   const sides = state.players.filter(
     (other: Player): boolean =>
       other.team !== carrier.team &&
@@ -47,11 +52,19 @@ export const inSandwich = (state: Simulation, carrier: Player): boolean => {
         SANDWICH_RANGE ** 2 &&
       facingAlignment(carrier, other) > SANDWICH_FACING,
   );
-  return (
-    sides.some((other): boolean => localOffset(carrier, other).x > 0) &&
-    sides.some((other): boolean => localOffset(carrier, other).x < 0)
+  const stickSide = sides.filter(
+    (other): boolean => localOffset(carrier, other).x > 0,
   );
+  const offSide = sides.filter(
+    (other): boolean => localOffset(carrier, other).x < 0,
+  );
+  return stickSide.length > 0 && offSide.length > 0
+    ? [...stickSide, ...offSide]
+    : [];
 };
+
+export const inSandwich = (state: Simulation, carrier: Player): boolean =>
+  sandwichPartners(state, carrier).length > 0;
 
 // How well the carrier's body and stick cover the puck against one challenger,
 // from 0 (open) to 1 (all but untouchable). Curling puts the puck on the inside

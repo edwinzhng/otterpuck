@@ -19,7 +19,7 @@ export const createInput = (
   onPause: () => void,
   onTactics: () => void,
   onReset: () => void,
-  onLabAction: (action: "camera" | "slow" | "feed") => void,
+  onLabAction: (action: "camera" | "slow" | "feed" | "log") => void,
 ): Input => {
   const controls = freshControls();
   const keys = new Set<string>();
@@ -98,6 +98,7 @@ export const createInput = (
     if (event.code === "KeyV") onLabAction("camera");
     if (event.code === "KeyG") onLabAction("slow");
     if (event.code === "KeyF") onLabAction("feed");
+    if (event.code === "KeyL") onLabAction("log");
   });
   window.addEventListener("keyup", (event: KeyboardEvent): void => {
     keys.delete(event.code);

@@ -54,15 +54,17 @@ export const uiShell = (): string => `
     "close-settings",
   )}
   ${dialog("controls-dialog", "Controls", controlsMarkup(), "close-controls")}
-  <section id="hud" class="hud hidden" aria-label="Game information">
+  <section id="hud" class="hud hidden show-tackles" aria-label="Game information">
     <div class="hud-top"><div class="hud-actions">${button("touch-fullscreen", "⛶", "icon", 'aria-label="Enter fullscreen"')}${button("pause-button", "Ⅱ", "icon", 'aria-label="Pause"')}<div id="network-status" hidden><div class="network-server"><span class="network-dot" aria-hidden="true"></span><strong id="network-region"></strong><span id="network-ping">—</span></div><span id="network-issue" role="status" hidden></span></div><span class="desktop-shortcuts">Esc Pause · Ctrl F Fullscreen</span></div>
       <div class="scoreboard panel"><div class="score-team otters"><span>OTTERS</span><strong id="home-score">0</strong></div><time id="clock">03:00</time><div class="score-team beavers"><strong id="away-score">0</strong><span>BEAVERS</span></div><span id="match-label" hidden></span></div>
       <div id="fps" class="performance panel"></div>
+      <div id="tackle-log" class="tackle-log panel" aria-label="Tackle log"></div>
     </div>
     <div id="player-labels" aria-label="Player positions"></div><div class="crosshair" aria-hidden="true"></div>
     <div id="knockdown-prompt" class="reaction hidden" role="status"><kbd>X</kbd><strong id="reaction-label">Grab</strong></div>
     <div id="puck-indicator" class="puck-indicator hidden" aria-hidden="true"><span class="puck-indicator-dot"></span><i class="puck-indicator-arrow"></i></div>
     <div id="announcement" class="announcement" role="status"></div>
+    <div id="turnover" class="turnover" role="status"><strong id="turnover-title" class="turnover-title"></strong><span id="turnover-detail" class="turnover-detail"></span></div>
     ${goalConfettiMarkup()}
     <div class="hud-bottom">
       <div class="vitals panel"><div class="vitals-header"><span id="air-label">Air</span></div><div class="air-value"><strong id="air">100</strong><span>%</span></div><div class="air-track"><i id="air-fill"></i></div><div class="stamina-row"><span>Stamina</span><div class="stamina-track"><i id="stamina-fill"></i></div></div></div>
