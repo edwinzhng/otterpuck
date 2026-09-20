@@ -51,10 +51,10 @@ export const createAudio = (): PoolAudio => {
     return { offset: 0, started: 0, loading: false, gain, url, volume };
   };
   const musicTracks = {
-    menu: track("/audio/menu.m4a", 1.76),
-    menuAlt: track("/audio/menu-2.m4a", 1.76),
-    game: track("/audio/electric-stream.m4a", 1),
-    gameAlt: track("/audio/electric-stream-2.m4a", 1),
+    menu: track("/audio/menu.m4a", 1.584),
+    menuAlt: track("/audio/menu-2.m4a", 1.584),
+    game: track("/audio/electric-stream.m4a", 1.2),
+    gameAlt: track("/audio/electric-stream-2.m4a", 1.2),
   };
   type MusicName = keyof typeof musicTracks;
   const menuTracks = ["menu", "menuAlt"] as const;
@@ -334,8 +334,9 @@ export const createAudio = (): PoolAudio => {
       )
         return;
       if (cue.kind === "countdown") {
-        if (sound.musicScene === "off") beginGameplayMusic();
-        setMusicDuck(true);
+        if (sound.musicScene === "off" && cue.strength >= 2 / 3)
+          beginGameplayMusic();
+        if (sound.musicScene === "game") setMusicDuck(true);
       } else if (cue.kind === "go") {
         setMusicDuck(false, 0.68);
       } else if (cue.kind === "goal") {

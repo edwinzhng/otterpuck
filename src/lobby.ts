@@ -136,6 +136,23 @@ export const bindLobby = (ui: UI): void => {
   back?.addEventListener("click", (): void =>
     show(state.screen === "setup" ? "map" : "mode"),
   );
+  window.addEventListener("keydown", (event: KeyboardEvent): void => {
+    if (
+      event.key !== "Escape" ||
+      event.defaultPrevented ||
+      ui.menu.classList.contains("hidden") ||
+      state.screen === "mode"
+    )
+      return;
+    const target = event.target;
+    if (
+      target instanceof Element &&
+      (target.closest("dialog") || target.closest("[data-select-field]"))
+    )
+      return;
+    event.preventDefault();
+    back?.click();
+  });
   ui.menu.addEventListener("lobby-home", (): void => show("mode"));
   document
     .querySelector("#change-map")
