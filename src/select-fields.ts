@@ -20,7 +20,7 @@ const renderOptions = (select: HTMLSelectElement, list: HTMLElement): void => {
   );
 };
 
-/** Redraw a select field's listbox after its `<option>` list changed. */
+/** Update the listbox after the select options change. */
 export const refreshSelectField = (select: HTMLSelectElement): void => {
   select.dispatchEvent(new Event("select-field-refresh"));
 };

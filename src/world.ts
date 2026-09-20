@@ -702,8 +702,7 @@ export const disposeWorld = (world: World): void => {
   });
   if (world.shadows.material instanceof MeshBasicMaterial)
     world.shadows.material.map?.dispose();
-  // Before the renderer: disposing a render target tells the renderer to free
-  // what it allocated for it, which it cannot do once it has torn itself down.
+  // Dispose render targets first. The renderer must exist to free their resources.
   world.water.reflection.dispose();
   world.visorReflection?.dispose();
   world.renderer.dispose();

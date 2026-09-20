@@ -25,8 +25,7 @@ const localOffset = (carrier: Player, other: Player): Vector3 =>
     .sub(carrier.position)
     .applyAxisAngle(upAxis, -carrier.yaw);
 
-// Bearing of the challenger mirrored into right-handed terms, so every angle
-// reads the same for either hand: 0 straight ahead, +pi/2 on the stick side.
+// Mirror left-handed bearings. Zero is forward. Positive pi/2 is the stick side.
 const mirroredBearing = (carrier: Player, other: Player): number => {
   const local = localOffset(carrier, other);
   return Math.atan2(local.x * handSide(carrier), -local.z);
@@ -38,8 +37,7 @@ const facingAlignment = (carrier: Player, other: Player): number =>
 const turning = (carrier: Player): boolean =>
   carrier.curl !== 0 || Math.abs(carrier.turnRate) > SANDWICH_TURN;
 
-// The opponents closing from both sides at once, or none when only one side is
-// covered and the carrier still has a way out.
+// Return opponents only when they close from both sides.
 export const sandwichPartners = (
   state: Simulation,
   carrier: Player,
@@ -66,12 +64,9 @@ export const sandwichPartners = (
 export const inSandwich = (state: Simulation, carrier: Player): boolean =>
   sandwichPartners(state, carrier).length > 0;
 
-// How well the carrier's body and stick cover the puck against one challenger,
-// from 0 (open) to 1 (all but untouchable). Curling puts the puck on the inside
-// of the blade: a reverse curl seals the stick side and leaves the other open,
-// a regular curl guards both sides evenly, and the front stays covered either
-// way. A challenger facing the same way as the carrier gets a far better angle
-// on it than one coming head-on.
+// Return puck cover from 0 (open) to 1 (protected).
+// A reverse curl protects the stick side. A regular curl protects both sides.
+// A challenger that faces the carrier has a better angle than a head-on challenger.
 export const puckProtection = (
   state: Simulation,
   carrier: Player,

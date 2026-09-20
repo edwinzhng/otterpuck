@@ -108,7 +108,7 @@ test("side input turns the swimmer, releasing it holds the new course, and oppos
   expect(player.velocity.z).toBeLessThan(-0.7);
 });
 
-test("sprinting spends noticeably more air during both cruising and puck work", (): void => {
+test("sprinting does not add air drain during cruising or puck work", (): void => {
   for (const engaged of [false, true]) {
     const consumed = [false, true].map((sprint): number => {
       const { state, player } = setup();
@@ -124,9 +124,7 @@ test("sprinting spends noticeably more air during both cruising and puck work", 
     });
     const normal = consumed.at(0) ?? 0;
     const sprint = consumed.at(1) ?? 0;
-    expect(sprint / normal).toBeGreaterThan(1.35);
-    expect(sprint / normal).toBeLessThan(2.6);
-    expect(sprint).toBeGreaterThan(normal + 8);
+    expect(sprint).toBeCloseTo(normal, 8);
   }
 });
 

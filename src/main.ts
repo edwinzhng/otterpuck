@@ -1,5 +1,4 @@
 import { inject } from "@vercel/analytics";
-import { ARENA_IDS } from "./arenas";
 import { createAudio, type PoolAudio } from "./audio";
 import { createAudioEventTracker } from "./audio-events";
 import { createInput } from "./input";
@@ -42,24 +41,7 @@ const boot = async (): Promise<void> => {
   const tackleEvents = createTackleTracker();
   const turnoverBanner = createTurnoverBanner();
   let multiplayer: ReturnType<typeof bindMultiplayer> | undefined;
-  let backgroundElapsed = 0;
-  let backgroundLoading = false;
-  const arenaFade = getElement("#arena-fade", HTMLElement);
-  const fadeBackground = async (opacity: number): Promise<void> => {
-    const animation = arenaFade.animate(
-      [{ opacity: getComputedStyle(arenaFade).opacity }, { opacity }],
-      {
-        duration: matchMedia("(prefers-reduced-motion: reduce)").matches
-          ? 0
-          : 450,
-        easing: "ease-in-out",
-        fill: "forwards",
-      },
-    );
-    await animation.finished;
-    arenaFade.style.opacity = String(opacity);
-    animation.cancel();
-  };
+  let swimmersLoading: Promise<void> | undefined;
   const vignette = getElement(".water-vignette", HTMLElement);
   const app: {
     phase: "menu" | "playing" | "paused" | "finished" | "learning";
@@ -129,6 +111,16 @@ const boot = async (): Promise<void> => {
           app.state.playground.camera === "side" ? "first-person" : "side";
     },
   );
+  const requestMouseCapture = async (): Promise<void> => {
+    if (input.touch.enabled || !ui.canvas.requestPointerLock) return;
+    await Promise.resolve(ui.canvas.requestPointerLock()).catch((): void =>
+      ui.canvas.focus(),
+    );
+  };
+  ui.canvas.addEventListener("mousedown", (): void => {
+    if (app.phase === "playing" && !document.pointerLockElement)
+      void requestMouseCapture();
+  });
   bindGraphicsSettings(
     () => input.touch.enabled,
     (scale): void => {
@@ -142,8 +134,16 @@ const boot = async (): Promise<void> => {
     (): void => getElement("#settings-dialog", HTMLDialogElement).showModal(),
   );
   const enter = async (fresh: boolean): Promise<void> => {
-    if (!world.loaded) return;
-    backgroundElapsed = 0;
+    if (!world.loaded) {
+      ui.status.textContent = "Loading players…";
+      ui.start.disabled = true;
+      swimmersLoading ??= loadSwimmers(world).catch((error: unknown) => {
+        swimmersLoading = undefined;
+        throw error;
+      });
+      await swimmersLoading;
+      ui.start.disabled = false;
+    }
     world.arenaRequest++;
     const arena =
       multiplayer?.active() || ui.arena.value !== "city" ? "tropical" : "city";
@@ -158,10 +158,7 @@ const boot = async (): Promise<void> => {
       applyVolumes();
       app.audio.setPlaying(true);
     }
-    if (!input.touch.enabled && ui.canvas.requestPointerLock)
-      await Promise.resolve(ui.canvas.requestPointerLock()).catch((): void =>
-        ui.canvas.focus(),
-      );
+    await requestMouseCapture();
     input.setActive(true);
     if (fresh) {
       multiplayer?.leave();
@@ -209,14 +206,12 @@ const boot = async (): Promise<void> => {
   };
   ui.arena.addEventListener("change", (): void => {
     const id = ui.arena.value === "city" ? "city" : "tropical";
-    const alreadyLoaded = world.loaded && world.arena?.id === id;
-    world.loaded = false;
+    const alreadyLoaded = world.arena?.id === id;
     ui.start.disabled = true;
     ui.status.textContent = "Loading pool…";
     (alreadyLoaded ? Promise.resolve(true) : setWorldArena(world, id))
       .then((selected): void => {
         if (!selected) return;
-        world.loaded = true;
         ui.start.disabled = false;
         ui.status.textContent = "";
       })
@@ -366,13 +361,6 @@ const boot = async (): Promise<void> => {
     getElement("#pause-description", HTMLElement).dataset.teams = result.teams;
     getElement("#resume", HTMLButtonElement).classList.add("hidden");
   };
-  const homeBackgroundActive = (): boolean =>
-    app.phase === "menu" &&
-    world.loaded &&
-    !multiplayer?.active() &&
-    !learning.active() &&
-    !getElement('[data-screen="mode"]', HTMLElement).hidden &&
-    !document.querySelector("dialog[open]");
   const frame = (now: number): void => {
     const frameStart = performance.now();
     requestAnimationFrame(frame);
@@ -382,29 +370,6 @@ const boot = async (): Promise<void> => {
     }
     const dt = Math.min((now - app.previousTime) / 1000, 0.1);
     app.previousTime = now;
-    arenaFade.hidden = !homeBackgroundActive();
-    if (homeBackgroundActive()) {
-      if (!backgroundLoading) backgroundElapsed += dt;
-      if (!backgroundLoading && backgroundElapsed >= 12) {
-        backgroundElapsed = 0;
-        backgroundLoading = true;
-        const next = ARENA_IDS.at(
-          (ARENA_IDS.indexOf(world.arena?.id ?? "tropical") + 1) %
-            ARENA_IDS.length,
-        );
-        if (next)
-          void setWorldArena(world, next, homeBackgroundActive, () =>
-            fadeBackground(1),
-          )
-            .catch((error: unknown): void =>
-              console.error("Could not rotate menu background", error),
-            )
-            .finally(async (): Promise<void> => {
-              await fadeBackground(0);
-              backgroundLoading = false;
-            });
-      }
-    } else backgroundElapsed = 0;
     if (app.phase === "playing") {
       input.poll();
       if (multiplayer?.active()) multiplayer.input(input.controls, dt);
@@ -426,7 +391,7 @@ const boot = async (): Promise<void> => {
         const attemptedGrab = input.controls.knockdown;
         input.controls.yawDelta = yawShare;
         stepSimulation(app.state, input.controls, STEP);
-        learning.tick(attemptedGrab);
+        learning.tick(attemptedGrab, input.controls.glance);
       }
       app.accumulator -= steps * STEP;
       for (const cue of audioEvents.sample(app.state)) app.audio?.play(cue);
@@ -503,7 +468,6 @@ const boot = async (): Promise<void> => {
   requestAnimationFrame(frame);
   ui.arena.disabled = true;
   await setWorldArena(world, "tropical");
-  await loadSwimmers(world);
   ui.arena.disabled = false;
   ui.start.disabled = false;
   ui.start.textContent = "Play";

@@ -1,3 +1,5 @@
+import { button as buttonMarkup } from "./ui-components";
+
 export const bindFullscreen = (
   button: HTMLButtonElement,
   pause: () => void,
@@ -5,8 +7,7 @@ export const bindFullscreen = (
 ): void => {
   const help = document.createElement("dialog");
   help.className = "fullscreen-help";
-  help.innerHTML =
-    '<h2>Play full screen</h2><p>On iPhone, open Share → Add to Home Screen, then launch Otterpuck from its icon.</p><form method="dialog"><button>Got it</button></form>';
+  help.innerHTML = `<h2>Play full screen</h2><p>On iPhone, open Share → Add to Home Screen, then launch Otterpuck from its icon.</p><form method="dialog">${buttonMarkup("close-fullscreen-help", "Got it", "primary")}</form>`;
   document.body.append(help);
   const fallback = (): void => {
     pause();

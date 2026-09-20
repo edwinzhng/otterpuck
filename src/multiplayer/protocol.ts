@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { SWIM_TURNS } from "../swim-turn";
-export const PROTOCOL = 4;
+export const PROTOCOL = 5;
 export const teamSizeSchema = z.union([
   z.literal(2),
   z.literal(3),
@@ -17,7 +17,7 @@ export const controlsSchema = z.object({
   vertical: axis,
   sprint: z.boolean(),
   curl: axis,
-  // View only, and absent from packets sent by older builds.
+  // Glance changes the local view only. Older packets can omit this field.
   glance: axis.default(0),
   yawDelta: z.number().finite().min(-4).max(4),
   pitch: z.number().finite().min(-2).max(2),
@@ -139,9 +139,75 @@ export const serverMessageSchema = z.discriminatedUnion("type", [
   }),
 ]);
 export type ServerMessage = z.infer<typeof serverMessageSchema>;
+const booleanFromWire = (value: unknown): unknown =>
+  value === 0 ? false : value === 1 ? true : value;
+const CONTROL_WIRE_FIELDS = [
+  "forward",
+  "lateral",
+  "vertical",
+  "sprint",
+  "curl",
+  "glance",
+  "yawDelta",
+  "pitch",
+  "dummyMode",
+  "dummy",
+  "knockdown",
+  "pushPull",
+  "backhand",
+  "dive",
+  "shot",
+  "charging",
+  "charge",
+] as const satisfies readonly (keyof z.infer<typeof controlsSchema>)[];
+const BOOLEAN_CONTROL_FIELDS = new Set<string>([
+  "sprint",
+  "dummyMode",
+  "knockdown",
+  "pushPull",
+  "backhand",
+  "dive",
+  "charging",
+]);
+export const encodeClientMessage = (message: ClientMessage): string => {
+  if (message.type !== "input") return JSON.stringify(message);
+  return JSON.stringify([
+    "i",
+    message.sequence,
+    message.duration ?? null,
+    ...CONTROL_WIRE_FIELDS.map((field) => {
+      const value = message.controls[field];
+      return typeof value === "boolean" ? Number(value) : value;
+    }),
+  ]);
+};
+const expandWireInput = (value: unknown): unknown => {
+  if (
+    !Array.isArray(value) ||
+    value.at(0) !== "i" ||
+    value.length !== CONTROL_WIRE_FIELDS.length + 3
+  )
+    return value;
+  return {
+    type: "input",
+    sequence: value.at(1),
+    duration: value.at(2) === null ? undefined : value.at(2),
+    controls: Object.fromEntries(
+      CONTROL_WIRE_FIELDS.map((field, index) => {
+        const wireValue = value.at(index + 3);
+        return [
+          field,
+          BOOLEAN_CONTROL_FIELDS.has(field)
+            ? booleanFromWire(wireValue)
+            : wireValue,
+        ];
+      }),
+    ),
+  };
+};
 export const decodeMessage = (text: string): unknown => {
   try {
-    return JSON.parse(text);
+    return expandWireInput(JSON.parse(text));
   } catch {
     return undefined;
   }

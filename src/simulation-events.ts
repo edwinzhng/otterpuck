@@ -9,8 +9,7 @@ export const announce = (
   state.eventTime = duration;
 };
 
-// Announcements about one otter's own state belong to that otter: everyone
-// shares a simulation, so putting them on it shows them to the whole room.
+// Store private events on the player. Simulation events are visible to all players.
 export const announceTo = (
   player: Player,
   message: string,

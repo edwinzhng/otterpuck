@@ -24,7 +24,7 @@ services:
       context: .
       dockerfile: Dockerfile.web
       args:
-        PUBLIC_ROOMS_HOME_URL: ${PUBLIC_ROOMS_HOME_URL}
+        PUBLIC_ROOMS_SELF_HOSTED_URL: ${PUBLIC_ROOMS_SELF_HOSTED_URL}
     restart: unless-stopped
     ports:
       - "3200:3200"

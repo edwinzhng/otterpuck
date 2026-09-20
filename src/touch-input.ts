@@ -1,8 +1,9 @@
+import { TOUCH_ACTIONS } from "./control-registry";
 import { atPlayingDepth } from "./depth";
 import { getElement } from "./dom";
 import { bindFullscreen } from "./fullscreen";
 import { puckReaction } from "./handling";
-import { createTouchController, type TouchAction } from "./touch-controls";
+import { createTouchController } from "./touch-controls";
 import { type Controls, clamp, type Simulation } from "./types";
 
 export type TouchInput = {
@@ -13,20 +14,6 @@ export type TouchInput = {
   update: (simulation: Simulation) => void;
   dispose: () => void;
 };
-
-const actions: readonly TouchAction[] = [
-  "move",
-  "look",
-  "shot",
-  "react",
-  "rise",
-  "descend",
-  "curl",
-  "reverse",
-  "dummy",
-  "pull",
-  "backhand",
-];
 
 export const createTouchInput = (
   canvas: HTMLCanvasElement,
@@ -68,7 +55,7 @@ export const createTouchInput = (
     }
     joystick.classList.toggle("sprinting", controller.state.sprint);
     for (const button of buttons) {
-      const action = actions.find(
+      const action = TOUCH_ACTIONS.find(
         (value): boolean => value === button.dataset.touch,
       );
       if (!action) continue;
@@ -179,6 +166,7 @@ export const createTouchInput = (
   );
   coarse.addEventListener("change", selectMode, options);
   const resize = (): void => {
+    controller.setViewportWidth(innerWidth);
     controller.state.aimScale =
       2.5 / Math.max(320, Math.min(innerWidth, innerHeight));
     if (!input.enabled) return;
@@ -203,7 +191,9 @@ export const createTouchInput = (
         ? event.clientX > innerWidth * 0.32
           ? "look"
           : undefined
-        : actions.find((value): boolean => value === target.dataset.touch);
+        : TOUCH_ACTIONS.find(
+            (value): boolean => value === target.dataset.touch,
+          );
     if (!action || target.getAttribute("aria-disabled") === "true") return;
     const bounds =
       action === "move" ? target.getBoundingClientRect() : undefined;

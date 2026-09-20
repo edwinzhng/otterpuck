@@ -1,17 +1,7 @@
+import type { TouchAction } from "./control-registry";
 import { type Controls, clamp, freshControls } from "./types";
 
-export type TouchAction =
-  | "move"
-  | "look"
-  | "shot"
-  | "react"
-  | "rise"
-  | "descend"
-  | "curl"
-  | "reverse"
-  | "dummy"
-  | "pull"
-  | "backhand";
+export type { TouchAction } from "./control-registry";
 
 export type TouchPoint = { x: number; y: number };
 type Contact = {
@@ -49,10 +39,16 @@ export type TouchController = {
   poll: (now: number) => void;
   clear: () => void;
   setStickAvailable: (available: boolean) => void;
+  setViewportWidth: (width: number) => void;
 };
+
+const EDGE_HOLD_ZONE = 72;
+const EDGE_TURN_RATE = 4;
 
 export const createTouchController = (controls: Controls): TouchController => {
   const contacts = new Map<number, Contact>();
+  let viewportWidth = 0;
+  let polledAt: number | undefined;
   const state = {
     sprint: false,
     sensitivity: 1,
@@ -124,6 +120,9 @@ export const createTouchController = (controls: Controls): TouchController => {
     return { x: 0, y: 0 };
   };
   const poll = (now: number): void => {
+    const seconds =
+      polledAt === undefined ? 0 : clamp((now - polledAt) / 1000, 0, 0.05);
+    polledAt = now;
     const stick = joystick();
     controls.forward = stick.y === 0 ? 0 : -stick.y;
     controls.lateral = stick.x;
@@ -133,8 +132,23 @@ export const createTouchController = (controls: Controls): TouchController => {
     controls.sprint = state.sprint;
     controls.vertical = Number(held("rise")) - Number(held("descend"));
     controls.curl = Number(held("curl")) - Number(held("reverse"));
+    controls.glance = Number(held("glanceRight")) - Number(held("glanceLeft"));
     controls.dummyMode = held("dummy");
     controls.dummy = controls.dummyMode ? controls.lateral : 0;
+    const edgeZone = Math.min(EDGE_HOLD_ZONE, viewportWidth * 0.15);
+    if (seconds > 0 && edgeZone > 0) {
+      for (const contact of contacts.values()) {
+        if (contact.action !== "look") continue;
+        const edgeTurn =
+          contact.point.x < edgeZone
+            ? (contact.point.x - edgeZone) / edgeZone
+            : contact.point.x > viewportWidth - edgeZone
+              ? (contact.point.x - (viewportWidth - edgeZone)) / edgeZone
+              : 0;
+        controls.yawDelta -=
+          edgeTurn * EDGE_TURN_RATE * seconds * state.sensitivity;
+      }
+    }
     controls.pushPull = held("pull");
     controls.charging = false;
     controls.charge = 0;
@@ -152,6 +166,7 @@ export const createTouchController = (controls: Controls): TouchController => {
   };
   const clear = (): void => {
     contacts.clear();
+    polledAt = undefined;
     state.sprint = false;
     state.shot = 0;
     state.react = false;
@@ -180,5 +195,8 @@ export const createTouchController = (controls: Controls): TouchController => {
     poll,
     clear,
     setStickAvailable,
+    setViewportWidth: (width): void => {
+      viewportWidth = Math.max(0, width);
+    },
   };
 };

@@ -1,7 +1,8 @@
 import { getElement } from "./dom";
+import { DEFAULT_MATCH_DURATION } from "./game-options";
 import { bindLobby } from "./lobby";
 import { bindSelectFields } from "./select-fields";
-import { savedSwimTurn } from "./swim-turn";
+import { DEFAULT_SWIM_TURN } from "./swim-turn";
 import { uiShell } from "./ui-shell";
 import type { UI } from "./ui-types";
 
@@ -21,11 +22,11 @@ export const createUI = (): UI => {
     opposition: "2-3-1",
     teamSize: 6,
     mode: "match",
-    duration: 180,
+    duration: DEFAULT_MATCH_DURATION,
     species: "otter",
     position: 0,
     difficulty: "medium",
-    swimTurn: savedSwimTurn(),
+    swimTurn: DEFAULT_SWIM_TURN,
     handedness:
       localStorage.getItem("otter-hockey-handedness") === "left"
         ? "left"

@@ -1,5 +1,6 @@
 import { assetUrl } from "./asset-url";
 import { getElement } from "./dom";
+import { lessons } from "./learning-content";
 import {
   advanceProgress,
   beginProgress,
@@ -12,96 +13,6 @@ import { prepareLesson } from "./learning-setup";
 import type { Simulation } from "./types";
 import { button } from "./ui-components";
 
-const lessons: Record<
-  LessonId,
-  {
-    title: string;
-    text: string;
-    desktop: string;
-    hint: string;
-    touch: string;
-    image?: string;
-    study?: boolean;
-  }
-> = {
-  swim: {
-    title: "Swim",
-    hint: "Keep swimming forward. Turn your body to steer.",
-    text: "Swim a short distance. Turn your body to steer.",
-    desktop: "W / A / S / D · Mouse to look",
-    touch: "Left stick to swim · Drag right side to look",
-  },
-  grab: {
-    title: "Grab the puck",
-    hint: "Look down near your stick, then grab. Retry brings the puck back.",
-    text: "Get close and look toward the puck. Grab it.",
-    desktop: "X",
-    touch: "Grab",
-  },
-  flick: {
-    title: "Flick",
-    hint: "Bring the puck to your stick. Hold, aim, then release.",
-    text: "Hold to charge, aim where you face, release to flick the puck up and away. A longer charge sends it further.",
-    desktop: "Hold left mouse · turn to aim · release",
-    touch: "Hold Shoot · drag to aim · release",
-    image: "shot",
-  },
-  curl: {
-    title: "Curl",
-    hint: "Keep the turn going for one full circle with the puck.",
-    text: "Swim forward without sprinting and turn hard: the puck rides inside your blade and comes around with you. Make one full turn.",
-    desktop: "W + turn hard toward your stick hand",
-    touch: "Hold Curl",
-    image: "curl",
-  },
-  reverse: {
-    title: "Reverse curl",
-    hint: "Keep it going for one full turn the other way.",
-    text: "Same hand, turning the other way. Make a full turn.",
-    desktop: "W + turn hard away from your stick hand",
-    touch: "Hold Reverse",
-    image: "curl",
-  },
-  shield: {
-    title: "Cover the puck",
-    hint: "",
-    text: "While an opposing blade can reach your puck it is contested: no grab, no easy carry, and the handling readout says CONTESTED. Curling puts your body and blade in the way, so their blade has to sit ever more exactly on the puck, and a well covered puck cannot be reached at all. A regular curl guards both sides evenly, a reverse curl seals your stick side and the front, and turning while caught between two opponents loses it.",
-    desktop: "Curl to cover · Watch for CONTESTED",
-    touch: "Curl to cover · Watch for CONTESTED",
-    image: "curl",
-    study: true,
-  },
-  swerve: {
-    title: "Swerve",
-    hint: "Keep swimming forward and hold the hard turn until the swerve plays out.",
-    text: "Carrying the puck, swim forward and turn hard: you swing the puck out and back around the check on your own. Turn harder still and you curl instead.",
-    desktop: "W + turn hard",
-    touch: "Swim forward · swing your look hard",
-    image: "dummy",
-  },
-  dummy: {
-    title: "Dummy",
-    hint: "Keep steering through the swerve until the sprint kicks in.",
-    text: "Held by hand the same swerve is sharper, and it ends in a sprint burst out of the turn. Pull in, then swerve out.",
-    desktop: "Hold right mouse + A or D",
-    touch: "Hold Dummy + steer",
-    image: "dummy",
-  },
-  rise: {
-    title: "Get air",
-    hint: "Keep rising until you reach the surface.",
-    text: "Reach the surface to refill your air.",
-    desktop: "Hold Space",
-    touch: "Hold Rise",
-  },
-  dive: {
-    title: "Dive",
-    hint: "Keep descending until you reach the floor.",
-    text: "Return to the floor to play the puck.",
-    desktop: "Hold Ctrl",
-    touch: "Hold Dive",
-  },
-};
 const prefix = "otterpuck-learn-v2";
 const read = (key: string): string | null => {
   try {
@@ -126,7 +37,7 @@ export const createLearning = (hooks: {
   active: () => boolean;
   open: () => void;
   offer: () => void;
-  tick: (attemptedGrab?: boolean) => void;
+  tick: (attemptedGrab?: boolean, glance?: number) => void;
   stop: () => void;
   retry: () => void;
 } => {
@@ -145,6 +56,14 @@ export const createLearning = (hooks: {
     progress: beginProgress(hooks.state()),
   };
   const id = (): LessonId => lessonIds.at(session.index) ?? "swim";
+  const lessonCopy = (value: string): string => {
+    const rightHanded = hooks.state().players.at(0)?.handedness !== "left";
+    const controls = hooks.touch() ? "Dummy + steer" : "right mouse + A or D";
+    return value
+      .replaceAll("{curlDirection}", rightHanded ? "right" : "left")
+      .replaceAll("{reverseDirection}", rightHanded ? "left" : "right")
+      .replaceAll("{dummyControls}", controls);
+  };
   const stop = (): void => {
     session.active = false;
     objective.hidden = true;
@@ -186,18 +105,20 @@ export const createLearning = (hooks: {
         : "";
     getElement("#lesson-title", HTMLElement).textContent =
       kind === "intro"
-        ? "Learn to play"
+        ? "Learn how to play"
         : kind === "complete"
           ? "Ready to play"
           : lesson.title;
     getElement("#lesson-text", HTMLElement).textContent =
       kind === "intro"
-        ? String(lessonIds.length) + " quick lessons. Go at your own pace."
+        ? "Hone your skills."
         : kind === "complete"
           ? "Take your skills into the pool."
-          : lesson.text;
+          : lessonCopy(lesson.text);
     getElement("#lesson-keys", HTMLElement).textContent =
-      kind === "lesson" ? (hooks.touch() ? lesson.touch : lesson.desktop) : "";
+      kind === "lesson"
+        ? lessonCopy(hooks.touch() ? lesson.touch : lesson.desktop)
+        : "";
     getElement("#lesson-go", HTMLButtonElement).textContent =
       kind === "intro"
         ? savedLesson(read(prefix + "-step")) > 0
@@ -205,9 +126,7 @@ export const createLearning = (hooks: {
           : "Start"
         : kind === "complete"
           ? "Free swim"
-          : lesson.study
-            ? "Got it"
-            : "Try it";
+          : "Try it";
     getElement("#lesson-close", HTMLButtonElement).textContent =
       kind === "intro" ? "Not now" : "Menu";
     card.showModal();
@@ -267,8 +186,6 @@ export const createLearning = (hooks: {
       } else if (session.card === "complete") {
         stop();
         hooks.resume();
-      } else if (lessons[id()].study) {
-        advance();
       } else {
         card.close();
         objective.hidden = false;
@@ -310,13 +227,14 @@ export const createLearning = (hooks: {
     },
     stop,
     retry,
-    tick: (attemptedGrab = false): void => {
+    tick: (attemptedGrab = false, glance = 0): void => {
       if (!session.active || card.open) return;
       const amount = advanceProgress(
         id(),
         session.progress,
         hooks.state(),
         attemptedGrab,
+        glance,
       );
       const result = lessonFeedback(
         session.progress,
@@ -328,9 +246,13 @@ export const createLearning = (hooks: {
       const message = result.success
         ? "✓ Done"
         : result.hint
-          ? lessons[id()].hint +
-            " " +
-            (hooks.touch() ? lessons[id()].touch : lessons[id()].desktop)
+          ? lessonCopy(lessons[id()].hint) +
+            (id() === "dummy"
+              ? ""
+              : " " +
+                lessonCopy(
+                  hooks.touch() ? lessons[id()].touch : lessons[id()].desktop,
+                ))
           : "";
       if (feedback.textContent !== message) feedback.textContent = message;
       feedback.hidden = !message;

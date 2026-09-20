@@ -150,10 +150,7 @@ test("carry correction follows the player and a new owner immediately wins", () 
 });
 
 test("input coalesces to the room's message budget without losing time", () => {
-  // Input is gathered on every animation frame, not every rendered one, so a
-  // high refresh screen runs past the hundred messages a second the room
-  // accepts. Each window must still report the interval it was made over, or
-  // the room pays its yaw out at the wrong rate.
+  // Preserve each input interval when the frame rate exceeds the message limit.
   for (const refresh of [55, 60, 120, 144, 240]) {
     const sends = createFrameSends();
     const frame = 1 / refresh;

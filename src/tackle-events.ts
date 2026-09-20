@@ -39,8 +39,7 @@ const sideLabel = (carrier: Vector3, yaw: number, taker: Player): string => {
 const carryLabel = (curl: number): string =>
   curl < 0 ? "reverse curl" : curl > 0 ? "regular curl" : "carrying";
 
-// Cover is per challenger, so record it against every opponent while the puck
-// is held and read back the one who actually took it.
+// Record cover for each challenger. Use the value for the player who takes the puck.
 const recordCover = (
   state: Simulation,
   carrier: Player,

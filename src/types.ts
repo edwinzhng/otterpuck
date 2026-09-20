@@ -58,8 +58,7 @@ export type Player = {
   evadeTarget: Vector3;
   air: number;
   stamina: number;
-  // An announcement meant for this player alone. The match-wide one on the
-  // simulation reaches every client, which is wrong for a player's own air.
+  // This event is visible only to this player.
   event: string;
   eventTime: number;
   mode: WaterMode;

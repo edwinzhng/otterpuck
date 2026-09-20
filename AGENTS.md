@@ -1,5 +1,9 @@
 # Otterpuck
 
+## Agent guides
+
+Read [docs/agent-guides/README.md](docs/agent-guides/README.md) before you change code, product copy, or documentation. It is the index for the repository's product, writing, structure, and review rules. Apply the guides that match the work.
+
 This repository is the permanent home of the existing Otterpuck game. Preserve the working gameplay and current authored characters; do not start over. Historical handoff documents may mention temporary working directories. Work in this checkout.
 
 ## Browser use
@@ -8,7 +12,7 @@ Edwin authorizes browser use whenever needed for visual verification and perform
 
 ## Development
 
-Use Bun, TypeScript and Biome. Do not introduce npm, pnpm, ESLint or Prettier. Prefer types, const arrow functions, explicit return types, named helpers, `.at()`, and self-documenting code. Avoid enums, `any`, unsafe type assertions, unnecessary comments and unrelated refactors. Blender's Python API is invoked by the TypeScript authoring scripts; the historical `art/otter.py` is retained as source provenance.
+Use Bun, TypeScript and Biome. Do not introduce npm, pnpm, ESLint or Prettier. Follow the code and comment rules in the agent guides. Blender's Python API is invoked by the TypeScript authoring scripts; the historical `art/otter.py` is retained as source provenance.
 
 Gameplay physics and the existing controller remain authoritative. Visual animation, fur and particles must not change colliders or movement speed. Keep arm/stick geometry consistent with puck interaction logic. Test relevant changes with `bun test`, `bun run check`, and `bun run build`. Test actual renderer performance for interactive visual changes; CPU benchmarks are not phone or GPU frame-rate measurements.
 

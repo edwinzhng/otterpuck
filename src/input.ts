@@ -104,7 +104,12 @@ export const createInput = (
     keys.delete(event.code);
   });
   window.addEventListener("mousemove", (event: MouseEvent): void => {
-    if (!input.locked || touch.enabled) return;
+    if (
+      !input.locked ||
+      touch.enabled ||
+      document.pointerLockElement !== canvas
+    )
+      return;
 
     controls.yawDelta -= event.movementX * 0.002;
     controls.pitch = clamp(
@@ -114,7 +119,12 @@ export const createInput = (
     );
   });
   window.addEventListener("mousedown", (event: MouseEvent): void => {
-    if (!input.locked || touch.enabled) return;
+    if (
+      !input.locked ||
+      touch.enabled ||
+      document.pointerLockElement !== canvas
+    )
+      return;
     if (
       event.target instanceof Element &&
       event.target.closest("button, dialog")

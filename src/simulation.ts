@@ -513,11 +513,14 @@ const AUTO_DUMMY_TIMING = 1.6;
 const bodyTurnRate = (controls: Controls): number =>
   controls.lateral * (controls.sprint && controls.forward > 0 ? 2.08 : 2.47);
 
-const turnDemand = (controls: Controls, dt: number): number =>
-  (controls.yawDelta * 1.3) / dt - bodyTurnRate(controls);
+const turnDemand = (
+  controls: Controls,
+  dt: number,
+  pointerGain: number,
+): number =>
+  (controls.yawDelta * 1.3 * pointerGain) / dt - bodyTurnRate(controls);
 
-// A handover is measured against the rate that starts it, and once it is
-// running against the gentler release rate that keeps it alive.
+// Use a lower limit to keep an active handover.
 const turningHard = (player: Player, rate: number): boolean =>
   Math.abs(player.turnRate) > (player.curl === 0 ? rate : HARD_TURN_RELEASE);
 
@@ -544,9 +547,7 @@ const canHandOver = (
   !player.puckMove &&
   !player.grab;
 
-// Swimming forward, a hard turn dummies; turning harder still curls instead,
-// abandoning a dummy already under way. A sprint stays with the dummy however
-// hard the turn, so the sprinter never loses the stride to a pivot.
+// A harder turn changes a dummy to a curl. Sprinting keeps the dummy active.
 const curlsOverDummy = (
   rules: Rules,
   state: Simulation,
@@ -589,8 +590,9 @@ const updateHumanMovement = (
   dt: number,
 ): void => {
   const rules = rulesFor(state);
+  const pointerGain = state.puck.controlOwner === player.id ? 1.45 : 1;
   player.turnRate +=
-    (turnDemand(controls, dt) - player.turnRate) *
+    (turnDemand(controls, dt, pointerGain) - player.turnRate) *
     (1 - Math.exp(-TURN_RESPONSE * dt));
   if (
     player.autoDummyLocked &&
@@ -640,12 +642,13 @@ const updateHumanMovement = (
     (1 - Math.exp(-(curl === 0 ? 34 : 24) * dt));
   if (Math.abs(player.curlTurnSpeed) < 0.01) player.curlTurnSpeed = 0;
   const steer =
-    controls.yawDelta * 1.3 * (curl === 0 ? 1 : rules.curlMouseTurn) -
+    controls.yawDelta *
+      1.3 *
+      pointerGain *
+      (curl === 0 ? 1 : rules.curlMouseTurn) -
     bodyTurnRate(locomotion) * dt +
     player.curlTurnSpeed * bladeMirror(player) * dt;
-  // Free of the puck the body pivots faster than a curl, by the room's swim
-  // turn setting, still bounded so a mouse flick cannot spin the otter on the
-  // spot.
+  // Without the puck, use the room turn rate. Limit mouse flicks to this rate.
   const turnLimit =
     curl === 0 && state.puck.controlOwner !== player.id
       ? CURL_TURN_SPEED * state.swimTurn
@@ -1118,12 +1121,8 @@ const updateAir = (state: Simulation, player: Player, dt: number): void => {
         state.time - state.puck.touchTime < 1.2);
     const air = rules.airDrain;
     const drain = engaged
-      ? air.engaged +
-        (player.sprint ? air.engagedSprint : 0) +
-        Math.abs(player.curl) * air.curl
-      : player.sprint
-        ? air.sprint
-        : air.idle + Math.min(1, player.kick) * air.kick;
+      ? air.engaged + Math.abs(player.curl) * air.curl
+      : air.idle + Math.min(1, player.kick) * air.kick;
     player.air = Math.max(
       0,
       player.air -

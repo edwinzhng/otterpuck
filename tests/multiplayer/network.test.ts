@@ -233,9 +233,7 @@ describe("multiplayer", () => {
     expect(host.messages.some((m) => m.type === "snapshot")).toBe(false);
   });
   test("a capped turn scales with the interval its input covers, not the room's ticks", () => {
-    // One message far above the cap, left to drain over a fixed span of room
-    // ticks: what it is worth must follow the interval the client accumulated
-    // it over, and must not change with how the room slices that span.
+    // Scale a capped input by its source interval, independent of the room tick.
     const yawFor = (duration: number, tick: number): number => {
       const match = createNetworkMatch();
       match.state.faceoff = undefined;
@@ -256,11 +254,7 @@ describe("multiplayer", () => {
     expect(yawFor(4 * STEP, STEP) / one).toBeCloseTo(4, 2);
   });
   test("turning at the cap survives a send rate slower than the room tick", () => {
-    // The online client batches input at 30Hz while the room ticks at 60Hz.
-    // Spending a whole send window inside the tick that receives it used to
-    // cost half of every capped turn, against a client predicting the full
-    // rate: the player turned, the room disagreed, and the correction fought
-    // the mouse. Sustained hard turning must reach the same rate either way.
+    // Keep the sustained turn rate independent of the input send rate.
     const rateFor = (sendHz: number): number => {
       const match = createNetworkMatch();
       match.state.faceoff = undefined;
@@ -290,10 +284,7 @@ describe("multiplayer", () => {
     expect(rateFor(120) / perTick).toBeCloseTo(1, 2);
   });
   test("a sequence is acknowledged only once its yaw has been spent", () => {
-    // Clients drop acknowledged inputs from the queue they replay over every
-    // snapshot. Acknowledging one while its yaw is still waiting in the room
-    // erases the turn from the prediction and hands it back a snapshot later,
-    // which reads as the view rocking back and forth against the mouse.
+    // Acknowledge an input only after the room applies all of its yaw.
     const match = createNetworkMatch();
     match.state.faceoff = undefined;
     match.roster([

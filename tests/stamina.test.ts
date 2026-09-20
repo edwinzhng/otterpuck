@@ -122,7 +122,7 @@ test("air comes back more slowly at the surface after a hard sprint", (): void =
   expect(winded).toBeGreaterThan(0);
 });
 
-test("a winded swimmer burns air faster underwater", (): void => {
+test("a winded swimmer does not burn extra air underwater", (): void => {
   const consumed = [MAX_STAMINA, 0].map((stamina): number => {
     const { state, player } = setup();
     player.stamina = stamina;
@@ -132,7 +132,7 @@ test("a winded swimmer burns air faster underwater", (): void => {
   const [fresh, winded] = consumed;
   if (fresh === undefined || winded === undefined)
     throw new Error("Missing samples");
-  expect(winded).toBeGreaterThan(fresh);
+  expect(winded).toBeCloseTo(fresh, 6);
 });
 
 test("bots share the stamina limit and stop sprinting when spent", (): void => {
@@ -148,8 +148,7 @@ test("bots share the stamina limit and stop sprinting when spent", (): void => {
 });
 
 test("running low on air announces to that otter alone", (): void => {
-  // Everyone in a room shares one simulation, so an announcement left on it
-  // told every client that their own air was running out.
+  // Keep personal air warnings out of the shared room state.
   const state = createSimulation("2-3-1", "2-3-1");
   const player = state.players.at(0);
   const other = state.players.at(1);

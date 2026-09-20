@@ -1,23 +1,12 @@
+import { type LessonId, lessonIds } from "./learning-content";
 import {
   angleDifference,
   FLOOR_HEIGHT,
-  PUCK_HEIGHT,
   type Simulation,
   SURFACE_HEIGHT,
 } from "./types";
-export const lessonIds = [
-  "swim",
-  "grab",
-  "flick",
-  "curl",
-  "reverse",
-  "shield",
-  "swerve",
-  "dummy",
-  "rise",
-  "dive",
-] as const;
-export type LessonId = (typeof lessonIds)[number];
+
+export { type LessonId, lessonIds } from "./learning-content";
 export type LessonProgress = {
   value: number;
   lastX: number;
@@ -28,7 +17,8 @@ export type LessonProgress = {
   startedAt: number;
   successAt: number | undefined;
   burstEndsAt: number | undefined;
-  swerveAt: number | undefined;
+  glancedLeft: boolean;
+  glancedRight: boolean;
 };
 export const beginProgress = (state: Simulation): LessonProgress => ({
   value: 0,
@@ -40,14 +30,15 @@ export const beginProgress = (state: Simulation): LessonProgress => ({
   startedAt: state.time,
   successAt: undefined,
   burstEndsAt: undefined,
-  swerveAt: undefined,
+  glancedLeft: false,
+  glancedRight: false,
 });
-const SWERVE_CARRY_SECONDS = 0.9;
 export const advanceProgress = (
   id: LessonId,
   progress: LessonProgress,
   state: Simulation,
   attemptedGrab = false,
+  glance = 0,
 ): number => {
   const player = state.players.at(0);
   if (!player) return 0;
@@ -58,35 +49,23 @@ export const advanceProgress = (
   const turn = Math.abs(angleDifference(player.yaw, progress.lastYaw));
   const owns = state.puck.controlOwner === player.id;
   if (id === "swim") progress.value += distance / 2;
+  if (id === "glance") {
+    progress.glancedLeft ||= glance < 0;
+    progress.glancedRight ||= glance > 0;
+    progress.value =
+      Number(progress.glancedLeft) / 2 + Number(progress.glancedRight) / 2;
+  }
   if (id === "grab") {
     progress.action ||= attemptedGrab || Boolean(player.grab);
-    if (progress.action && owns) progress.value = 1;
+    if (owns) progress.value = 1;
   }
-  if (id === "flick") {
-    progress.action ||= state.shots > progress.shots && player.shotFired;
-    if (progress.action)
-      progress.value =
-        state.puck.position.y <= PUCK_HEIGHT + 0.006 && player.shotTime <= 0
-          ? 1
-          : 0.85;
-  }
+  if (id === "flick") progress.value = (state.shots - progress.shots) / 2;
   if (
     ((id === "curl" && player.curl > 0) ||
       (id === "reverse" && player.curl < 0)) &&
     owns
   )
     progress.value += turn / (Math.PI * 2);
-  // The automatic swerve asks only that the carrier ride it out with the puck:
-  // it has no sprint burst to wait for, unlike the dummy held by hand.
-  if (id === "swerve") {
-    if (!owns) progress.swerveAt = undefined;
-    else if (player.autoDummyLocked && player.dummy !== 0)
-      progress.swerveAt ??= state.time;
-    progress.value =
-      progress.swerveAt === undefined
-        ? 0
-        : (state.time - progress.swerveAt) / SWERVE_CARRY_SECONDS;
-  }
   if (id === "dummy") {
     progress.action ||= player.dummy !== 0 && owns;
     if (progress.action && owns) {

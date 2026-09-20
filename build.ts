@@ -39,6 +39,13 @@ for (const path of [
 const regions = regionsSchema.parse(
   await Bun.file("public/multiplayer.json").json(),
 );
+const selfHostedUrl = process.env.PUBLIC_ROOMS_SELF_HOSTED_URL;
+if (selfHostedUrl)
+  regions.push({
+    id: "home",
+    label: "🏠 Home server",
+    url: selfHostedUrl,
+  });
 for (const region of regions) {
   const configured =
     process.env[
