@@ -192,7 +192,9 @@ if (import.meta.main) {
     port: Number(process.env.PORT ?? 3210),
     region: process.env.ROOM_REGION ?? "local",
     origins,
-    trustProxy: Boolean(process.env.RAILWAY_ENVIRONMENT_ID),
+    trustProxy: Boolean(
+      process.env.RAILWAY_ENVIRONMENT_ID ?? process.env.TRUST_PROXY,
+    ),
   });
   console.info(`Room server listening at ${server.url}`);
 }
