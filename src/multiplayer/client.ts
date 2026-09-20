@@ -42,10 +42,7 @@ export const createFrameSends = (
 ): {
   add: (seconds: number) => number | undefined;
 } => {
-  // Report whole room steps and carry the remainder. A window that ends part
-  // way through a step leaves the room holding yaw it has applied but cannot
-  // acknowledge yet, which the client then predicts a second time. Rounding the
-  // threshold up keeps the carry from pushing the send rate past the budget.
+  // Send whole room steps so acknowledgements align with simulation updates.
   const minimum = Math.ceil(limit / STEP) * STEP;
   let pending = 0;
   return {
@@ -420,8 +417,6 @@ export const connectRoom = (
     input: (next, seconds = 0): void => {
       if (room?.mode === "lan" && self === room.hostId && match) {
         const member = room.members.find((member) => member.id === self);
-        // Report the frame that produced this yaw. Without it the room has to
-        // guess the interval from its own clock and drifts into a backlog.
         if (member)
           match.input(
             member.playerId,

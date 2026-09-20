@@ -15,6 +15,7 @@ import {
 import type { RoomView } from "./protocol";
 
 type Turn = { sequence: number; yaw: number; seconds: number };
+const MAX_TURN_BACKLOG = 0.1;
 
 // Send one snapshot for each 60 Hz room step. Lower rates make reconciliation
 // corrections visible during turns. Compression keeps this rate practical.
@@ -53,50 +54,39 @@ export const createNetworkMatch = (
 } => {
   const inputs = new Map<number, Controls>();
   const received = new Map<number, { sequence: number; time: number }>();
-  // Apply yaw across its reported interval. Applying all yaw in one room step
-  // can exceed the per-step turn limit and discard movement. Each input keeps
-  // its own entry so the acknowledgement can name the yaw the room has spent.
-  const turning = new Map<number, Turn[]>();
-  // A queued backlog is latency: the room is still turning the player after
-  // they stopped. Bound it so a stalled client cannot bank a long turn.
-  const MAX_BACKLOG = 0.1;
+  const turns = new Map<number, Turn[]>();
   let accumulator = 0;
   let sinceSnapshot = 0;
   const acknowledged: Record<string, number> = {};
-  // Acknowledge an input only once the room has spent all of its yaw. A later
-  // acknowledgement makes the client replay yaw the room already applied, and
-  // an earlier one drops yaw the room has not applied yet. Either way the view
-  // carries the error until the turn ends and then snaps back.
-  const settle = (id: number, sequence: number): void => {
-    acknowledged[id] = Math.max(acknowledged[id] ?? -1, sequence);
+  const acknowledge = (id: number, sequence: number): void => {
+    acknowledged[id] = sequence;
   };
-  const discard = (id: number): void => {
-    const queue = turning.get(id);
+  const clearTurns = (id: number): void => {
+    const queue = turns.get(id);
     const last = queue?.at(-1);
-    if (last) settle(id, last.sequence);
-    turning.delete(id);
+    if (last) acknowledge(id, last.sequence);
+    turns.delete(id);
   };
-  // Spend up to `budget` seconds of queued turning and return the yaw for it.
-  const spendTurn = (id: number, budget: number): number => {
-    const queue = turning.get(id);
+  const takeTurn = (id: number, seconds: number): number => {
+    const queue = turns.get(id);
     if (!queue) return 0;
-    let remaining = budget;
+    let remaining = seconds;
     let yaw = 0;
-    while (queue.length > 0 && remaining > 0) {
+    while (remaining > 0) {
       const head = queue[0];
       if (!head) break;
       const spent = Math.min(remaining, head.seconds);
-      const share =
+      const applied =
         head.seconds > 0 ? (head.yaw * spent) / head.seconds : head.yaw;
-      yaw += share;
-      head.yaw -= share;
+      yaw += applied;
+      head.yaw -= applied;
       head.seconds -= spent;
       remaining -= spent;
       if (head.seconds > 1e-9) break;
-      settle(id, head.sequence);
+      acknowledge(id, head.sequence);
       queue.shift();
     }
-    if (queue.length === 0) turning.delete(id);
+    if (queue.length === 0) turns.delete(id);
     return yaw;
   };
   const match = {
@@ -116,7 +106,7 @@ export const createNetworkMatch = (
         if (!member) {
           inputs.delete(player.id);
           received.delete(player.id);
-          turning.delete(player.id);
+          turns.delete(player.id);
           delete acknowledged[player.id];
         }
       }
@@ -130,26 +120,22 @@ export const createNetworkMatch = (
       const current = inputs.get(id);
       if (!current || sequence <= (received.get(id)?.sequence ?? -1)) return;
       const previous = received.get(id);
-      // Use the client interval, or the time since its previous input. Queue it
-      // behind any yaw still owed so each input keeps its own acknowledgement.
       const window = Math.max(
         duration ?? (previous ? initial.time - previous.time : STEP),
         STEP,
       );
-      const queue = turning.get(id) ?? [];
+      const queue = turns.get(id) ?? [];
       queue.push({
         sequence,
         yaw: Math.max(-4, Math.min(4, controls.yawDelta)),
         seconds: window,
       });
-      // Compress the backlog rather than trimming it, so the queued yaw still
-      // reaches the player and the oldest input still settles first.
       const backlog = queue.reduce((sum, turn) => sum + turn.seconds, 0);
-      if (backlog > MAX_BACKLOG) {
-        const scale = MAX_BACKLOG / backlog;
+      if (backlog > MAX_TURN_BACKLOG) {
+        const scale = MAX_TURN_BACKLOG / backlog;
         for (const turn of queue) turn.seconds *= scale;
       }
-      turning.set(id, queue);
+      turns.set(id, queue);
       const shot = Math.max(current.shot, controls.shot);
       const dive = current.dive || controls.dive;
       const knockdown = current.knockdown || controls.knockdown;
@@ -168,10 +154,10 @@ export const createNetworkMatch = (
         for (const [id, controls] of inputs) {
           if (initial.time - (received.get(id)?.time ?? -1) > 0.5) {
             Object.assign(controls, freshControls());
-            discard(id);
+            clearTurns(id);
             continue;
           }
-          controls.yawDelta = spendTurn(id, STEP);
+          controls.yawDelta = takeTurn(id, STEP);
         }
         stepSimulation(initial, inputs, STEP);
         accumulator -= STEP;
