@@ -54,17 +54,17 @@ export const lessons: Record<LessonId, LessonContent> = {
   curl: {
     title: "Curl",
     hint: "Keep turning {curlDirection} for one full circle.",
-    text: "Turn {curlDirection} and complete one full curl.",
-    desktop: "Swim forward · turn {curlDirection}",
-    touch: "Swipe {curlDirection} and hold · or hold Curl",
+    text: "Stop swimming, then turn {curlDirection} for one full curl.",
+    desktop: "Release W · turn {curlDirection}",
+    touch: "Release the joystick · swipe {curlDirection} · or hold Curl",
     image: "curl",
   },
   reverse: {
     title: "Reverse curl",
     hint: "Keep turning {reverseDirection} for one full circle.",
-    text: "Turn {reverseDirection} and complete one full reverse curl.",
-    desktop: "Swim forward · turn {reverseDirection}",
-    touch: "Swipe {reverseDirection} and hold · or hold Reverse",
+    text: "Stop swimming, then turn {reverseDirection} for one full reverse curl.",
+    desktop: "Release W · turn {reverseDirection}",
+    touch: "Release the joystick · swipe {reverseDirection} · or hold Reverse",
     image: "curl",
   },
   dummy: {

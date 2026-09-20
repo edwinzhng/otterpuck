@@ -135,8 +135,7 @@ export const createSnapshotInterpolation = (): {
       }
       if (
         state.puck.controlOwner !== self ||
-        state.puck.shotOwner !== undefined ||
-        state.players.find((player) => player.id === self)?.puckMove
+        state.puck.shotOwner !== undefined
       ) {
         state.puck.position.lerpVectors(
           before.puck.position,

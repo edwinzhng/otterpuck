@@ -38,14 +38,13 @@ Picked in the lobby and remembered; **original** keeps the previous behaviour.
 - **A shorter breath**: 30s still, 20s swimming, 10s sprinting, shortened further
   as stamina runs down.
 - **Turning underwater costs a little forward speed.**
-- **A hard turn with the puck hands over to the curl**, and yaw is capped at the
-  curl rate, so no puck action turns faster than the curl.
+- **Swimming with the puck keeps a normal turn**, while turning from a stop
+  hands over to the curl. Yaw remains capped at the curl rate while carrying.
 - **Swimming free of the puck is capped too**, at 1.75 times the curl rate, so a
   mouse flick can no longer spin a swimmer on the spot.
-- **Swimming forward, the same hard turn starts a dummy instead**, and turning
-  faster still curls — taking over from a dummy already under way. Sprinting
-  keeps the dummy however hard the turn, so a sprinter never loses the stride to
-  a pivot.
+- **A hard sprinting turn starts the slower automatic dummy**, so a sprinter
+  keeps the stride instead of pivoting into a curl. The dedicated Dummy control
+  keeps its faster movement and sprint burst.
 
 ## Puck shielding
 

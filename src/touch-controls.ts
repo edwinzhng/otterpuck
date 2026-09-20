@@ -64,7 +64,7 @@ export const createTouchController = (controls: Controls): TouchController => {
     return false;
   };
   const needsStick = (action: TouchAction): boolean =>
-    ["shot", "react", "curl", "reverse", "dummy", "pull"].includes(action);
+    ["shot", "react", "curl", "reverse", "dummy"].includes(action);
   const begin = (
     id: number,
     action: TouchAction,
@@ -82,7 +82,6 @@ export const createTouchController = (controls: Controls): TouchController => {
     contacts.set(id, { action, origin, point, started: now, radius });
     if (action === "react") state.react = true;
     if (action === "descend") state.dive = true;
-    if (action === "backhand") controls.backhand = !controls.backhand;
     return true;
   };
   const move = (id: number, point: TouchPoint): void => {
@@ -149,7 +148,6 @@ export const createTouchController = (controls: Controls): TouchController => {
           edgeTurn * EDGE_TURN_RATE * seconds * state.sensitivity;
       }
     }
-    controls.pushPull = held("pull");
     controls.charging = false;
     controls.charge = 0;
     for (const contact of contacts.values()) {
@@ -171,8 +169,8 @@ export const createTouchController = (controls: Controls): TouchController => {
     state.shot = 0;
     state.react = false;
     state.dive = false;
-    const { pitch, backhand } = controls;
-    Object.assign(controls, freshControls(), { pitch, backhand });
+    const { pitch } = controls;
+    Object.assign(controls, freshControls(), { pitch });
   };
   const setStickAvailable = (available: boolean): void => {
     state.stickAvailable = available;

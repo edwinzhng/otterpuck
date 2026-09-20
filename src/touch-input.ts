@@ -59,8 +59,7 @@ export const createTouchInput = (
         (value): boolean => value === button.dataset.touch,
       );
       if (!action) continue;
-      const pressed =
-        action === "backhand" ? controls.backhand : controller.held(action);
+      const pressed = controller.held(action);
       const value = String(pressed);
       if (button.getAttribute("aria-pressed") !== value)
         button.setAttribute("aria-pressed", value);
@@ -102,7 +101,7 @@ export const createTouchInput = (
       for (const button of buttons) {
         const action = button.dataset.touch;
         const unavailable =
-          ["shot", "curl", "reverse", "dummy", "pull", "react"].includes(
+          ["shot", "curl", "reverse", "dummy", "react"].includes(
             action ?? "",
           ) && !available;
         button.setAttribute("aria-disabled", String(unavailable));

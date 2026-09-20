@@ -40,11 +40,8 @@ export const createInput = (
     clear: (): void => {
       keys.clear();
       touch.clear();
-      const { pitch, backhand } = controls;
-      Object.assign(controls, freshControls(), {
-        pitch,
-        backhand,
-      });
+      const { pitch } = controls;
+      Object.assign(controls, freshControls(), { pitch });
       input.charging = false;
     },
     poll: (): void => {
@@ -92,7 +89,6 @@ export const createInput = (
     if (event.code === "Escape") onPause();
     if (event.code === "KeyX") controls.knockdown = true;
     if (event.code === "KeyC") controls.dive = true;
-    if (event.code === "KeyR") controls.backhand = !controls.backhand;
     if (event.code === "KeyT") onTactics();
     if (event.code === "KeyP") onReset();
     if (event.code === "KeyV") onLabAction("camera");

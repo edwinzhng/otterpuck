@@ -31,17 +31,13 @@ export {
 export { announce, announceTo } from "./simulation-events";
 
 import {
-  availablePuckMove,
   canGrabPuck,
   canKnockdown,
-  frontPuckPosition,
   isPuckContested,
   KNOCKDOWN_DURATION,
   KNOCKDOWN_HIT_TIME,
   puckInGrabReach,
   puckInKnockdownBox,
-  puckInMoveReach,
-  puckMoveOffset,
 } from "./handling";
 import {
   bladeMirror,
@@ -70,7 +66,6 @@ import {
   updateBladePose,
 } from "./stick";
 import {
-  angleDifference,
   attackDirection,
   type Controls,
   clamp,
@@ -89,7 +84,6 @@ import {
   POOL,
   PUCK_HEIGHT,
   PUCK_RADIUS,
-  type PuckMoveKind,
   type Ruleset,
   type Simulation,
   STICK_EDGE,
@@ -161,9 +155,6 @@ const makePlayer = (
     lateral: 0,
     cradle: undefined,
     grab: undefined,
-    puckMove: undefined,
-    puckMoveCooldown: 0,
-    puckWorkHeld: false,
     knockdownTime: 0,
     knockdownCooldown: 0,
     knockdownAttempted: false,
@@ -308,8 +299,6 @@ export const setPlayerHandedness = (
   if (!player || player.handedness === handedness) return;
   player.handedness = handedness;
   player.stickOffset.x *= -1;
-  player.puckMove = undefined;
-  player.puckWorkHeld = false;
   player.curl = 0;
   player.curlTurnSpeed = 0;
   player.dummy = 0;
@@ -346,8 +335,7 @@ export const requestShot = (
     player.cooldown > 0 ||
     player.emergency ||
     player.position.y > 1.4 ||
-    player.knockdownTime > 0 ||
-    player.puckMove !== undefined
+    player.knockdownTime > 0
   )
     return false;
   player.shotTime = SHOT_DURATION;
@@ -368,7 +356,6 @@ const updateCradle = (
 ): void => {
   if (
     !canCarryPuck(state, player) ||
-    player.puckMove ||
     (state.puck.controlOwner !== player.id &&
       ((player.curl === 0 && player.dummy === 0) ||
         player.stick.distanceTo(state.puck.position) >
@@ -506,9 +493,9 @@ const CURL_TURN_SPEED = 2.795;
 const TURN_RESPONSE = 9;
 const HARD_TURN_RATE = 2.6;
 const HARD_TURN_FORWARD_RATE = 4.1;
-const HARD_TURN_CURL_RATE = 7.5;
 const HARD_TURN_RELEASE = 1.6;
 const AUTO_DUMMY_TIMING = 1.6;
+const POINTER_TURN_GAIN = 1.45;
 
 const bodyTurnRate = (controls: Controls): number =>
   controls.lateral * (controls.sprint && controls.forward > 0 ? 2.08 : 2.47);
@@ -544,20 +531,8 @@ const canHandOver = (
   state.puck.controlOwner === player.id &&
   !controls.charging &&
   !controls.dummyMode &&
-  !player.puckMove &&
-  !player.grab;
-
-// A harder turn changes a dummy to a curl. Sprinting keeps the dummy active.
-const curlsOverDummy = (
-  rules: Rules,
-  state: Simulation,
-  player: Player,
-  controls: Controls,
-): boolean =>
-  controls.forward > 0 &&
-  !sprintingForward(rules, player, controls) &&
-  canHandOver(rules, state, player, controls) &&
-  turningHard(player, HARD_TURN_CURL_RATE);
+  !player.grab &&
+  (controls.forward <= 0 || sprintingForward(rules, player, controls));
 
 const autoTurnDirection = (
   rules: Rules,
@@ -590,7 +565,7 @@ const updateHumanMovement = (
   dt: number,
 ): void => {
   const rules = rulesFor(state);
-  const pointerGain = state.puck.controlOwner === player.id ? 1.45 : 1;
+  const pointerGain = POINTER_TURN_GAIN;
   player.turnRate +=
     (turnDemand(controls, dt, pointerGain) - player.turnRate) *
     (1 - Math.exp(-TURN_RESPONSE * dt));
@@ -601,24 +576,14 @@ const updateHumanMovement = (
     player.autoDummyLocked = false;
     player.autoDummyUntil = 0;
   }
-  const curling = curlsOverDummy(rules, state, player, controls);
-  if (curling) {
-    player.autoDummyLocked = false;
-    player.autoDummyUntil = 0;
-  }
   const automatic = autoTurnDirection(rules, state, player, controls);
-  if (
-    controls.forward > 0 &&
-    !curling &&
-    automatic !== 0 &&
-    !player.autoDummyLocked
-  ) {
+  if (controls.forward > 0 && automatic !== 0 && !player.autoDummyLocked) {
     player.autoDummyLocked = true;
     player.autoDummyUntil =
       state.time +
       (SWERVE_PULL_DURATION + SWERVE_EXTEND_DURATION) * AUTO_DUMMY_TIMING;
   }
-  const forwardTurn = controls.forward > 0 && !curling;
+  const forwardTurn = controls.forward > 0;
   const curl =
     controls.curl !== 0 ? controls.curl : forwardTurn ? 0 : automatic;
   const locomotion =
@@ -636,7 +601,18 @@ const updateHumanMovement = (
   player.curl = curl;
   player.dummy =
     curl === 0 ? controls.dummy || (forwardTurn ? automatic : 0) : 0;
-  player.lateral = locomotion.lateral;
+  const visualTurn = clamp(
+    -player.turnRate /
+      bodyTurnRate({
+        ...controls,
+        lateral: 1,
+      }),
+    -1,
+    1,
+  );
+  if (locomotion.lateral !== 0) player.lateral = locomotion.lateral;
+  else
+    player.lateral += (visualTurn - player.lateral) * (1 - Math.exp(-12 * dt));
   player.curlTurnSpeed +=
     (curl * CURL_TURN_SPEED - player.curlTurnSpeed) *
     (1 - Math.exp(-(curl === 0 ? 34 : 24) * dt));
@@ -648,11 +624,9 @@ const updateHumanMovement = (
       (curl === 0 ? 1 : rules.curlMouseTurn) -
     bodyTurnRate(locomotion) * dt +
     player.curlTurnSpeed * bladeMirror(player) * dt;
-  // Without the puck, use the room turn rate. Limit mouse flicks to this rate.
+  // Normal swimming uses the room turn rate. Curling keeps its own limit.
   const turnLimit =
-    curl === 0 && state.puck.controlOwner !== player.id
-      ? CURL_TURN_SPEED * state.swimTurn
-      : CURL_TURN_SPEED;
+    curl === 0 ? CURL_TURN_SPEED * state.swimTurn : CURL_TURN_SPEED;
   player.yaw += !rules.autoCurl
     ? steer
     : clamp(steer, -turnLimit * dt, turnLimit * dt);
@@ -738,21 +712,6 @@ const updateHuman = (
   const forward = forwardVector(player.yaw);
   const underwater = player.position.y < SURFACE_HEIGHT - 0.07;
   updateHumanCharge(player, controls, dt);
-  if (player.charging && player.puckMove) endPuckMove(state, player);
-  if (controls.pushPull && !player.puckWorkHeld && !player.charging) {
-    const kind = availablePuckMove(state, player);
-    if (kind) beginPuckMove(state, player, kind);
-  }
-  player.puckWorkHeld = controls.pushPull;
-  if (
-    player.puckMove &&
-    (!puckInMoveReach(state, player) ||
-      player.curl !== 0 ||
-      player.dummy !== 0 ||
-      Math.abs(angleDifference(player.yaw, player.puckMove.yaw)) > 0.55)
-  )
-    endPuckMove(state, player);
-  if (player.puckMove) player.puckMove.elapsed += dt;
   updateCradle(state, player, dt, automaticDummy);
   if (player.grab) {
     player.grab.elapsed += dt;
@@ -761,7 +720,6 @@ const updateHuman = (
       player.grab.elapsed > 0.55 ||
       !canHandlePuck(state, player) ||
       !puckInGrabReach(state, player, controls.pitch) ||
-      player.puckMove ||
       player.curl !== 0 ||
       player.dummy !== 0 ||
       player.charging
@@ -784,7 +742,6 @@ const updateHuman = (
     player.dummy !== 0 ||
     player.knockdownTime > 0 ||
     player.charging ||
-    player.puckMove !== undefined ||
     player.grab !== undefined;
   const offset = new Vector3(
     handSide(player) * 0.13 +
@@ -793,7 +750,6 @@ const updateHuman = (
     0,
     -STICK_REACH,
   );
-  offset.copy(puckMoveOffset(state, player, offset));
   if (player.grab) {
     const seat = puckSeat(player).sub(player.stick);
     offset
@@ -823,7 +779,7 @@ const updateHuman = (
     offset,
     1 -
       Math.exp(
-        -(player.knockdownTime > 0 || player.puckMove || player.grab
+        -(player.knockdownTime > 0 || player.grab
           ? 42
           : player.dummy !== 0
             ? 32
@@ -831,7 +787,6 @@ const updateHuman = (
       ),
   );
   if (controls.shot > 0) {
-    if (player.puckMove) endPuckMove(state, player);
     if (requestShot(player, controls.shot, forward)) {
       player.cradle = undefined;
       player.grab = undefined;
@@ -1267,9 +1222,9 @@ const recordTouch = (state: Simulation, player: Player): void => {
   state.puck.lastTouch = player.id;
   state.puck.touchTime = state.time;
   state.contacts += 1;
-  if (canCarryPuck(state, player) && player.puckMove?.phase !== "approach") {
+  if (canCarryPuck(state, player)) {
     state.puck.controlOwner = player.id;
-    state.puck.controlKind = player.puckMove?.kind ?? "carry";
+    state.puck.controlKind = "carry";
     state.puck.velocity.copy(player.velocity).setY(0).clampLength(0, 3.5);
     player.grab = undefined;
   }
@@ -1360,34 +1315,6 @@ const releaseControl = (state: Simulation): void => {
   state.puck.controlUntil = 0;
 };
 
-const beginPuckMove = (
-  state: Simulation,
-  player: Player,
-  kind: PuckMoveKind,
-  returning = false,
-): void => {
-  player.puckMove = {
-    kind,
-    phase: "approach",
-    elapsed: 0,
-    yaw: player.yaw,
-    startOffset: player.stickOffset.clone(),
-    origin: state.puck.position.clone(),
-    end: state.puck.position.clone(),
-    holdOffset: new Vector3(),
-    returning,
-  };
-  if (state.puck.controlOwner === player.id) releaseControl(state);
-};
-
-const endPuckMove = (state: Simulation, player: Player): void => {
-  player.puckMove = undefined;
-  player.puckMoveCooldown = 0.12;
-  if (state.puck.controlOwner !== player.id) return;
-  if (canCarryPuck(state, player)) state.puck.controlKind = "carry";
-  else releaseControl(state);
-};
-
 const moveControlledPuck = (
   state: Simulation,
   player: Player,
@@ -1426,61 +1353,6 @@ const moveControlledPuck = (
   );
 };
 
-const resolvePuckMoves = (state: Simulation, dt: number): void => {
-  for (const player of state.players) {
-    const move = player.puckMove;
-    if (!move) continue;
-    const puck = state.puck;
-    if (move.phase === "approach") {
-      if (move.elapsed < 0.15) continue;
-      if (puckSeat(player).setY(PUCK_HEIGHT).distanceTo(puck.position) > 0.06) {
-        if (move.elapsed > 0.65) endPuckMove(state, player);
-        continue;
-      }
-      move.phase = "stroke";
-      move.elapsed = 0;
-      move.origin.copy(puck.position);
-      move.end.copy(
-        move.kind === "push"
-          ? frontPuckPosition(player)
-          : puck.position
-              .clone()
-              .addScaledVector(forwardVector(player.yaw), -0.2),
-      );
-      const localEnd = move.end
-        .clone()
-        .sub(player.position)
-        .applyAxisAngle(new Vector3(0, 1, 0), -player.yaw);
-      localEnd.z = Math.min(-0.3, localEnd.z);
-      move.end
-        .copy(
-          localEnd
-            .applyAxisAngle(new Vector3(0, 1, 0), player.yaw)
-            .add(player.position),
-        )
-        .setY(PUCK_HEIGHT);
-      if (canCarryPuck(state, player)) recordTouch(state, player);
-    }
-    if (puck.controlOwner === player.id) moveControlledPuck(state, player, dt);
-    if (move.phase === "stroke" && move.elapsed >= 0.3) {
-      move.phase = "hold";
-      move.holdOffset
-        .copy(puck.position)
-        .sub(player.position)
-        .applyAxisAngle(new Vector3(0, 1, 0), -player.yaw);
-      if (move.returning) {
-        endPuckMove(state, player);
-        continue;
-      }
-    }
-    if (move.phase === "hold" && !player.puckWorkHeld) {
-      if (move.kind === "pull" && puckInMoveReach(state, player))
-        beginPuckMove(state, player, "push", true);
-      else endPuckMove(state, player);
-    }
-  }
-};
-
 const updatePuckControl = (state: Simulation, dt: number): void => {
   const puck = state.puck;
   if (puck.shotOwner !== undefined) return;
@@ -1500,7 +1372,6 @@ const updatePuckControl = (state: Simulation, dt: number): void => {
     releaseControl(state);
     return;
   }
-  if (owner?.puckMove) return;
   const candidate =
     owner ??
     state.players.find(
@@ -1511,7 +1382,6 @@ const updatePuckControl = (state: Simulation, dt: number): void => {
         player.mode !== "recovering" &&
         Math.abs(player.bodyPitch) < 0.18 &&
         player.position.y <= FLOOR_HEIGHT + 0.06 &&
-        !player.puckMove &&
         !isPuckContested(state, player) &&
         player.cooldown <= 0 &&
         player.knockdownTime <= 0 &&
@@ -1581,7 +1451,6 @@ const resolveStickContact = (
   if (
     player.position.y > 0.9 ||
     player.knockdownTime > 0 ||
-    player.puckMove?.phase === "approach" ||
     puck.controlOwner === player.id ||
     puck.shotOwner === player.id ||
     (player.shotFired && player.shotTime > 0)
@@ -1761,9 +1630,6 @@ export const resetPracticePuck = (state: Simulation): void => {
   human.cooldown = 0;
   human.knockdownTime = 0;
   human.knockdownCooldown = 0;
-  human.puckMove = undefined;
-  human.puckMoveCooldown = 0;
-  human.puckWorkHeld = false;
   human.charging = false;
   human.charge = 0;
   human.shotDraw = 0;
@@ -1956,7 +1822,6 @@ export const stepSimulation = (
     else updateAI(state, player, dt);
     player.cooldown = Math.max(0, player.cooldown - dt);
     player.knockdownCooldown = Math.max(0, player.knockdownCooldown - dt);
-    player.puckMoveCooldown = Math.max(0, player.puckMoveCooldown - dt);
     player.knockdownTime = Math.max(0, player.knockdownTime - dt);
     player.shotTime = Math.max(0, player.shotTime - dt);
     if (state.mode !== "playground") {
@@ -1986,7 +1851,6 @@ export const stepSimulation = (
   advancePuck(state, dt);
   if (state.restartTime === 0) {
     updatePuckControl(state, dt);
-    resolvePuckMoves(state, dt);
     resolveKnockdowns(state);
     for (const player of state.players) resolveStickContact(state, player, dt);
     updateFlick(state, dt);
@@ -2047,7 +1911,6 @@ export const predictOwnedPuck = (
     state.faceoff?.phase === "ready" ||
     state.puck.controlOwner !== player.id ||
     state.puck.shotOwner !== undefined ||
-    player.puckMove ||
     !canCarryPuck(state, player) ||
     player.stick.distanceTo(state.puck.position) > 0.8
   )

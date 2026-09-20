@@ -109,9 +109,7 @@ const reverseBladeYaw = (player: Player): number => {
 export const updateBladePose = (player: Player, dt: number): void => {
   const automaticDummy = player.autoDummyLocked && player.dummy !== 0;
   const dummyTiming = automaticDummy ? 1.6 : 1;
-  const pulling = player.puckMove?.kind === "pull";
-  const inside =
-    pulling || player.backhand || player.curl !== 0 || player.charging;
+  const inside = player.backhand || player.curl !== 0 || player.charging;
   const extension = swerveExtension(player, dummyTiming);
   const cradle = player.cradle;
   const face = inside
