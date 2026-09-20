@@ -6,6 +6,7 @@ import {
 } from "../src/multiplayer/protocol";
 import { stringifySnapshot } from "../src/multiplayer/snapshot";
 import { createBudget, createConnectionLimits, LIMITS } from "./limits";
+import { createLink, linkFromEnvironment } from "./link";
 import { createRooms } from "./rooms";
 export const startRoomServer = (options: {
   port: number;
@@ -13,12 +14,17 @@ export const startRoomServer = (options: {
   region: string;
   origins: readonly string[];
   trustProxy?: boolean;
+  // Development only: simulate a distant room, in milliseconds.
+  latency?: number;
+  jitter?: number;
 }): {
   url: URL;
   port: number | undefined;
   stop: (close?: boolean) => Promise<void>;
 } => {
   const rooms = createRooms(options.region);
+  const latency = options.latency ?? 0;
+  const jitter = options.jitter ?? 0;
   const limits = createConnectionLimits();
   const encoded = new WeakMap<ServerMessage, string>();
   const encode = (message: ServerMessage): string => {
@@ -37,6 +43,8 @@ export const startRoomServer = (options: {
   type SocketData = {
     peer: { send: (message: ServerMessage) => void; close: () => void };
     release: () => void;
+    inbound: ReturnType<typeof createLink>;
+    outbound: ReturnType<typeof createLink>;
     admit: (creating: boolean) => boolean;
     messages: ReturnType<typeof createBudget>;
     bytes: ReturnType<typeof createBudget>;
@@ -75,6 +83,8 @@ export const startRoomServer = (options: {
         });
       const data: SocketData = {
         ...lease,
+        inbound: createLink(latency, jitter),
+        outbound: createLink(latency, jitter),
         messages: createBudget(100, 1000),
         bytes: createBudget(256_000, 1000),
         actions: createBudget(20, 1000),
@@ -94,11 +104,14 @@ export const startRoomServer = (options: {
       open: (socket): void => {
         socket.data.peer = {
           send: (message): void => {
-            if (
-              socket.readyState === 1 &&
-              socket.getBufferedAmount() < LIMITS.bufferedBytes
-            )
-              socket.send(encode(message), message.type === "snapshot");
+            const text = encode(message);
+            socket.data.outbound.deliver((): void => {
+              if (
+                socket.readyState === 1 &&
+                socket.getBufferedAmount() < LIMITS.bufferedBytes
+              )
+                socket.send(text, message.type === "snapshot");
+            });
           },
           close: (): void => socket.close(4001, "Session replaced"),
         };
@@ -142,8 +155,11 @@ export const startRoomServer = (options: {
           socket.close(1008, "Too many room changes");
           return;
         }
-        rooms.message(data.peer, message.data);
-        if (!running && rooms.running()) schedule(true);
+        const delivered = message.data;
+        data.inbound.deliver((): void => {
+          rooms.message(data.peer, delivered);
+          if (!running && rooms.running()) schedule(true);
+        });
       },
       close: (socket): void => {
         socket.data.release();
@@ -188,13 +204,19 @@ if (import.meta.main) {
     .filter(Boolean);
   if (process.env.NODE_ENV === "production" && !process.env.ALLOWED_ORIGINS)
     throw new Error("ALLOWED_ORIGINS is required in production");
+  const link = linkFromEnvironment(process.env);
   const server = startRoomServer({
     port: Number(process.env.PORT ?? 3210),
     region: process.env.ROOM_REGION ?? "local",
     origins,
+    ...link,
     trustProxy: Boolean(
       process.env.RAILWAY_ENVIRONMENT_ID ?? process.env.TRUST_PROXY,
     ),
   });
   console.info(`Room server listening at ${server.url}`);
+  if (link.latency > 0 || link.jitter > 0)
+    console.warn(
+      `Simulating a ${link.latency} ms link with ${link.jitter} ms jitter, each way.`,
+    );
 }
