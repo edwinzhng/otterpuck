@@ -25,7 +25,7 @@ const playerFields = z.object({
   evadeUntil: n,
   evadeTarget: vector,
   air: n,
-  fatigue: n,
+  stamina: n,
   mode: z.enum(["playing", "ascending", "recovering", "diving"]),
   duty: z.enum(["pressure", "support", "cover", "recover"]),
   role: z.string().max(120),
@@ -42,6 +42,7 @@ const playerFields = z.object({
   handling: z.boolean(),
   curl: n,
   curlTurnSpeed: n,
+  turnRate: n,
   dummy: n,
   lateral: n,
   cradle: z
@@ -149,6 +150,7 @@ const rotation = z.object({
 });
 export const snapshotSchema = z.object({
   difficulty: z.enum(["easy", "medium", "hard", "elite"]),
+  ruleset: z.enum(["alternative", "original"]),
   physics: z.object({ drag: n, lift: n }),
   playground: z.object({
     slowMotion: z.boolean(),

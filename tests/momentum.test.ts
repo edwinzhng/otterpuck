@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import { Vector3 } from "three";
 import { pollMovement } from "../src/handling";
+import { RULESETS } from "../src/rules";
 import {
   createSimulation,
   stepSimulation,
@@ -113,7 +114,7 @@ test("sprinting spends noticeably more air during both cruising and puck work", 
       const { state, player } = setup();
       state.mode = "practice";
       state.puck.position.set(5, PUCK_HEIGHT, 5);
-      advance(state, 5, {
+      advance(state, 5 * RULESETS.alternative.airSupply, {
         ...freshControls(),
         forward: 1,
         sprint,
@@ -123,8 +124,8 @@ test("sprinting spends noticeably more air during both cruising and puck work", 
     });
     const normal = consumed.at(0) ?? 0;
     const sprint = consumed.at(1) ?? 0;
-    expect(sprint).toBeGreaterThan((engaged ? 35 : 30) / 0.75);
-    expect(sprint).toBeLessThan((engaged ? 39 : 34) / 0.75);
+    expect(sprint / normal).toBeGreaterThan(1.35);
+    expect(sprint / normal).toBeLessThan(2.6);
     expect(sprint).toBeGreaterThan(normal + 8);
   }
 });

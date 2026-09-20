@@ -69,6 +69,13 @@ export const lobbyMarkup = (): string => `
             ["elite", "Elite"],
           ])}
         </div>
+        <div class="rules-setup">
+          ${field("ruleset", "Rules", [
+            ["alternative", "Alternative"],
+            ["original", "Original"],
+          ])}
+          <p id="ruleset-note" class="rules-note"></p>
+        </div>
         ${button("start", "Play", "primary", "disabled")}
       </div>
     </section>
@@ -160,6 +167,22 @@ export const bindLobby = (ui: UI): void => {
   });
   position?.addEventListener("change", (): void => {
     ui.position = Number(position.value);
+  });
+  const ruleset = document.querySelector<HTMLSelectElement>("#ruleset");
+  const rulesetNote = document.querySelector("#ruleset-note");
+  const describeRuleset = (): void => {
+    if (rulesetNote)
+      rulesetNote.textContent =
+        ui.ruleset === "original"
+          ? "Unlimited sprinting and free turning, as the game played before."
+          : "Sprinting spends stamina, turning costs speed, and a hard turn with the puck curls.";
+  };
+  if (ruleset) ruleset.value = ui.ruleset;
+  describeRuleset();
+  ruleset?.addEventListener("change", (): void => {
+    ui.ruleset = ruleset.value === "original" ? "original" : "alternative";
+    localStorage.setItem("otterpuck-ruleset", ui.ruleset);
+    describeRuleset();
   });
   const difficulty = document.querySelector<HTMLSelectElement>("#difficulty");
   if (difficulty) difficulty.value = ui.difficulty;

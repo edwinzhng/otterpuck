@@ -42,6 +42,8 @@ export const updateUI = (
   );
   ui.hud.style.setProperty("--air", `${player.air}%`);
   ui.hud.classList.toggle("low-air", player.air < 26);
+  ui.hud.style.setProperty("--stamina", `${player.stamina}%`);
+  ui.elements.stamina.classList.toggle("spent", player.stamina < 25);
   setText(
     ui.elements.role,
     state.mode !== "match" ? "PRACTICE" : playerPosition(state, player).code,
