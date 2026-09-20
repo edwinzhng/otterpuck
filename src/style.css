@@ -412,13 +412,13 @@ legend {
   margin-top: 5px;
 }
 
-.mode-card[data-mode="match"],
+.mode-card[data-game-mode="match"],
 .mode-card#show-multiplayer {
   background: var(--yellow);
   border-color: #fff4b5;
   box-shadow: 0 7px 0 #c8a740;
 }
-.mode-card[data-mode="match"] > span,
+.mode-card[data-game-mode="match"] > span,
 .mode-card#show-multiplayer > span {
   background: #fff0a5;
   color: #936d12;

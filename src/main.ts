@@ -478,7 +478,7 @@ const boot = async (): Promise<void> => {
   ui.start.disabled = false;
   ui.start.textContent = "Play";
   for (const button of document.querySelectorAll<HTMLButtonElement>(
-    "[data-mode]",
+    "[data-game-mode]",
   ))
     button.disabled = false;
   ui.status.textContent = "";

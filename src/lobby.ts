@@ -30,7 +30,7 @@ export const lobbyMarkup = (): string => `
     </nav></header>
     <section class="lobby-screen mode-screen" data-screen="mode" aria-label="Game modes">
       <div class="mode-list">
-        ${cardButton('<span aria-hidden="true">◈</span><div><strong>Play vs AI</strong><p>Jump into a bot match</p></div>', "mode-card", 'data-mode="match" disabled')}
+        ${cardButton('<span aria-hidden="true">◈</span><div><strong>Play vs AI</strong><p>Jump into a bot match</p></div>', "mode-card", 'data-game-mode="match" disabled')}
         ${cardButton(
           `<span aria-hidden="true"><svg
   xmlns="http://www.w3.org/2000/svg"
@@ -55,7 +55,7 @@ export const lobbyMarkup = (): string => `
           "mode-card",
           'id="show-multiplayer"',
         )}
-        ${cardButton('<span aria-hidden="true">≈</span><div><strong>Free swim</strong><p>Explore and practice</p></div>', "mode-card", 'data-mode="playground" disabled')}
+        ${cardButton('<span aria-hidden="true">≈</span><div><strong>Free swim</strong><p>Explore and practice</p></div>', "mode-card", 'data-game-mode="playground" disabled')}
         ${cardButton('<span aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg></span><div><strong>Learn</strong><p>Master the basics</p></div>', "mode-card", 'id="learn-button" disabled')}
       </div>
       <footer class="home-credit">Made with <a href="https://calgaryuwh.com/" target="_blank" rel="noopener noreferrer" aria-label="Calgary Crocs"><span aria-hidden="true">🐊</span></a> by <a href="https://edwinzhang.com" target="_blank" rel="noopener noreferrer">Edwin Zhang</a></footer>
@@ -226,13 +226,13 @@ export const bindLobby = (ui: UI): void => {
   });
   chooseSize(ui.teamSize);
   for (const choice of document.querySelectorAll<HTMLButtonElement>(
-    "[data-mode]",
+    "button[data-game-mode]",
   ))
     choice.addEventListener("click", (): void => {
       ui.mode =
-        choice.dataset.mode === "match"
+        choice.dataset.gameMode === "match"
           ? "match"
-          : choice.dataset.mode === "playground"
+          : choice.dataset.gameMode === "playground"
             ? "playground"
             : "practice";
       const setup = document.querySelector<HTMLElement>(".setup-screen");

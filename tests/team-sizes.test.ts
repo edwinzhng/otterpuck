@@ -143,6 +143,10 @@ test("the lobby offers every match size and names the quick match after it", ():
       `data-team-size="${size}"${size === 6 ? "" : `>${sizeLabel(size)}`}`,
     );
   expect(markup).toContain("Play vs AI");
+  expect(markup.match(/data-game-mode=/g)).toHaveLength(2);
+  expect(markup).toContain(
+    'class="lobby-screen setup-screen" data-screen="setup" data-mode="match"',
+  );
   expect(markup).toContain('<select id="mp-team-size" hidden>');
 });
 
