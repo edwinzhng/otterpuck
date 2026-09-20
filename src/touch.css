@@ -29,6 +29,7 @@ body:not(.touch-mode) .touch-help {
   --touch-score-height: 48px;
   --touch-panel-gap: 10px;
   --touch-vitals-height: 81px;
+  --touch-network-gap: 16px;
   --touch-size: clamp(48px, 13vh, 60px);
   --touch-gap: 8px;
   --touch-bottom: max(16px, env(safe-area-inset-bottom));
@@ -434,7 +435,7 @@ body:not(.touch-mode) .touch-help {
   position: fixed;
   top: calc(
     var(--hud-top) + var(--touch-score-height) + var(--touch-panel-gap) +
-    var(--touch-vitals-height) + var(--touch-panel-gap)
+    var(--touch-vitals-height) + var(--touch-network-gap)
   );
   right: var(--hud-right);
   box-sizing: border-box;
