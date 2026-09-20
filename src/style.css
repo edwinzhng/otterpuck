@@ -1521,7 +1521,8 @@ body:not(.touch-mode) .hud-actions > button {
 
 .announcement.goal-celebration {
   --goal-color: #54cfff;
-  top: 19%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   text-align: center;
   font-size: clamp(64px, 12vw, 144px);
   line-height: 1;
@@ -1564,15 +1565,15 @@ body:not(.touch-mode) .hud-actions > button {
 }
 @keyframes goal-pop {
   0% {
-    transform: translateX(-50%) scale(0.45) rotate(-9deg);
+    transform: translate(-50%, -50%) scale(0.45) rotate(-9deg);
     opacity: 0;
   }
   65% {
-    transform: translateX(-50%) scale(1.12) rotate(3deg);
+    transform: translate(-50%, -50%) scale(1.12) rotate(3deg);
     opacity: 1;
   }
   100% {
-    transform: translateX(-50%) scale(1) rotate(-2deg);
+    transform: translate(-50%, -50%) scale(1) rotate(-2deg);
     opacity: 1;
   }
 }
