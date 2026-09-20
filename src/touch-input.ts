@@ -41,7 +41,7 @@ export const createTouchInput = (
     onPause,
     abort.signal,
   );
-  const coarse = matchMedia("(pointer: coarse)");
+  const coarse = matchMedia("(pointer: coarse) and (hover: none)");
   const state = { active: false, x: 0, y: 0, charge: 0 };
   const shot = getElement(".touch-shot", HTMLButtonElement);
   const paint = (): void => {

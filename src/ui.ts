@@ -83,6 +83,7 @@ export const updateUI = (
         ? state.event
         : "";
   setText(ui.elements.event, announcement);
+  ui.elements.event.classList.toggle("countdown", /^[123]$/.test(announcement));
   ui.elements.event.classList.toggle("goal-celebration", celebrating);
   ui.elements.event.classList.toggle(
     "beaver-goal",
