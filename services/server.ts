@@ -6,7 +6,7 @@ import {
 } from "../src/multiplayer/protocol";
 import { stringifySnapshot } from "../src/multiplayer/snapshot";
 import { createBudget, createConnectionLimits, LIMITS } from "./limits";
-import { createLink, linkFromEnvironment } from "./link";
+import { createDelivery, linkFromEnvironment } from "./link";
 import { createRooms } from "./rooms";
 export const startRoomServer = (options: {
   port: number;
@@ -43,8 +43,8 @@ export const startRoomServer = (options: {
   type SocketData = {
     peer: { send: (message: ServerMessage) => void; close: () => void };
     release: () => void;
-    inbound: ReturnType<typeof createLink>;
-    outbound: ReturnType<typeof createLink>;
+    inbound: ReturnType<typeof createDelivery>;
+    outbound: ReturnType<typeof createDelivery>;
     admit: (creating: boolean) => boolean;
     messages: ReturnType<typeof createBudget>;
     bytes: ReturnType<typeof createBudget>;
@@ -83,8 +83,8 @@ export const startRoomServer = (options: {
         });
       const data: SocketData = {
         ...lease,
-        inbound: createLink(latency, jitter),
-        outbound: createLink(latency, jitter),
+        inbound: createDelivery(latency, jitter),
+        outbound: createDelivery(latency, jitter),
         messages: createBudget(100, 1000),
         bytes: createBudget(256_000, 1000),
         actions: createBudget(20, 1000),
@@ -105,7 +105,7 @@ export const startRoomServer = (options: {
         socket.data.peer = {
           send: (message): void => {
             const text = encode(message);
-            socket.data.outbound.deliver((): void => {
+            socket.data.outbound((): void => {
               if (
                 socket.readyState === 1 &&
                 socket.getBufferedAmount() < LIMITS.bufferedBytes
@@ -156,7 +156,7 @@ export const startRoomServer = (options: {
           return;
         }
         const delivered = message.data;
-        data.inbound.deliver((): void => {
+        data.inbound((): void => {
           rooms.message(data.peer, delivered);
           if (!running && rooms.running()) schedule(true);
         });
