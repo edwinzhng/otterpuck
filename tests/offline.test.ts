@@ -37,6 +37,8 @@ const createWorker = (failInstall = false) => {
   const requests: Request[] = [];
   const requestOptions: RequestInit[] = [];
   const network: string[] = [];
+  let skipped = false;
+  let claimed = false;
   class WorkerRequest extends Request {
     constructor(url: string, init?: RequestInit) {
       super(new URL(url, "https://game.test"), init);
@@ -48,6 +50,14 @@ const createWorker = (failInstall = false) => {
     Request: WorkerRequest,
     self: {
       location: { origin: "https://game.test" },
+      skipWaiting: async (): Promise<void> => {
+        skipped = true;
+      },
+      clients: {
+        claim: async (): Promise<void> => {
+          claimed = true;
+        },
+      },
       addEventListener: (
         name: string,
         handler: (event: WorkerEvent) => void,
@@ -120,12 +130,21 @@ const createWorker = (failInstall = false) => {
     await work;
     return response;
   };
-  return { stores, requests, requestOptions, network, dispatch };
+  return {
+    stores,
+    requests,
+    requestOptions,
+    network,
+    skipped: (): boolean => skipped,
+    claimed: (): boolean => claimed,
+    dispatch,
+  };
 };
 
 test("offline installation validates content and leaves the active version intact until activation", async (): Promise<void> => {
   const worker = createWorker();
   await worker.dispatch("install");
+  expect(worker.skipped()).toBe(true);
   expect(worker.stores.has("otterpuck-shell-old")).toBe(true);
   expect(worker.requestOptions.map((options) => options.integrity)).toEqual(
     assets.map((asset): string => asset.integrity),
@@ -136,6 +155,7 @@ test("offline installation validates content and leaves the active version intac
     ),
   ).toBe(true);
   await worker.dispatch("activate");
+  expect(worker.claimed()).toBe(true);
   expect(worker.stores.has("otterpuck-shell-old")).toBe(false);
   expect(worker.stores.has("otterpuck-offline-legacy")).toBe(false);
   expect(worker.stores.has("unrelated-cache")).toBe(true);

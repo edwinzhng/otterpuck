@@ -42,6 +42,7 @@ self.addEventListener("install", (event: ExtendableEvent): void => {
         await caches.delete(cacheName);
         throw error;
       }
+      await self.skipWaiting();
     })(),
   );
 });
@@ -66,6 +67,7 @@ self.addEventListener("activate", (event: ExtendableEvent): void => {
         if (!current.has(`${url.pathname}${url.search}`))
           await assetCache.delete(request);
       }
+      await self.clients.claim();
     })(),
   );
 });

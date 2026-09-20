@@ -9,6 +9,9 @@ export const bindFullscreen = (
   help.className = "fullscreen-help";
   help.innerHTML = `<h2>Play full screen</h2><p>On iPhone, open Share → Add to Home Screen, then launch Otterpuck from its icon.</p><form method="dialog">${buttonMarkup("close-fullscreen-help", "Got it", "primary")}</form>`;
   document.body.append(help);
+  help
+    .querySelector<HTMLButtonElement>("#close-fullscreen-help")
+    ?.addEventListener("click", (): void => help.close(), { signal });
   const fallback = (): void => {
     pause();
     help.showModal();
