@@ -21,7 +21,19 @@ import {
   type Team,
 } from "../src/types";
 
-const formations: readonly Formation[] = ["3-3", "2-3-1", "1-3-2"];
+const formations: readonly Formation[] = [
+  "3-3",
+  "2-3-1",
+  "1-3-2",
+  "2-1",
+  "1-2",
+  "1-1",
+];
+
+const hasWings = (state: Simulation, team: Team): boolean =>
+  state.players.some((player): boolean =>
+    playerPosition(state, player).code.includes("W"),
+  ) && state.players.some((player): boolean => player.team === team);
 
 const findRole = (state: Simulation, team: Team, code: string): Player => {
   const player = state.players.find(
@@ -74,7 +86,7 @@ test("every formation puts forwards ahead, centers between wings and backs behin
           expect(Math.abs(player.target.x)).toBeLessThanOrEqual(6.8);
           expect(player.position.equals(player.formationTarget)).toBe(true);
         }
-        if (formation !== "3-3") {
+        if (hasWings(state, team)) {
           expect(localX("LW")).toBeLessThan(localX("C"));
           expect(localX("RW")).toBeGreaterThan(localX("C"));
           expect(localX("C")).toBeCloseTo(
@@ -87,8 +99,10 @@ test("every formation puts forwards ahead, centers between wings and backs behin
           expect(localX("LB")).toBeLessThan(localX("CB"));
           expect(localX("RB")).toBeGreaterThan(localX("CB"));
         }
-        if (formation === "1-3-2")
+        if (formation === "1-3-2" || formation === "1-2")
           expect(localX("LB")).toBeLessThan(localX("RB"));
+        if (formation === "2-1")
+          expect(localX("LF")).toBeLessThan(localX("RF"));
       }
 });
 
@@ -154,6 +168,9 @@ test("each formation reserves a specific replacement, waits until it is down, th
     { formation: "2-3-1", outgoing: "B", incoming: "C" },
     { formation: "1-3-2", outgoing: "LB", incoming: "RB" },
     { formation: "1-3-2", outgoing: "F", incoming: "RW" },
+    { formation: "2-1", outgoing: "B", incoming: "RF" },
+    { formation: "1-2", outgoing: "F", incoming: "RB" },
+    { formation: "1-1", outgoing: "F", incoming: "B" },
   ];
   for (const pair of pairs)
     for (const team of [0, 1] as const) {

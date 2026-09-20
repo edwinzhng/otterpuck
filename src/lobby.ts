@@ -1,7 +1,17 @@
 import { assetUrl } from "./asset-url";
-import { formationChoices } from "./positions";
+import {
+  defaultFormation,
+  formationChoices,
+  sizeFormations,
+  sizeLabel,
+  TEAM_SIZES,
+} from "./positions";
+import type { Formation, TeamSize } from "./types";
 import { button, field } from "./ui-components";
 import type { UI } from "./ui-types";
+
+const formationLabel = (formation: Formation): string =>
+  formation.replaceAll("-", "–");
 
 export const lobbyMarkup = (): string => `
   <div id="menu" class="menu">
@@ -12,7 +22,7 @@ export const lobbyMarkup = (): string => `
     </nav></header>
     <section class="lobby-screen mode-screen" data-screen="mode" aria-label="Game modes">
       <div class="mode-list">
-        <button type="button" class="mode-card" data-mode="match" disabled><span aria-hidden="true">◈</span><div><strong>Quick match</strong><p>6v6 vs AI team</p></div></button>
+        <button type="button" class="mode-card" data-mode="match" disabled><span aria-hidden="true">◈</span><div><strong>Quick match vs AI</strong><p>2v2, 3v3 or 6v6</p></div></button>
         <button id="show-multiplayer" type="button" class="mode-card"><span aria-hidden="true"><svg
   xmlns="http://www.w3.org/2000/svg"
   width="24"
@@ -32,7 +42,7 @@ export const lobbyMarkup = (): string => `
   <path d="m5 14 4 4" />
   <path d="m5 21-2-2" />
   <path d="M7.5 16.5 4 20" />
-</svg></span><div><strong>Play with friends</strong><p>Online or same Wi-Fi</p></div></button>
+</svg></span><div><strong>Play with friends</strong><p>2v2, 3v3 or 6v6 online or same Wi-Fi</p></div></button>
         <button type="button" class="mode-card" data-mode="playground" disabled><span aria-hidden="true">≈</span><div><strong>Free swim</strong><p>Explore and practice skills</p></div></button>
         <button id="learn-button" type="button" class="mode-card" disabled><span aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg></span><div><strong>Learn</strong><p>Practice the basics</p></div></button>
       </div>
@@ -46,14 +56,25 @@ export const lobbyMarkup = (): string => `
     </section>
     <section class="lobby-screen setup-screen" data-screen="setup" aria-label="Game setup" hidden>
       <div class="selected-map"><img id="selected-map-image" src="${assetUrl("/art/arenas/tropical-map.webp")}" alt="Selected pool"/><button id="change-map" type="button">Tropical Cove <span aria-hidden="true">↗</span></button></div>
-      <div class="setup-panel"><h1 id="selected-mode">Quick match</h1>
+      <div class="setup-panel"><h1 id="selected-mode">Quick match · 6v6</h1>
         <fieldset class="team-choice"><legend>Team</legend><div class="segmented"><button type="button" class="selected otters" data-species="otter" aria-pressed="true">Otters</button><button type="button" class="beavers" data-species="beaver" aria-pressed="false">Beavers</button></div></fieldset>
         <div class="match-setup">
-          ${field("formation", "Formation", [
-            ["2-3-1", "2–3–1"],
-            ["1-3-2", "1–3–2"],
-            ["3-3", "3–3"],
-          ])}
+          ${field(
+            "team-size",
+            "Match size",
+            TEAM_SIZES.map((size): [string, string] => [
+              String(size),
+              sizeLabel(size),
+            ]),
+          )}
+          ${field(
+            "formation",
+            "Formation",
+            sizeFormations(6).map((formation): [string, string] => [
+              formation,
+              formationLabel(formation),
+            ]),
+          )}
           ${field(
             "position",
             "Position",
@@ -101,6 +122,65 @@ export const bindLobby = (ui: UI): void => {
   document
     .querySelector("#change-map")
     ?.addEventListener("click", (): void => show("map"));
+  const formation = document.querySelector<HTMLSelectElement>("#formation");
+  const position = document.querySelector<HTMLSelectElement>("#position");
+  const size = document.querySelector<HTMLSelectElement>("#team-size");
+  const describeMode = (): void => {
+    const heading = document.querySelector("#selected-mode");
+    if (heading)
+      heading.textContent =
+        ui.mode === "match"
+          ? `Quick match · ${sizeLabel(ui.teamSize)}`
+          : "Free swim";
+  };
+  const listPositions = (): void => {
+    if (!position) return;
+    position.innerHTML = formationChoices(ui.formation)
+      .map(
+        (choice): string =>
+          `<option value="${choice.slot}">${choice.code} · ${choice.name}</option>`,
+      )
+      .join("");
+  };
+  const chooseFormation = (next: Formation): void => {
+    ui.formation = next;
+    ui.opposition = next;
+    ui.position = 0;
+    if (formation) formation.value = next;
+    listPositions();
+  };
+  const chooseSize = (next: TeamSize): void => {
+    ui.teamSize = next;
+    const choices = sizeFormations(next);
+    if (formation) {
+      formation.innerHTML = choices
+        .map(
+          (choice): string =>
+            `<option value="${choice}">${formationLabel(choice)}</option>`,
+        )
+        .join("");
+      formation.parentElement?.classList.toggle("hidden", choices.length < 2);
+    }
+    chooseFormation(defaultFormation(next));
+    describeMode();
+  };
+  size?.addEventListener("change", (): void => {
+    const next = TEAM_SIZES.find(
+      (candidate): boolean => String(candidate) === size.value,
+    );
+    chooseSize(next ?? 6);
+  });
+  formation?.addEventListener("change", (): void => {
+    const next = sizeFormations(ui.teamSize).find(
+      (candidate): boolean => candidate === formation.value,
+    );
+    chooseFormation(next ?? defaultFormation(ui.teamSize));
+  });
+  position?.addEventListener("change", (): void => {
+    ui.position = Number(position.value);
+  });
+  if (size) size.value = String(ui.teamSize);
+  chooseSize(ui.teamSize);
   for (const choice of document.querySelectorAll<HTMLButtonElement>(
     "[data-mode]",
   ))
@@ -111,9 +191,7 @@ export const bindLobby = (ui: UI): void => {
           : choice.dataset.mode === "playground"
             ? "playground"
             : "practice";
-      const heading = document.querySelector("#selected-mode");
-      if (heading)
-        heading.textContent = ui.mode === "match" ? "Quick match" : "Free swim";
+      describeMode();
       const match = document.querySelector<HTMLElement>(".match-setup");
       if (match) match.hidden = ui.mode !== "match";
       show("map");
@@ -146,28 +224,6 @@ export const bindLobby = (ui: UI): void => {
         other.setAttribute("aria-pressed", String(other === choice));
       }
     });
-  const formation = document.querySelector<HTMLSelectElement>("#formation");
-  const position = document.querySelector<HTMLSelectElement>("#position");
-  formation?.addEventListener("change", (): void => {
-    ui.formation =
-      formation.value === "3-3"
-        ? "3-3"
-        : formation.value === "1-3-2"
-          ? "1-3-2"
-          : "2-3-1";
-    ui.opposition = ui.formation;
-    ui.position = 0;
-    if (position)
-      position.innerHTML = formationChoices(ui.formation)
-        .map(
-          (choice): string =>
-            `<option value="${choice.slot}">${choice.code} · ${choice.name}</option>`,
-        )
-        .join("");
-  });
-  position?.addEventListener("change", (): void => {
-    ui.position = Number(position.value);
-  });
   const ruleset = document.querySelector<HTMLSelectElement>("#ruleset");
   const rulesetNote = document.querySelector("#ruleset-note");
   const describeRuleset = (): void => {

@@ -1,5 +1,6 @@
 import { Quaternion, Vector3 } from "three";
 import { z } from "zod";
+import { teamSize } from "../positions";
 import type { Simulation } from "../types";
 
 const n = z.number().finite();
@@ -137,7 +138,7 @@ const puckSchema = puckFields.transform((p) => ({
   controlOwner: p.controlOwner,
   controlKind: p.controlKind,
 }));
-const formation = z.enum(["3-3", "2-3-1", "1-3-2"]);
+const formation = z.enum(["3-3", "2-3-1", "1-3-2", "2-1", "1-2", "1-1"]);
 const optionalId = n
   .optional()
   .nullable()
@@ -162,10 +163,11 @@ export const snapshotSchema = z.object({
   }),
   players: z
     .array(playerSchema)
-    .length(12)
+    .min(4)
+    .max(12)
     .refine(
       (players) =>
-        new Set(players.map((p) => p.id)).size === 12 &&
+        new Set(players.map((p) => p.id)).size === players.length &&
         players.every((p) => Number.isInteger(p.id) && p.id >= 0 && p.id < 12),
     ),
   puck: puckSchema,
@@ -193,8 +195,15 @@ export const snapshotSchema = z.object({
   contacts: n,
   shots: n,
 });
+const rosterSchema = snapshotSchema.refine((state): boolean =>
+  ([0, 1] as const).every(
+    (team): boolean =>
+      state.players.filter((player): boolean => player.team === team).length ===
+      teamSize(state.formations[team]),
+  ),
+);
 export const parseSnapshot = (value: unknown): Simulation | undefined => {
-  const result = snapshotSchema.safeParse(unpackSnapshot(value));
+  const result = rosterSchema.safeParse(unpackSnapshot(value));
   return result.success
     ? { ...result.data, faceoff: result.data.faceoff }
     : undefined;
@@ -222,7 +231,10 @@ export const packSnapshot = (state: Simulation): object => ({
 const packedSchema = z.object({
   wire: z.literal(1),
   state: z.array(z.unknown()).length(stateKeys.length),
-  players: z.array(z.array(z.unknown()).length(playerKeys.length)).length(12),
+  players: z
+    .array(z.array(z.unknown()).length(playerKeys.length))
+    .min(4)
+    .max(12),
   puck: z.array(z.unknown()).length(puckKeys.length),
 });
 const unpackRecord = (values: unknown[], keys: readonly string[]): object =>

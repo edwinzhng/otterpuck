@@ -5,7 +5,7 @@ import {
   rotationPartners,
   strongPositionSide,
 } from "./formation-layout";
-import { playerPosition } from "./positions";
+import { playerPosition, teamSize } from "./positions";
 import {
   type AirRotation,
   attackDirection,
@@ -33,6 +33,18 @@ export const formationDescriptions: Record<
   "1-3-2": {
     name: "Cover & release",
     description: "One forward, two wings, a center, and two backs.",
+  },
+  "2-1": {
+    name: "Twin strike",
+    description: "Two forwards press together while a lone back sweeps behind.",
+  },
+  "1-2": {
+    name: "Hold & counter",
+    description: "One forward hunts the puck while two backs guard the goal.",
+  },
+  "1-1": {
+    name: "Head to head",
+    description: "One forward and one back trading the puck end to end.",
   },
 };
 
@@ -149,7 +161,8 @@ const planRotation = (
       (active): boolean =>
         active.incoming === player.id || active.outgoing === player.id,
     );
-  if (state.airRotations[team].length < 2) {
+  const concurrentRotations = teamSize(state.formations[team]) < 6 ? 1 : 2;
+  if (state.airRotations[team].length < concurrentRotations) {
     const requests = players
       .filter(
         (player): boolean =>
@@ -198,7 +211,7 @@ const planRotation = (
         phase: "handoff",
         started: state.time,
       });
-      if (state.airRotations[team].length >= 2) break;
+      if (state.airRotations[team].length >= concurrentRotations) break;
     }
   }
   for (const rotation of state.airRotations[team])
@@ -219,9 +232,11 @@ export const planTeam = (state: Simulation, team: Team): void => {
     const back = position.code.includes("B");
     player.role = position.name;
     player.duty = back ? "cover" : "support";
+    const forward = position.code.includes("F");
     if (
       (formation === "3-3" && back && strong) ||
-      (formation !== "3-3" && position.code.includes("W") && strong)
+      (formation !== "3-3" && position.code.includes("W") && strong) ||
+      (teamSize(formation) < 6 && forward)
     )
       player.duty = "pressure";
     player.formationTarget.copy(formationTarget(state, player));

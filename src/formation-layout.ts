@@ -1,5 +1,5 @@
 import { Vector3 } from "three";
-import { playerPosition } from "./positions";
+import { formationPositions, playerPosition } from "./positions";
 import {
   attackDirection,
   clamp,
@@ -18,9 +18,16 @@ export const wallLane = (formation: Formation, slot: number): number => {
     "3-3": [-0.55, -1.8, 1.8, -3.1, 0.55, 3.1],
     "2-3-1": [-1.15, 1.15, -2.4, 0, 2.4, 3.6],
     "1-3-2": [-0.55, -1.8, 0.55, 1.8, -3.1, 3.1],
+    "2-1": [-1.15, 1.15, 0],
+    "1-2": [0, -1.15, 1.15],
+    "1-1": [-0.8, 0.8],
   } satisfies Record<Formation, number[]>;
   return lanes[formation].at(slot) ?? 0;
 };
+
+const countingCodes = (formation: Formation, part: string): number =>
+  formationPositions[formation].filter((code): boolean => code.includes(part))
+    .length;
 
 export const strongPositionSide = (state: Simulation, team: Team): number =>
   state.strongSides[team] * -attackDirection(team);
@@ -36,8 +43,12 @@ export const formationTarget = (state: Simulation, player: Player): Vector3 => {
   const depthOrigin = clamp(state.puck.position.z * direction, -8.7, 10.3);
   const forward = code.includes("F");
   const back = code.includes("B");
-  const threeBacks = formation === "3-3" && back;
-  const width = forward ? (formation === "2-3-1" ? 0.95 : 1.25) : 1.35;
+  const threeBacks = countingCodes(formation, "B") === 3 && back;
+  const width = forward
+    ? countingCodes(formation, "F") === 2
+      ? 0.95
+      : 1.25
+    : 1.35;
   const diagonal = threeBacks && Math.abs(lateralOrigin) > 1.4;
   const lateral = diagonal
     ? lateralOrigin - strongSide * (strong ? 0.15 : side === 0 ? 1.2 : 2.25)
@@ -74,33 +85,36 @@ export const rotationPartners = (
   const code = playerPosition(state, player).code;
   const strong = strongPositionSide(state, player.team) > 0 ? "R" : "L";
   const weak = strong === "R" ? "L" : "R";
-  const partners: Record<string, readonly string[]> =
-    formation === "3-3"
-      ? {
-          LF: ["CF"],
-          RF: ["CF"],
-          CF: [`${strong}F`, `${weak}F`],
-          LB: ["CB"],
-          RB: ["CB"],
-          CB: [`${strong}B`],
-        }
-      : formation === "2-3-1"
-        ? {
-            LF: ["RF"],
-            RF: ["LF"],
-            LW: ["C"],
-            RW: ["C"],
-            C: [`${strong}W`],
-            B: ["C"],
-          }
-        : {
-            F: [`${strong}W`],
-            LW: ["C"],
-            RW: ["C"],
-            C: [`${strong}W`],
-            LB: ["RB"],
-            RB: ["LB"],
-          };
+  const rosters: Record<Formation, Record<string, readonly string[]>> = {
+    "3-3": {
+      LF: ["CF"],
+      RF: ["CF"],
+      CF: [`${strong}F`, `${weak}F`],
+      LB: ["CB"],
+      RB: ["CB"],
+      CB: [`${strong}B`],
+    },
+    "2-3-1": {
+      LF: ["RF"],
+      RF: ["LF"],
+      LW: ["C"],
+      RW: ["C"],
+      C: [`${strong}W`],
+      B: ["C"],
+    },
+    "1-3-2": {
+      F: [`${strong}W`],
+      LW: ["C"],
+      RW: ["C"],
+      C: [`${strong}W`],
+      LB: ["RB"],
+      RB: ["LB"],
+    },
+    "2-1": { LF: ["RF"], RF: ["LF"], B: [`${strong}F`] },
+    "1-2": { F: [`${strong}B`], LB: ["RB"], RB: ["LB"] },
+    "1-1": { F: ["B"], B: ["F"] },
+  };
+  const partners = rosters[formation];
   return (partners[code] ?? []).flatMap((partner): Player[] => {
     const teammate = state.players.find(
       (other): boolean =>

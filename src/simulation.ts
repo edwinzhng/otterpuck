@@ -18,6 +18,7 @@ import {
 import { avoidBodies, resolveBodies } from "./collisions";
 import { wallLane } from "./formation-layout";
 import { planTeam } from "./formations";
+import { teamSize } from "./positions";
 import { advancePuck, puckFloorHeight } from "./puck-physics";
 import { RULESETS, type Rules } from "./rules";
 import { announce } from "./simulation-events";
@@ -97,6 +98,10 @@ import {
   type Team,
 } from "./types";
 
+export const TEAM_STRIDE = 6;
+
+const playerTeam = (id: number): Team => (id < TEAM_STRIDE ? 0 : 1);
+
 const makePlayer = (
   id: number,
   mode: GameMode,
@@ -104,8 +109,8 @@ const makePlayer = (
   human = id === 0,
   formation: Formation = "2-3-1",
 ): Player => {
-  const team: Team = id < 6 ? 0 : 1;
-  const slot = id % 6;
+  const team = playerTeam(id);
+  const slot = id % TEAM_STRIDE;
   const direction = attackDirection(team);
   const wallReady = mode === "match";
   const position = wallReady
@@ -205,10 +210,18 @@ export const createSimulation = (
   ruleset: Ruleset = selection.ruleset ?? "alternative",
 ): Simulation => {
   const humanTeam = selection.species === "beaver" ? 1 : 0;
-  const humanId = humanTeam * 6 + clamp(Math.round(selection.position), 0, 5);
+  const size = teamSize(formation);
+  const humanId =
+    humanTeam * TEAM_STRIDE +
+    clamp(Math.round(selection.position), 0, size - 1);
   const roster =
     mode === "match"
-      ? Array.from({ length: 12 }, (_, id): number => id)
+      ? ([0, 1] as const).flatMap((team): number[] =>
+          Array.from(
+            { length: teamSize(team === humanTeam ? formation : opposition) },
+            (_, slot): number => team * TEAM_STRIDE + slot,
+          ),
+        )
       : [humanId];
   const state: Simulation = {
     difficulty: selection.difficulty,
@@ -229,7 +242,7 @@ export const createSimulation = (
           mode,
           id === humanId ? handedness : "right",
           id === humanId,
-          (id < 6 ? 0 : 1) === humanTeam ? formation : opposition,
+          playerTeam(id) === humanTeam ? formation : opposition,
         ),
     ),
     puck: {

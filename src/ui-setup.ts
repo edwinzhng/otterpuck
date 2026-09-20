@@ -18,6 +18,7 @@ export const createUI = (): UI => {
     arena: getElement("#arena", HTMLSelectElement),
     formation: "2-3-1",
     opposition: "2-3-1",
+    teamSize: 6,
     mode: "match",
     duration: 180,
     species: "otter",

@@ -1,5 +1,10 @@
 import { z } from "zod";
-export const PROTOCOL = 2;
+export const PROTOCOL = 3;
+export const teamSizeSchema = z.union([
+  z.literal(2),
+  z.literal(3),
+  z.literal(6),
+]);
 const axis = z.number().finite().min(-1).max(1);
 export const controlsSchema = z.object({
   forward: axis,
@@ -56,6 +61,7 @@ export const clientMessageSchema = z.discriminatedUnion("type", [
   }),
   z.object({ type: z.literal("leave") }),
   z.object({ type: z.literal("start") }),
+  z.object({ type: z.literal("settings"), teamSize: teamSizeSchema }),
   z.object({
     type: z.literal("profile"),
     name: z.string().trim().max(24).optional(),
@@ -88,6 +94,7 @@ export const roomSchema = z.object({
   mode: z.enum(["online", "lan"]),
   phase: z.enum(["waiting", "playing"]),
   hostId: z.string().uuid(),
+  teamSize: teamSizeSchema,
   members: z.array(memberSchema).max(12),
 });
 export type RoomView = z.infer<typeof roomSchema>;
