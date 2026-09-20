@@ -81,7 +81,6 @@ test("pause, blur, orientation and mode resets clear every held action and pendi
     "shot",
     "react",
     "descend",
-    "curl",
     "dummy",
   ].entries()) {
     if (
@@ -89,7 +88,6 @@ test("pause, blur, orientation and mode resets clear every held action and pendi
       action === "shot" ||
       action === "react" ||
       action === "descend" ||
-      action === "curl" ||
       action === "dummy"
     )
       touch.begin(id, action, point(), 0);
@@ -143,15 +141,8 @@ test("skill holds preserve movement and stop independently", (): void => {
   expect(controls.dummy).toBeGreaterThan(0.5);
   expect(controls.forward).toBeGreaterThan(0.5);
   touch.end(2, 10);
-  touch.begin(2, "reverse", point(), 10);
   touch.poll(10);
   expect(controls.dummy).toBe(0);
-  expect(controls.curl).toBe(-1);
-  touch.end(2, 20);
-  touch.begin(2, "curl", point(), 20);
-  touch.poll(20);
-  expect(controls.curl).toBe(1);
-  touch.end(2, 30);
   expect(controls.forward).toBeGreaterThan(0.5);
 });
 
@@ -179,12 +170,12 @@ test("reaction and dive fire once per press, while depth remains held", (): void
 test("a second finger cannot steal a held button", (): void => {
   const controls = freshControls();
   const touch = createTouchController(controls);
-  expect(touch.begin(1, "curl", point(), 0)).toBe(true);
-  expect(touch.begin(2, "curl", point(), 0)).toBe(false);
+  expect(touch.begin(1, "dummy", point(), 0)).toBe(true);
+  expect(touch.begin(2, "dummy", point(), 0)).toBe(false);
   touch.poll(500);
-  expect(controls.curl).toBe(1);
+  expect(touch.held("dummy")).toBe(true);
   touch.end(1, 600);
-  expect(touch.begin(2, "curl", point(), 700)).toBe(true);
+  expect(touch.begin(2, "dummy", point(), 700)).toBe(true);
 });
 
 test("ascending cancels loaded puck actions while leaving look and swimming responsive", (): void => {
@@ -247,7 +238,7 @@ test("touch sprint shots use the existing moving-puck release and keep the puck 
 test("returning to desktop still uses the original keyboard mapping", (): void => {
   const controls = freshControls();
   const touch = createTouchController(controls);
-  touch.begin(1, "curl", point(), 0);
+  touch.begin(1, "dummy", point(), 0);
   touch.poll(0);
   touch.clear();
   pollMovement(controls, new Set(["KeyW", "KeyA", "ShiftLeft", "ControlLeft"]));
@@ -283,8 +274,6 @@ test("mobile shell exposes every action, settings and contextual help once", asy
       "react",
       "rise",
       "descend",
-      "curl",
-      "reverse",
       "glanceLeft",
       "glanceRight",
       "dummy",

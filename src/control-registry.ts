@@ -5,8 +5,6 @@ export const TOUCH_ACTIONS = [
   "react",
   "rise",
   "descend",
-  "curl",
-  "reverse",
   "glanceLeft",
   "glanceRight",
   "dummy",
@@ -15,16 +13,6 @@ export const TOUCH_ACTIONS = [
 export type TouchAction = (typeof TOUCH_ACTIONS)[number];
 
 export const TOUCH_BUTTONS = {
-  reverse: {
-    glyph: "⟲",
-    label: "Reverse",
-    description: "Hold for reverse curl",
-  },
-  curl: {
-    glyph: "⟳",
-    label: "Curl",
-    description: "Hold for regular curl",
-  },
   glanceLeft: {
     glyph: "←",
     label: "Look",
@@ -82,10 +70,10 @@ export const DESKTOP_CONTROL_HELP = [
 export const TOUCH_CONTROL_HELP = [
   ["Left thumb", "Swim · steer · sprint at the edge · pull back to brake"],
   ["Right thumb", "Drag to look · hold at the edge to keep turning"],
-  ["Look ← / →", "Hold to glance"],
+  ["Direction pad", "Glance and change depth"],
   ["Shoot", "Hold to charge · drag to aim · release to shoot"],
   ["Grab", "Take the puck · knock down incoming shots"],
-  ["Curl / Reverse", "Hold to curl with the puck"],
+  ["Curl", "Stop swimming and swipe"],
   ["Dummy", "Hold and steer"],
   ["Rise / Dive", "Hold to change depth"],
 ] as const;

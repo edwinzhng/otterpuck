@@ -11,7 +11,7 @@ import {
 } from "./learning-progress";
 import { prepareLesson } from "./learning-setup";
 import type { Simulation } from "./types";
-import { button } from "./ui-components";
+import { button, keycap } from "./ui-components";
 
 const prefix = "otterpuck-learn-v2";
 const read = (key: string): string | null => {
@@ -42,7 +42,7 @@ export const createLearning = (hooks: {
   retry: () => void;
 } => {
   const container = document.createElement("div");
-  container.innerHTML = `<dialog id="lesson-card" class="lesson-card" aria-labelledby="lesson-title"><img id="lesson-image" width="1536" height="1024" alt="" hidden/><div class="lesson-copy"><span id="lesson-count"></span><h2 id="lesson-title"></h2><p id="lesson-text"></p><strong id="lesson-keys"></strong><div class="lesson-actions">${button("lesson-go", "Try it", "primary")}${button("lesson-close", "Not now")}</div></div></dialog><aside id="lesson-objective" class="lesson-objective" hidden aria-label="Practice objective"><div><span id="lesson-number"></span><strong id="lesson-task"></strong></div><progress id="lesson-progress" max="1" value="0" aria-label="Exercise progress"></progress><p id="lesson-feedback" role="status" aria-live="polite" hidden></p><div class="lesson-tools">${button("lesson-help", "Help")}${button("lesson-retry", "Retry")}${button("lesson-exit", "Exit")}</div><span class="lesson-shortcuts">H Help · P Retry · Esc Pause</span></aside>`;
+  container.innerHTML = `<dialog id="lesson-card" class="lesson-card" aria-labelledby="lesson-title"><img id="lesson-image" width="1536" height="1024" alt="" hidden/><div class="lesson-copy"><span id="lesson-count"></span><h2 id="lesson-title"></h2><p id="lesson-text"></p><strong id="lesson-keys"></strong><div class="lesson-actions">${button("lesson-go", "Try it", "primary")}${button("lesson-close", "Not now")}</div></div></dialog><aside id="lesson-objective" class="lesson-objective" hidden aria-label="Practice objective"><div><span id="lesson-number"></span><strong id="lesson-task"></strong></div><progress id="lesson-progress" max="1" value="0" aria-label="Exercise progress"></progress><p id="lesson-feedback" role="status" aria-live="polite" hidden></p><div class="lesson-tools">${button("lesson-help", "Help")}${button("lesson-retry", "Retry")}${button("lesson-exit", "Exit")}</div><span class="lesson-shortcuts">${keycap("H")} Help · ${keycap("P")} Retry · ${keycap("Esc")} Pause</span></aside>`;
   document.body.append(container);
   const card = getElement("#lesson-card", HTMLDialogElement);
   const artwork = { version: 0 };
@@ -58,12 +58,26 @@ export const createLearning = (hooks: {
   const id = (): LessonId => lessonIds.at(session.index) ?? "swim";
   const lessonCopy = (value: string): string => {
     const rightHanded = hooks.state().players.at(0)?.handedness !== "left";
-    const controls = hooks.touch() ? "Dummy + steer" : "right mouse + A or D";
+    const controls = hooks.touch()
+      ? "[[Dummy]] + steer"
+      : "[[right mouse]] + [[A]] or [[D]]";
     return value
       .replaceAll("{curlDirection}", rightHanded ? "right" : "left")
       .replaceAll("{reverseDirection}", rightHanded ? "left" : "right")
       .replaceAll("{dummyControls}", controls);
   };
+  const instructionMarkup = (value: string): string =>
+    lessonCopy(value)
+      .split(/(\[\[[^\]]+\]\])/)
+      .map((part): string =>
+        part.startsWith("[[") && part.endsWith("]]")
+          ? keycap(part.slice(2, -2))
+          : part
+              .replaceAll("&", "&amp;")
+              .replaceAll("<", "&lt;")
+              .replaceAll(">", "&gt;"),
+      )
+      .join("");
   const stop = (): void => {
     session.active = false;
     objective.hidden = true;
@@ -109,15 +123,16 @@ export const createLearning = (hooks: {
         : kind === "complete"
           ? "Ready to play"
           : lesson.title;
-    getElement("#lesson-text", HTMLElement).textContent =
+    getElement("#lesson-text", HTMLElement).innerHTML = instructionMarkup(
       kind === "intro"
         ? "Hone your skills."
         : kind === "complete"
           ? "Take your skills into the pool."
-          : lessonCopy(lesson.text);
-    getElement("#lesson-keys", HTMLElement).textContent =
+          : lesson.text,
+    );
+    getElement("#lesson-keys", HTMLElement).innerHTML =
       kind === "lesson"
-        ? lessonCopy(hooks.touch() ? lesson.touch : lesson.desktop)
+        ? instructionMarkup(hooks.touch() ? lesson.touch : lesson.desktop)
         : "";
     getElement("#lesson-go", HTMLButtonElement).textContent =
       kind === "intro"
@@ -254,7 +269,8 @@ export const createLearning = (hooks: {
                   hooks.touch() ? lessons[id()].touch : lessons[id()].desktop,
                 ))
           : "";
-      if (feedback.textContent !== message) feedback.textContent = message;
+      const markup = instructionMarkup(message);
+      if (feedback.innerHTML !== markup) feedback.innerHTML = markup;
       feedback.hidden = !message;
       if (result.advance) advance();
     },
