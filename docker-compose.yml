@@ -5,7 +5,7 @@ services:
       dockerfile: services/Dockerfile
     restart: unless-stopped
     ports:
-      - "3210:3210"
+      - "127.0.0.1:3210:3210"
     environment:
       NODE_ENV: production
       PORT: "3210"
@@ -27,6 +27,7 @@ services:
         PUBLIC_ROOMS_SELF_HOSTED_URL: ${PUBLIC_ROOMS_SELF_HOSTED_URL}
     restart: unless-stopped
     ports:
-      - "3200:3200"
+      - "127.0.0.1:3200:3200"
     depends_on:
-      - rooms
+      rooms:
+        condition: service_healthy

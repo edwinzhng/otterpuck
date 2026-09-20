@@ -44,12 +44,7 @@ scene.view_settings.view_transform='Standard'
 bpy.ops.object.select_all(action='DESELECT')
 bpy.context.view_layer.objects.active=goal;goal.select_set(True)
 bpy.data.libraries.write(${JSON.stringify(output)},{scene},compress=True)
-for name,obj in [('stick',stick),('goal',goal)]:
-    bpy.ops.object.select_all(action='DESELECT');obj.select_set(True)
-    for child in obj.children:child.select_set(True)
-    bpy.context.view_layer.objects.active=obj
-    bpy.ops.export_scene.gltf(filepath=${JSON.stringify(join(import.meta.dir, "../../public/models/equipment"))}+'/'+name+'.glb',export_format='GLB',use_selection=True,use_active_scene=True,export_animations=False,export_extras=True)
-result={'blend':${JSON.stringify(output)},'assets':['stick.glb','goal.glb']}
+result={'blend':${JSON.stringify(output)}}
 `;
 await Bun.write(join(import.meta.dir, "equipment-authoring.txt"), code);
 console.info("Prepared Blender equipment authoring");

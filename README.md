@@ -24,7 +24,7 @@ bun run build
 bun run start
 ```
 
-Production builds precompress models and code; the included server negotiates Brotli/gzip and revalidates cached assets. See [performance measurements](docs/performance.md).
+Production builds precompress models and code. The included server negotiates Brotli and gzip assets and revalidates cached files.
 
 Blender is not needed to run or build the game; the exported runtime assets are included. Solo play requires no backend, API keys or external services.
 
@@ -39,13 +39,13 @@ bun run start:lan
 
 Open `http://<computer-LAN-IP>:3204` on the phone. This command listens on the local network; stop it with Ctrl+C when finished. The ordinary start command binds to localhost only.
 
-Phones automatically use touch controls. **Settings → Controls → Touch** also enables the overlay on a desktop or hybrid device. Play in landscape: left joystick swims/steers, the outer ring sprints, right-side dragging aims, and holding Shoot charges a shot while still allowing drag-to-aim. The buttons expose puck skills and depth controls. See [touch controls and device testing](docs/touch-controls.md).
+Phones automatically use touch controls. **Settings → Controls → Touch** also enables the overlay on a desktop or hybrid device. Play in landscape: the left joystick swims and steers, the outer ring sprints, right-side dragging aims, and holding Shoot charges a shot while still allowing drag-to-aim.
 
 ## Offline play
 
 The production app automatically downloads an offline copy after its first online load. Once that background download finishes, both arenas, characters, tutorials and audio work without a connection. There is no download button or opt-in step. Keep the app open online long enough for the first download to complete.
 
-Updates download in the background and take over after existing game tabs/windows close. An interrupted update keeps the previous offline copy. Browser storage can still be cleared or evicted by the device. See [offline implementation and verification](docs/offline.md).
+Updates download in the background and take over after existing game tabs or windows close. An interrupted update keeps the previous offline copy. Browser storage can still be cleared or evicted by the device.
 
 ## Desktop controls
 
@@ -69,7 +69,7 @@ Updates download in the background and take over after existing game tabs/window
 
 ## Gameplay rules
 
-Sprinting spends stamina, which returns slowly and faster at the surface. A drained swimmer drops out of the sprint until stamina rebuilds and replenishes air more slowly afterwards. A full breath lasts 30 seconds holding still and 20 while swimming, including while sprinting. Turning underwater costs a little forward speed, the more so the harder you turn. Normal swimming uses the match turn rate with or without the puck, so pointer steering matches A / D. Curling keeps its tighter turn limit. A bot match and a multiplayer room both offer 1.5×, 2× and 3×, defaulting to 2×, and the choice is remembered. Turning from a stop curls, while a hard sprinting turn starts the slower automatic dummy. The dedicated Dummy control keeps its faster move and sprint burst.
+Sprinting spends stamina, which returns slowly and faster at the surface. A drained swimmer drops out of the sprint until stamina rebuilds and replenishes air more slowly afterwards. A full breath lasts 30 seconds holding still and 20 while swimming. Turning underwater costs some forward speed. Normal swimming turns at the same rate with or without the puck, while curling keeps its tighter limit. Turning from a stop curls, and a hard sprinting turn starts the slower automatic dummy. The dedicated Dummy control keeps its faster move and sprint burst.
 
 A curl also shields the puck. A reverse curl seals the stick side and the front and leaves the far side open, a regular curl guards both sides evenly, and a challenger facing the same way as the carrier gets a far better angle than one coming head-on. Cover makes the challenging blade sit ever more exactly on the puck, and past a point no placement reaches it. Caught between two opponents facing your way, turning loses the puck.
 
@@ -77,17 +77,17 @@ Turnovers you are part of briefly show a small Puck lost or Puck won cue. Turnov
 
 A small debug log in the top right lists the last few turnovers, yours and everyone else's, naming the side the tackle came from (or SANDWICH), the carry it was lost from, and how well covered the carrier was. Press Shift + L to show or hide it; it starts hidden.
 
-The pool is approximately 25 × 15 × 2.44 m, with low metal trough goals. Supported formations are 3-3, 2-3-1 and 1-3-2. Players manage breath and rotate through formation coverage. Puck control combines physical blade contact, assisted uncontested carrying, curls, pull/push, flicks and opposing challenges. See [formation logic and research](docs/bot-formations.md).
+The pool is approximately 25 × 15 × 2.44 m, with low metal trough goals. Supported formations are 3-3, 2-3-1 and 1-3-2. Players manage breath and rotate through formation coverage. Puck control combines physical blade contact, assisted uncontested carrying, curls, flicks and opposing challenges.
 
 ## Project structure
 
-- `src/`: gameplay, AI, controls, UI, rendering, audio and runtime animation. See [runtime boundaries](docs/architecture.md).
-- `tests/`: physics, formations, movement, input, cameras, rig/deformation and asset checks.
+- `src/`: gameplay, AI, controls, UI, rendering, audio, runtime animation and colocated tests.
+- `services/`: multiplayer room service and colocated service tests.
 - `public/`: exported GLBs, textures, images and audio used by the game.
 - `art/characters/`: current editable character/equipment sources and authoring scripts.
 - `art/arenas/`: editable arena sources and authoring/export scripts.
-- `art/*.blend`: retained earlier rig sources, including the first-person interaction binding.
-- `docs/`: controls, gameplay research and development notes.
+- `art/otter.blend` and `art/otter-paws.blend`: first-person paw rig sources.
+- `docs/agent-guides/`: product, code, review and asset-authoring standards.
 
 ## Blender workflow
 
@@ -103,7 +103,7 @@ The scripts use the standard Blender application on macOS and `blender` on other
 
 `bun art/characters/animate.ts` rebuilds the in-place clips while preserving the meshes. Full regeneration with `bun art/characters/build.ts` or `bun art/arenas/build.ts` replaces authored sources, so use export-only commands to preserve manual model edits.
 
-Current otter/beaver sources include the corrected vertical dolphin and bank/flutter kicks. Runtime animation adapts to movement while physics remains authoritative. The stick is separate, and the goal is a floor-mounted metal trough, without a net. See [character assets](art/characters/README.md) and [arenas](art/arenas/README.md).
+Current otter and beaver sources include the corrected vertical dolphin and bank/flutter kicks. Runtime animation adapts to movement while physics remains authoritative. The stick is separate, and the goal is a floor-mounted metal trough without a net. Follow the [3D asset guide](docs/agent-guides/3d-assets.md) for authoring and review.
 
 ## Checks
 
@@ -120,7 +120,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) before submitting a change.
 
 ## Credits
 
-The multiplayer swords icon is from [Lucide](public/licenses/lucide.txt). Music and splash recordings are credited with their sources and licenses in [audio credits](public/audio/CREDITS.md). Generated environment artwork is documented in `art/arenas/backgrounds.md` and `art/arenas/rock-texture.md`. No blanket license is granted for the game's code or authored assets by this repository.
+The multiplayer swords icon is from [Lucide](public/licenses/lucide.txt). Music and splash recordings are credited with their sources and licenses in [audio credits](public/audio/CREDITS.md). No blanket license is granted for the game's code or authored assets by this repository.
 
 ## Multiplayer
 

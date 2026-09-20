@@ -9,6 +9,7 @@ Use these guides for all repository work. Start with the product principles, and
 - [UI design system](design-system.md): shared primitives, visual tokens, and reuse rules.
 - [UI code structure](ui-structure.md): browser UI, input, rendering, and responsive behavior.
 - [Backend code structure](backend-structure.md): rooms, network protocols, services, and validation.
+- [3D assets](3d-assets.md): Blender sources, exports, runtime constraints, and review.
 - [Product-minded code review](code-review.md): review order and acceptance checks.
 
 `AGENTS.md` contains repository-wide operating constraints. These guides add detailed standards and do not override it.

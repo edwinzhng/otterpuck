@@ -4,6 +4,11 @@ dist
 .env*
 .vercel
 art
-tests
+src/**/*.test.ts
+src/**/test-*.ts
+src/test-support
+services/*.test.ts
+scripts
+docs
 .codex
 .omc

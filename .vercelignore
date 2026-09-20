@@ -3,7 +3,10 @@ dist
 .git
 .env*
 /art/
-tests
+src/**/*.test.ts
+src/**/test-*.ts
+src/test-support
+services/*.test.ts
 docs
 *.blend
 *.blend1

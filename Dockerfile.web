@@ -10,12 +10,10 @@ RUN bun run build
 
 FROM oven/bun:1.4.2
 WORKDIR /app
-COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile --production
-COPY index.html server.ts ./
-COPY src ./src
+COPY server.ts ./
+COPY src/static-assets.ts ./src/static-assets.ts
 COPY --from=build /app/dist ./dist
 USER bun
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=3200
 EXPOSE 3200
-CMD ["bun", "run", "server.ts", "--production"]
+CMD ["bun", "server.ts", "--production"]

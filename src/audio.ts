@@ -73,7 +73,6 @@ export const createAudio = (): PoolAudio => {
     musicVolume: 0.5,
     musicDucked: false,
     musicScene: "off" as "off" | "menu" | "game",
-    gameMusicTimer: undefined as number | undefined,
   };
   const selectedMusic = (): MusicName =>
     sound.musicScene === "menu" ? menuTracks[menuTrack] : gameTracks[gameTrack];
@@ -262,9 +261,6 @@ export const createAudio = (): PoolAudio => {
         effects.gain.setTargetAtTime(level * 0.85, context.currentTime, 0.04);
     },
     setMenu: (): void => {
-      if (sound.gameMusicTimer !== undefined)
-        window.clearTimeout(sound.gameMusicTimer);
-      sound.gameMusicTimer = undefined;
       sound.playing = false;
       sound.musicScene = "menu";
       sound.musicDucked = false;
@@ -290,9 +286,6 @@ export const createAudio = (): PoolAudio => {
             }, 800);
         }
       } else {
-        if (sound.gameMusicTimer !== undefined)
-          window.clearTimeout(sound.gameMusicTimer);
-        sound.gameMusicTimer = undefined;
         for (const source of voices) source.stop();
         setMusicDuck(false);
         stopMusic();
@@ -392,8 +385,6 @@ export const createAudio = (): PoolAudio => {
     },
     dispose: (): void => {
       sound.disposed = true;
-      if (sound.gameMusicTimer !== undefined)
-        window.clearTimeout(sound.gameMusicTimer);
       loading.abort();
       stopMusic();
       for (const music of Object.values(musicTracks)) {

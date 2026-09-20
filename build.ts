@@ -30,10 +30,6 @@ for (const path of [
   "dist/art/learn/curl-toon-v1.png",
   "dist/art/learn/dummy-toon-v1.png",
   "dist/art/learn/shot-toon-v1.png",
-  "dist/art/learn/skills.png",
-  "dist/models/otter.glb",
-  "dist/models/otterpuck.glb",
-  "dist/models/swimmer.glb",
 ])
   await rm(path, { force: true });
 const regions = regionsSchema.parse(

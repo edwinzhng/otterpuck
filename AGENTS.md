@@ -12,12 +12,12 @@ Edwin authorizes browser use whenever needed for visual verification and perform
 
 ## Development
 
-Use Bun, TypeScript and Biome. Do not introduce npm, pnpm, ESLint or Prettier. Follow the code and comment rules in the agent guides. Blender's Python API is invoked by the TypeScript authoring scripts; the historical `art/otter.py` is retained as source provenance.
+Use Bun, TypeScript and Biome. Do not introduce npm, pnpm, ESLint or Prettier. Follow the code and comment rules in the agent guides. Blender's Python API is invoked by the TypeScript authoring scripts.
 
 Gameplay physics and the existing controller remain authoritative. Visual animation, fur and particles must not change colliders or movement speed. Keep arm/stick geometry consistent with puck interaction logic. Test relevant changes with `bun test`, `bun run check`, and `bun run build`. Test actual renderer performance for interactive visual changes; CPU benchmarks are not phone or GPU frame-rate measurements.
 
 ## Assets
 
-Keep editable Blender sources and repeatable GLB exports. Use `art/characters/` for current characters, `art/arenas/` for arenas, and `public/` for runtime assets. Root `art/*.blend` files support the earlier rigs and retained first-person binding. Export saved Blender edits instead of regenerating geometry unless a rebuild is intended. Never replace current corrected character animation with older exports. Preserve third-party audio credits.
+Follow the [3D asset guide](docs/agent-guides/3d-assets.md). Keep editable Blender sources and repeatable GLB exports. Use `art/characters/` for current characters, `art/arenas/` for arenas, and `public/` for runtime assets. Root paw-rig sources support the first-person binding. Export saved Blender edits instead of regenerating geometry unless a rebuild is intended. Never replace current corrected character animation with older exports. Preserve third-party audio credits.
 
 Do not commit dependencies, build output, secrets, Blender autosaves or local review recordings. See README.md for setup, controls, asset commands and current verification limits.
