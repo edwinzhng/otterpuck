@@ -7,8 +7,6 @@ import { control, field } from "./ui-components";
 
 const touchIcon = (glyph: string): string => {
   const paths: Record<string, string> = {
-    "⟲": '<path d="M5 10a7 7 0 1 1 1 7M5 5v5h5"/>',
-    "⟳": '<path d="M19 10a7 7 0 1 0-1 7M19 5v5h-5"/>',
     "⤳": '<path d="M3 15c4-12 10 6 15-5M15 8l5 1-1 5"/>',
     "↗": '<path d="M5 19 19 5M6 5h13v13"/>',
     "↑": '<path d="M12 20V4M5 11l7-7 7 7"/>',
@@ -30,23 +28,21 @@ const touchButton = (action: TouchButtonAction): string => {
 export const touchMarkup = (): string => `
   <div id="touch-controls" class="touch-controls" hidden aria-label="Touch controls">
     <div class="touch-left">
-      <div class="touch-depth">
-        ${touchButton("reverse")}
-        ${touchButton("curl")}
-      </div>
       <div class="touch-joystick" data-touch="move" role="group" aria-label="Swim and steer joystick; push to the edge to sprint, pull back to brake">
         <span class="touch-sprint-label">SPRINT</span><span class="touch-stick-ring"></span><span id="touch-thumb" class="touch-thumb"></span><span class="touch-brake-label">BRAKE</span>
       </div>
     </div>
-    <div class="touch-glance" aria-label="Glance controls">
-      ${touchButton("glanceLeft")}
-      ${touchButton("glanceRight")}
-    </div>
     <div class="touch-skills">
-      ${touchButton("rise")}
-      ${touchButton("descend")}
-      ${touchButton("react")}
-      ${touchButton("dummy")}
+      <div class="touch-direction-pad" aria-label="Direction controls">
+        ${touchButton("rise")}
+        ${touchButton("glanceLeft")}
+        ${touchButton("glanceRight")}
+        ${touchButton("descend")}
+      </div>
+      <div class="touch-secondary-actions">
+        ${touchButton("dummy")}
+        ${touchButton("react")}
+      </div>
       ${touchButton("shot")}
     </div>
   </div>`;

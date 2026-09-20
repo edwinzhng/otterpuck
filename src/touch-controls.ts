@@ -64,7 +64,7 @@ export const createTouchController = (controls: Controls): TouchController => {
     return false;
   };
   const needsStick = (action: TouchAction): boolean =>
-    ["shot", "react", "curl", "reverse", "dummy"].includes(action);
+    ["shot", "react", "dummy"].includes(action);
   const begin = (
     id: number,
     action: TouchAction,
@@ -130,7 +130,7 @@ export const createTouchController = (controls: Controls): TouchController => {
       Math.hypot(stick.x, stick.y) > (state.sprint ? 0.78 : 0.9);
     controls.sprint = state.sprint;
     controls.vertical = Number(held("rise")) - Number(held("descend"));
-    controls.curl = Number(held("curl")) - Number(held("reverse"));
+    controls.curl = 0;
     controls.glance = Number(held("glanceRight")) - Number(held("glanceLeft"));
     controls.dummyMode = held("dummy");
     controls.dummy = controls.dummyMode ? controls.lateral : 0;

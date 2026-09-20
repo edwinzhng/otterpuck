@@ -55,27 +55,6 @@ body:not(.touch-mode) .touch-help {
   justify-items: center;
   gap: 10px;
 }
-.touch-depth {
-  display: flex;
-  gap: 10px;
-}
-.touch-glance {
-  position: absolute;
-  right: max(20px, env(safe-area-inset-right));
-  bottom: calc(var(--touch-bottom) + var(--touch-size) * 3 + 26px);
-  display: flex;
-  gap: 8px;
-  pointer-events: none;
-}
-.touch-glance .touch-button {
-  width: 44px;
-  height: 40px;
-  border-radius: 13px;
-  pointer-events: auto;
-}
-.touch-glance .touch-button > strong {
-  display: none;
-}
 .touch-button {
   display: flex;
   flex-direction: column;
@@ -369,9 +348,6 @@ body:not(.touch-mode) .touch-help {
   .touch-skills {
     right: max(12px, env(safe-area-inset-right));
   }
-  .touch-glance {
-    right: max(12px, env(safe-area-inset-right));
-  }
   .touch-left {
     left: max(12px, env(safe-area-inset-left));
   }
@@ -387,48 +363,11 @@ body:not(.touch-mode) .touch-help {
   }
 }
 
-.touch-skills {
-  grid-template-columns: repeat(3, var(--touch-size));
-  grid-template-rows: repeat(3, var(--touch-size));
-  gap: 6px;
-}
-.touch-skills .touch-button {
-  width: var(--touch-size);
-  height: var(--touch-size);
-  border-radius: 50%;
-}
-.touch-reverse {
-  grid-column: 1;
-  grid-row: 1;
-  transform: translateY(18px);
-}
-.touch-curl {
-  grid-column: 3;
-  grid-row: 1;
-  transform: translateY(18px);
-}
-.touch-skills .touch-shot {
-  grid-column: 2;
-  grid-row: 2;
-  transform: scale(1.12);
-}
 .touch-shot > span {
   font-size: 26px;
 }
 .touch-shot > strong {
   font-size: 11px;
-}
-.touch-dummy {
-  grid-column: 1;
-  grid-row: 3;
-  transform: translateY(-10px);
-}
-.touch-skills .touch-react {
-  grid-column: 3;
-  grid-row: 3;
-  flex-direction: column;
-  gap: 1px;
-  transform: translateY(-10px);
 }
 .touch-fullscreen {
   position: absolute;
@@ -515,41 +454,9 @@ body:not(.touch-mode) .touch-help {
   gap: 3px;
 }
 
-.touch-depth .touch-button {
-  border-radius: 50%;
-  transform: none;
-}
-.touch-skills .touch-rise {
-  grid-column: 1;
-  grid-row: 1;
-  transform: translateY(18px);
-}
-.touch-skills .touch-descend {
-  grid-column: 3;
-  grid-row: 1;
-  transform: translateY(18px);
-}
-.touch-skills .touch-shot {
-  width: calc(var(--touch-size) + 8px);
-  height: calc(var(--touch-size) + 8px);
-  margin: -4px;
-}
-
-.touch-reverse > span,
-.touch-reverse > strong,
-.touch-curl > span,
-.touch-curl > strong,
 .touch-dummy > span,
 .touch-dummy > strong {
   transform: translateY(-2px);
-}
-.touch-depth .touch-button {
-  gap: 3px;
-  padding: 6px 3px;
-}
-.touch-depth .touch-button > strong {
-  font-size: 10px;
-  line-height: 12px;
 }
 
 .hud-actions {
@@ -584,30 +491,6 @@ body:not(.touch-mode) .touch-help {
     grid-template-columns: repeat(2, var(--touch-size));
     grid-template-rows: repeat(3, var(--touch-size));
     gap: 12px;
-  }
-  .touch-glance {
-    right: max(14px, env(safe-area-inset-right));
-    bottom: calc(var(--touch-bottom) + var(--touch-size) * 3 + 36px);
-  }
-  .touch-skills .touch-rise {
-    grid-area: 1 / 1;
-    transform: none;
-  }
-  .touch-skills .touch-descend {
-    grid-area: 1 / 2;
-    transform: none;
-  }
-  .touch-skills .touch-shot {
-    grid-area: 2 / 1 / 3 / 3;
-    justify-self: center;
-  }
-  .touch-skills .touch-dummy {
-    grid-area: 3 / 1;
-    transform: none;
-  }
-  .touch-skills .touch-react {
-    grid-area: 3 / 2;
-    transform: none;
   }
   .touch-mode .scoreboard {
     position: absolute;
@@ -644,4 +527,67 @@ body:not(.touch-mode) .touch-help {
   :root {
     --input-font-min: 16px;
   }
+}
+
+.touch-skills {
+  display: flex;
+  width: calc(var(--touch-size) * 3 + var(--touch-gap) * 2);
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--touch-gap);
+}
+.touch-skills .touch-button {
+  width: var(--touch-size);
+  height: var(--touch-size);
+  margin: 0;
+  border-radius: 14px;
+  transform: none;
+}
+.touch-direction-pad {
+  display: grid;
+  grid-template: repeat(2, var(--touch-size)) / repeat(3, var(--touch-size));
+  gap: var(--touch-gap);
+  margin-bottom: calc(var(--touch-gap) * 3);
+}
+.touch-direction-pad .touch-rise {
+  grid-area: 1 / 2;
+}
+.touch-direction-pad .touch-glanceLeft {
+  grid-area: 2 / 1;
+}
+.touch-direction-pad .touch-glanceRight {
+  grid-area: 2 / 3;
+}
+.touch-direction-pad .touch-descend {
+  grid-area: 2 / 2;
+}
+.touch-secondary-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--touch-gap);
+}
+.touch-secondary-actions .touch-button {
+  width: 100%;
+  grid-column: auto;
+  flex-direction: row;
+  gap: 8px;
+}
+.touch-secondary-actions .touch-button > strong {
+  width: auto;
+}
+.touch-skills .touch-shot {
+  width: 100%;
+  height: calc(var(--touch-size) + 8px);
+  flex-direction: row;
+  gap: 8px;
+  border-radius: 16px;
+}
+.touch-skills .touch-shot > span {
+  width: 28px;
+  height: 28px;
+  flex-basis: 28px;
+}
+.touch-skills .touch-shot > strong {
+  width: auto;
+  font-size: 14px;
 }
