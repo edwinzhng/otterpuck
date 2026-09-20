@@ -1,6 +1,7 @@
 import { randomInt } from "node:crypto";
 import {
   createNetworkMatch,
+  createRoomSimulation,
   type NetworkMatch,
 } from "../src/multiplayer/match";
 import { customPlayerName } from "../src/multiplayer/names";
@@ -46,6 +47,7 @@ export const createRooms = (
     mode: room.mode,
     phase: room.phase,
     hostId: room.hostId,
+    teamSize: room.teamSize,
     members: room.members.map(({ id, name, playerId, peer, handedness }) => ({
       id,
       name,
@@ -115,6 +117,17 @@ export const createRooms = (
       peer.send({ type: "snapshot", state: room.checkpoint });
     updated(room);
   };
+  const freeSeat = (room: Room, member: Member): number | undefined =>
+    ([0, 1] as const)
+      .flatMap((team): number[] =>
+        Array.from({ length: room.teamSize }, (_, i): number => team * 6 + i),
+      )
+      .find(
+        (id) =>
+          !room.members.some(
+            (other) => other !== member && other.playerId === id,
+          ),
+      );
   const join = (
     peer: Peer,
     room: Room,
@@ -125,9 +138,10 @@ export const createRooms = (
     const otters = room.members.filter((member) => member.playerId < 6).length;
     const team =
       requestedTeam ?? (otters <= room.members.length - otters ? 0 : 1);
-    const playerId = Array.from({ length: 6 }, (_, i) => team * 6 + i).find(
-      (id) => !room.members.some((m) => m.playerId === id),
-    );
+    const playerId = Array.from(
+      { length: room.teamSize },
+      (_, i) => team * 6 + i,
+    ).find((id) => !room.members.some((m) => m.playerId === id));
     if (playerId === undefined) {
       error(
         peer,
@@ -226,6 +240,7 @@ export const createRooms = (
           mode: message.mode,
           phase: "waiting",
           hostId: "",
+          teamSize: 6,
           members: [],
           checkpointAt: 0,
           created: now(),
@@ -254,6 +269,13 @@ export const createRooms = (
         }
         if (
           message.playerId !== undefined &&
+          message.playerId % 6 >= room.teamSize
+        ) {
+          error(peer, "That position is not part of this match size.");
+          return;
+        }
+        if (
+          message.playerId !== undefined &&
           room.members.some(
             (other) =>
               other.id !== member.id && other.playerId === message.playerId,
@@ -277,7 +299,21 @@ export const createRooms = (
         }
         if (room.phase !== "waiting") return;
         room.phase = "playing";
-        if (room.mode === "online") room.match = createNetworkMatch();
+        if (room.mode === "online")
+          room.match = createNetworkMatch(createRoomSimulation(room.teamSize));
+        updated(room);
+        return;
+      }
+      if (message.type === "settings") {
+        if (member.id !== room.hostId) {
+          error(peer, "Only the room creator can change the match size.");
+          return;
+        }
+        if (room.phase !== "waiting") return;
+        room.teamSize = message.teamSize;
+        for (const other of room.members)
+          if (other.playerId % 6 >= room.teamSize)
+            other.playerId = freeSeat(room, other) ?? other.playerId;
         updated(room);
         return;
       }

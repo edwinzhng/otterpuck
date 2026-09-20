@@ -1,6 +1,7 @@
 import { type Quaternion, Vector3 } from "three";
 
-export type Formation = "3-3" | "2-3-1" | "1-3-2";
+export type Formation = "3-3" | "2-3-1" | "1-3-2" | "2-1" | "1-2" | "1-1";
+export type TeamSize = 2 | 3 | 6;
 export type Team = 0 | 1;
 export type Species = "otter" | "beaver";
 export type BotDifficulty = "easy" | "medium" | "hard" | "elite";

@@ -1,12 +1,23 @@
+import { defaultFormation } from "../positions";
 import {
   createSimulation,
   setPlayerHandedness,
   stepSimulation,
 } from "../simulation";
-import { type Controls, freshControls, type Simulation, STEP } from "../types";
+import {
+  type Controls,
+  freshControls,
+  type Simulation,
+  STEP,
+  type TeamSize,
+} from "../types";
 import type { RoomView } from "./protocol";
+export const createRoomSimulation = (teamSize: TeamSize): Simulation => {
+  const formation = defaultFormation(teamSize);
+  return createSimulation(formation, formation);
+};
 export const createNetworkMatch = (
-  initial = createSimulation(),
+  initial = createRoomSimulation(6),
 ): {
   state: Simulation;
   acknowledged: Record<string, number>;

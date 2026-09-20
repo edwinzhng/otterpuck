@@ -1,8 +1,13 @@
 import { z } from "zod";
 import { getElement } from "../dom";
-import { formationChoices } from "../positions";
+import {
+  defaultFormation,
+  formationChoices,
+  sizeLabel,
+  TEAM_SIZES,
+} from "../positions";
 import type { Controls, Handedness, Simulation } from "../types";
-import { button, dialog } from "../ui-components";
+import { button, dialog, field } from "../ui-components";
 import { connectRoom, type Session } from "./client";
 import { customPlayerName } from "./names";
 import { PROTOCOL, type RoomView } from "./protocol";
@@ -27,7 +32,11 @@ export const multiplayerMarkup = (): string =>
  <section id="mp-room" hidden>
  <div class="mp-room-scroll">
  <div class="mp-room-bar"><div><span class="mp-field-label">Room code</span><h3 id="mp-room-title"></h3></div><div class="mp-room-meta"><p id="mp-room-region"></p>${button("mp-copy", "Copy invite")}</div></div>
- <div class="mp-player-bar"><label class="field" for="mp-name"><span>Your name</span><input id="mp-name" maxlength="24" placeholder="Player" autocomplete="nickname"/></label><p>Choose a team and a position.</p></div>
+ <div class="mp-player-bar"><label class="field" for="mp-name"><span>Your name</span><input id="mp-name" maxlength="24" placeholder="Player" autocomplete="nickname"/></label>${field(
+   "mp-team-size",
+   "Match size",
+   TEAM_SIZES.map((size): [string, string] => [String(size), sizeLabel(size)]),
+ )}<p>Choose a team and a position.</p></div>
  <div class="mp-teams" id="mp-teams"></div>
  </div>
  <div class="mp-room-footer"><span id="mp-waiting" class="mp-room-hint">Empty positions are filled by bots.</span><div class="mp-actions">${button("mp-leave", "Leave", "secondary")}${button("mp-start", "Start match", "primary")}</div></div>
@@ -180,6 +189,9 @@ export const bindMultiplayer = (callbacks: {
       room.mode === "lan"
         ? "Local Network"
         : (regions.find((r) => r.id === selected)?.label ?? selected);
+    const size = getElement("#mp-team-size", HTMLSelectElement);
+    size.value = String(room.teamSize);
+    size.disabled = room.hostId !== self || room.phase !== "waiting";
     const me = room.members.find((member) => member.id === self);
     assignedName = me?.name ?? "";
     const name = getElement("#mp-name", HTMLInputElement);
@@ -189,6 +201,7 @@ export const bindMultiplayer = (callbacks: {
       document.activeElement instanceof HTMLElement
         ? document.activeElement.dataset.seat
         : undefined;
+    const seats = formationChoices(defaultFormation(room.teamSize));
     teams.replaceChildren(
       ...([0, 1] as const).map((team) => {
         const side = document.createElement("section");
@@ -219,7 +232,7 @@ export const bindMultiplayer = (callbacks: {
             session?.profile({ playerId: team * 6 + available.slot });
         });
         side.append(header);
-        for (const position of formationChoices("2-3-1")) {
+        for (const position of seats) {
           const id = team * 6 + position.slot;
           const member = room.members.find(
             (candidate) => candidate.playerId === id,
@@ -467,6 +480,13 @@ export const bindMultiplayer = (callbacks: {
     "click",
     (): void => session?.start(),
   );
+  const sizeSelect = getElement("#mp-team-size", HTMLSelectElement);
+  sizeSelect.addEventListener("change", (): void => {
+    const next = TEAM_SIZES.find(
+      (candidate): boolean => String(candidate) === sizeSelect.value,
+    );
+    if (next) session?.settings(next);
+  });
   getElement("#mp-leave", HTMLButtonElement).addEventListener(
     "click",
     (): void => {
