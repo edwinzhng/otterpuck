@@ -127,3 +127,5 @@ The multiplayer swords icon is from [Lucide](public/licenses/lucide.txt). Music 
 Play with friends supports US East and EU West online rooms, plus device-hosted LAN rooms using WebRTC. LAN players need internet to join and must keep the host device awake. Empty positions are filled by bots. Rooms are held in memory and end when their regional service restarts.
 
 Run the room service locally with `bun run rooms`; configure browser endpoints in `public/multiplayer.json` and server variables using `.env.example`. Railway services, regions and automatic deployment from `main` are defined in `.railway/railway.ts`; frontend build and headers are in `vercel.json`.
+
+Self-host the whole thing on a Raspberry Pi behind Caddy, reachable by friends over HTTPS, with `docker compose up -d --build`. See [self-hosting on a Raspberry Pi](docs/self-hosting.md).

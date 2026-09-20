@@ -1,0 +1,13 @@
+# Loaded automatically beside docker-compose.yml. Publishes both services on the
+# Pi's loopback interface only, so the host's Caddy is the single way in: it
+# terminates TLS and forwards to them. Binding to loopback is also what makes
+# TRUST_PROXY safe, since no one but Caddy can set the X-Real-IP header.
+# Requires Compose v2.24+ for the !override tag. Delete this file to publish the
+# services on the LAN instead.
+services:
+  rooms:
+    ports: !override
+      - "127.0.0.1:3210:3210"
+  web:
+    ports: !override
+      - "127.0.0.1:3200:3200"
