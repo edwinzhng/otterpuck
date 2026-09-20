@@ -232,8 +232,11 @@ describe("multiplayer", () => {
     rooms.tick(0.1);
     expect(host.messages.some((m) => m.type === "snapshot")).toBe(false);
   });
-  test("a capped turn scales with elapsed time, not the step count", () => {
-    const yawFor = (seconds: number): number => {
+  test("a capped turn scales with the interval its input covers, not the room's ticks", () => {
+    // One message far above the cap, left to drain over a fixed span of room
+    // ticks: what it is worth must follow the interval the client accumulated
+    // it over, and must not change with how the room slices that span.
+    const yawFor = (duration: number, tick: number): number => {
       const match = createNetworkMatch();
       match.state.faceoff = undefined;
       match.roster([
@@ -241,14 +244,66 @@ describe("multiplayer", () => {
       ]);
       const player = match.state.players.find((p) => p.id === 0);
       const before = player?.yaw ?? 0;
-      match.input(0, 1, { ...freshControls(), yawDelta: 1 });
-      match.advance(seconds);
+      match.input(0, 1, { ...freshControls(), yawDelta: 1 }, duration);
+      for (let elapsed = 0; elapsed < 0.2; elapsed += tick) match.advance(tick);
       return (player?.yaw ?? 0) - before;
     };
-    const one = yawFor(STEP);
+    const one = yawFor(STEP, 1 / 60);
     expect(Math.abs(one)).toBeGreaterThan(0);
-    expect(yawFor(2 * STEP) / one).toBeCloseTo(2, 2);
-    expect(yawFor(4 * STEP) / one).toBeCloseTo(4, 2);
+    expect(yawFor(2 * STEP, 1 / 60) / one).toBeCloseTo(2, 2);
+    expect(yawFor(4 * STEP, 1 / 60) / one).toBeCloseTo(4, 2);
+    expect(yawFor(4 * STEP, 1 / 30) / one).toBeCloseTo(4, 2);
+    expect(yawFor(4 * STEP, STEP) / one).toBeCloseTo(4, 2);
+  });
+  test("turning at the cap survives a send rate slower than the room tick", () => {
+    // The online client batches input at 30Hz while the room ticks at 60Hz.
+    // Spending a whole send window inside the tick that receives it used to
+    // cost half of every capped turn, against a client predicting the full
+    // rate: the player turned, the room disagreed, and the correction fought
+    // the mouse. Sustained hard turning must reach the same rate either way.
+    const rateFor = (sendHz: number): number => {
+      const match = createNetworkMatch();
+      match.state.faceoff = undefined;
+      match.roster([
+        { id: crypto.randomUUID(), name: "A", playerId: 0, connected: true },
+      ]);
+      const player = match.state.players.find((p) => p.id === 0);
+      const before = player?.yaw ?? 0;
+      const tick = 1 / 60;
+      const send = 1 / sendHz;
+      let next = 0;
+      let sequence = 0;
+      const seconds = 1;
+      for (let elapsed = 0; elapsed < seconds; elapsed += tick) {
+        while (next <= elapsed + tick) {
+          match.input(0, ++sequence, { ...freshControls(), yawDelta: 1 }, send);
+          next += send;
+        }
+        match.advance(tick);
+      }
+      return ((player?.yaw ?? 0) - before) / seconds;
+    };
+    const perTick = rateFor(60);
+    expect(Math.abs(perTick)).toBeGreaterThan(1);
+    expect(rateFor(30) / perTick).toBeCloseTo(1, 2);
+    expect(rateFor(15) / perTick).toBeCloseTo(1, 2);
+    expect(rateFor(120) / perTick).toBeCloseTo(1, 2);
+  });
+  test("a sequence is acknowledged only once its yaw has been spent", () => {
+    // Clients drop acknowledged inputs from the queue they replay over every
+    // snapshot. Acknowledging one while its yaw is still waiting in the room
+    // erases the turn from the prediction and hands it back a snapshot later,
+    // which reads as the view rocking back and forth against the mouse.
+    const match = createNetworkMatch();
+    match.state.faceoff = undefined;
+    match.roster([
+      { id: crypto.randomUUID(), name: "A", playerId: 0, connected: true },
+    ]);
+    match.input(0, 7, { ...freshControls(), yawDelta: 0.4 }, 8 * STEP);
+    match.advance(STEP);
+    expect(match.acknowledged[0]).toBeUndefined();
+    for (let step = 0; step < 8; step++) match.advance(STEP);
+    expect(match.acknowledged[0]).toBe(7);
   });
   test("stale input stops and repeated sequence cannot replay actions", () => {
     const match = createNetworkMatch();

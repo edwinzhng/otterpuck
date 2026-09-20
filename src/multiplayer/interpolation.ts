@@ -1,6 +1,10 @@
 import type { Quaternion, Vector3 } from "three";
 import { clamp, type Player, type Simulation } from "../types";
 
+// Enough history to cover the longest interpolation delay below with room to
+// spare, at the rate the room sends snapshots. Too few and the playhead runs
+// off the front of the buffer and remote players stall.
+const SAMPLES = 24;
 type Pose = {
   id: number;
   position: Vector3;
@@ -76,7 +80,7 @@ export const createSnapshotInterpolation = (): {
           orientation: state.puck.orientation.clone(),
         },
       });
-      if (samples.length > 8) samples.shift();
+      if (samples.length > SAMPLES) samples.shift();
     },
     render: (state, self, now): void => {
       const latest = samples.at(-1);
