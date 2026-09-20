@@ -1,0 +1,32 @@
+services:
+  rooms:
+    build:
+      context: .
+      dockerfile: services/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3210:3210"
+    environment:
+      NODE_ENV: production
+      PORT: "3210"
+      ROOM_REGION: home
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
+      TRUST_PROXY: ${TRUST_PROXY:-}
+    healthcheck:
+      test: ["CMD", "bun", "-e", "await fetch('http://127.0.0.1:3210/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      args:
+        PUBLIC_ROOMS_HOME_URL: ${PUBLIC_ROOMS_HOME_URL}
+    restart: unless-stopped
+    ports:
+      - "3200:3200"
+    depends_on:
+      - rooms
