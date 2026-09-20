@@ -1,4 +1,4 @@
-import type { Quaternion, Vector3 } from "three";
+import { Quaternion, Vector3 } from "three";
 import { clamp, type Player, type Simulation } from "../types";
 
 // Keep enough history for the maximum interpolation delay. A smaller buffer
@@ -24,18 +24,38 @@ type Sample = {
   puck: { position: Vector3; orientation: Quaternion };
   transition: string;
 };
-const pose = (player: Player): Pose => ({
-  id: player.id,
-  position: player.position.clone(),
-  velocity: player.velocity.clone(),
-  stick: player.stick.clone(),
-  orientation: player.stickOrientation.clone(),
-  yaw: player.yaw,
-  bodyPitch: player.bodyPitch,
-  bodyRoll: player.bodyRoll,
-  kick: player.kick,
-  kickPhase: player.kickPhase,
-  shotDraw: player.shotDraw,
+const createPose = (): Pose => ({
+  id: 0,
+  position: new Vector3(),
+  velocity: new Vector3(),
+  stick: new Vector3(),
+  orientation: new Quaternion(),
+  yaw: 0,
+  bodyPitch: 0,
+  bodyRoll: 0,
+  kick: 0,
+  kickPhase: 0,
+  shotDraw: 0,
+});
+const copyPose = (pose: Pose, player: Player): void => {
+  pose.id = player.id;
+  pose.position.copy(player.position);
+  pose.velocity.copy(player.velocity);
+  pose.stick.copy(player.stick);
+  pose.orientation.copy(player.stickOrientation);
+  pose.yaw = player.yaw;
+  pose.bodyPitch = player.bodyPitch;
+  pose.bodyRoll = player.bodyRoll;
+  pose.kick = player.kick;
+  pose.kickPhase = player.kickPhase;
+  pose.shotDraw = player.shotDraw;
+};
+const createSample = (playerCount: number): Sample => ({
+  time: 0,
+  arrived: 0,
+  players: Array.from({ length: playerCount }, createPose),
+  puck: { position: new Vector3(), orientation: new Quaternion() },
+  transition: "",
 });
 const mix = (a: number, b: number, alpha: number): number =>
   a + (b - a) * alpha;
@@ -45,6 +65,7 @@ export const createSnapshotInterpolation = (): {
   render: (state: Simulation, self: number, now: number) => void;
 } => {
   let samples: Sample[] = [];
+  const available: Sample[] = [];
   let playhead = 0;
   let renderedAt: number | undefined;
   let jitter = 0;
@@ -59,6 +80,7 @@ export const createSnapshotInterpolation = (): {
         state.time < previous.time ||
         state.time - previous.time > 0.25
       ) {
+        available.push(...samples);
         samples = [];
         playhead = state.time;
         renderedAt = arrived;
@@ -69,17 +91,21 @@ export const createSnapshotInterpolation = (): {
         );
         jitter += (variation - jitter) * 0.1;
       }
-      samples.push({
-        time: state.time,
-        arrived,
-        transition,
-        players: state.players.map(pose),
-        puck: {
-          position: state.puck.position.clone(),
-          orientation: state.puck.orientation.clone(),
-        },
-      });
-      if (samples.length > SAMPLES) samples.shift();
+      let sample =
+        samples.length >= SAMPLES ? samples.shift() : available.pop();
+      if (!sample || sample.players.length !== state.players.length)
+        sample = createSample(state.players.length);
+      sample.time = state.time;
+      sample.arrived = arrived;
+      sample.transition = transition;
+      for (let index = 0; index < state.players.length; index += 1) {
+        const player = state.players[index];
+        const target = sample.players[index];
+        if (player && target) copyPose(target, player);
+      }
+      sample.puck.position.copy(state.puck.position);
+      sample.puck.orientation.copy(state.puck.orientation);
+      samples.push(sample);
     },
     render: (state, self, now): void => {
       const latest = samples.at(-1);

@@ -94,7 +94,8 @@ export const updateUI = (
     reaction === "grab" ? "Grab" : "Knock down",
   );
   ui.elements.event.classList.toggle("visible", announcement !== "");
-  setText(ui.elements.fps, `${Math.round(world.frameRate)} FPS`);
+  if (ui.hud.classList.contains("show-performance"))
+    setText(ui.elements.fps, `${Math.round(world.frameRate)} FPS`);
   ui.elements.charge.style.setProperty(
     "--charge",
     `${input.controls.charge * 100}%`,

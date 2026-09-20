@@ -220,7 +220,7 @@ test("shrinking a room reseats members who fall outside the new match size", ():
   expect(new Set(latest.room.members.map((m) => m.playerId)).size).toBe(2);
 });
 
-test("only the host changes the match size and never once the match starts", (): void => {
+test("only the host changes room settings and every guest receives them", (): void => {
   const rooms = createRooms("us");
   const host = peer();
   rooms.message(host, { type: "create", protocol: PROTOCOL, mode: "online" });
@@ -231,7 +231,12 @@ test("only the host changes the match size and never once the match starts", ():
   })();
   const guest = peer();
   rooms.message(guest, { type: "join", protocol: PROTOCOL, code });
-  rooms.message(guest, { type: "settings", teamSize: 2 });
+  rooms.message(guest, {
+    type: "settings",
+    teamSize: 2,
+    swimTurn: 1.5,
+    difficulty: "elite",
+  });
   expect(
     guest.messages.some(
       (message) =>
@@ -239,12 +244,34 @@ test("only the host changes the match size and never once the match starts", ():
         /only the room creator/i.test(message.message),
     ),
   ).toBe(true);
-  rooms.message(host, { type: "settings", teamSize: 3 });
+  const unchanged = guest.messages.filter((m) => m.type === "room").at(-1);
+  if (unchanged?.type !== "room") throw new Error("No room");
+  expect(unchanged.room.teamSize).toBe(6);
+  expect(unchanged.room.swimTurn).not.toBe(1.5);
+  expect(unchanged.room.difficulty).toBe("medium");
+  rooms.message(host, {
+    type: "settings",
+    teamSize: 3,
+    swimTurn: 1.5,
+    difficulty: "elite",
+  });
+  const synchronized = guest.messages.filter((m) => m.type === "room").at(-1);
+  if (synchronized?.type !== "room") throw new Error("No room");
+  expect(synchronized.room.teamSize).toBe(3);
+  expect(synchronized.room.swimTurn).toBe(1.5);
+  expect(synchronized.room.difficulty).toBe("elite");
   rooms.message(host, { type: "start" });
-  rooms.message(host, { type: "settings", teamSize: 6 });
+  rooms.message(host, {
+    type: "settings",
+    teamSize: 6,
+    swimTurn: 2,
+    difficulty: "easy",
+  });
   const latest = host.messages.filter((m) => m.type === "room").at(-1);
   if (latest?.type !== "room") throw new Error("No room");
   expect(latest.room.teamSize).toBe(3);
+  expect(latest.room.swimTurn).toBe(1.5);
+  expect(latest.room.difficulty).toBe("elite");
 });
 
 test("an online room plays the match size the host chose", (): void => {

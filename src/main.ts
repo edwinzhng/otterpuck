@@ -51,7 +51,7 @@ const boot = async (): Promise<void> => {
     renderTime: number;
     uiTime: number;
     metricsTime: number;
-    tackleMarkup: string;
+    tackleRevision: number;
     audio: PoolAudio | undefined;
   } = {
     phase: "menu",
@@ -61,7 +61,7 @@ const boot = async (): Promise<void> => {
     renderTime: 0,
     uiTime: 0,
     metricsTime: 0,
-    tackleMarkup: "",
+    tackleRevision: -1,
     audio: undefined,
   };
   const pause = (): void => {
@@ -397,14 +397,17 @@ const boot = async (): Promise<void> => {
       for (const cue of audioEvents.sample(app.state)) app.audio?.play(cue);
       tackleEvents.sample(app.state);
       turnoverBanner.render(ui, app.state, tackleEvents.events());
-      const tackleMarkup = tackleEvents
-        .events()
-        .map(
-          (event): string => `<div><b>${event.label}</b> ${event.detail}</div>`,
-        )
-        .join("");
-      if (tackleMarkup !== app.tackleMarkup) {
-        app.tackleMarkup = tackleMarkup;
+      const tackleLogVisible = ui.hud.classList.contains("show-tackles");
+      const tackleRevision = tackleEvents.revision();
+      if (tackleLogVisible && tackleRevision !== app.tackleRevision) {
+        const tackleMarkup = tackleEvents
+          .events()
+          .map(
+            (event): string =>
+              `<div><b>${event.label}</b> ${event.detail}</div>`,
+          )
+          .join("");
+        app.tackleRevision = tackleRevision;
         ui.elements.tackleLog.innerHTML = tackleMarkup;
       }
       if (app.state.finished) finish();
@@ -432,7 +435,10 @@ const boot = async (): Promise<void> => {
       app.phase === "playing" ? input.controls.glance : 0,
     );
     meter.sample(renderDt * 1000, performance.now() - frameStart);
-    if (now - app.metricsTime > 100) {
+    if (
+      ui.hud.classList.contains("show-performance") &&
+      now - app.metricsTime > 100
+    ) {
       ui.elements.fps.dataset.metrics = JSON.stringify(
         meter.read(world.renderer.info.render, world.renderer.info.memory),
       );

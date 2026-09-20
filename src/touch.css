@@ -26,16 +26,17 @@ body:not(.touch-mode) .touch-help {
   --hud-right: max(16px, env(safe-area-inset-right));
   --hud-action-size: 48px;
   --touch-status-width: 132px;
-  --touch-score-height: 48px;
   --touch-panel-gap: 10px;
-  --touch-vitals-height: 81px;
   --touch-network-gap: 16px;
   --touch-size: clamp(48px, 13vh, 60px);
   --touch-gap: 8px;
   --touch-bottom: max(16px, env(safe-area-inset-bottom));
   --touch-skill-width: calc(
-    var(--touch-size) + var(--touch-size) + var(--touch-size) +
-    var(--touch-gap) + var(--touch-gap)
+    var(--touch-size) +
+    var(--touch-size) +
+    var(--touch-size) +
+    var(--touch-gap) +
+    var(--touch-gap)
   );
   overscroll-behavior: none;
 }
@@ -111,6 +112,9 @@ body:not(.touch-mode) .touch-help {
 .touch-button[aria-disabled="true"] {
   opacity: 0.38;
 }
+.touch-button:disabled {
+  cursor: default;
+}
 .touch-button:focus-visible {
   outline: 3px solid #ffef79;
   outline-offset: 3px;
@@ -119,14 +123,13 @@ body:not(.touch-mode) .touch-help {
   position: absolute;
   bottom: var(--touch-bottom);
   right: max(20px, env(safe-area-inset-right));
-  display: grid;
+  display: flex;
+  width: calc(var(--touch-size) * 3 + var(--touch-gap) * 2);
+  flex-direction: column;
+  align-items: stretch;
   gap: var(--touch-gap);
-  grid-template-columns: repeat(4, var(--touch-size));
-  grid-template-rows: repeat(3, var(--touch-size));
 }
 .touch-react {
-  grid-column: 3 / 5;
-  width: auto;
   flex-direction: row;
   gap: 7px;
 }
@@ -138,11 +141,6 @@ body:not(.touch-mode) .touch-help {
     0 0 12px #ffe99570;
 }
 .touch-shot {
-  grid-column: 3 / 5;
-  grid-row: 2 / 4;
-  width: auto;
-  height: auto;
-  border-radius: 50%;
   background: linear-gradient(
     0deg,
     #ffd35f var(--touch-charge, 0%),
@@ -220,14 +218,11 @@ body:not(.touch-mode) .touch-help {
   min-height: 48px;
 }
 .touch-mode .scoreboard {
-  top: 0;
-  right: 0;
-  left: auto;
-  transform: none;
+  position: static;
   box-sizing: border-box;
-  width: var(--touch-status-width);
-  max-width: calc(100vw - var(--hud-left) - var(--hud-right) - 116px);
-  min-height: var(--touch-score-height);
+  width: 100%;
+  max-width: none;
+  min-height: 48px;
   justify-content: center;
   padding: 7px 10px;
   gap: 8px;
@@ -254,13 +249,20 @@ body:not(.touch-mode) .touch-help {
   inset: 0;
   display: block;
 }
-.touch-mode .vitals {
+.touch-mode .hud-status-stack {
   position: absolute;
-  left: max(76px, calc(env(safe-area-inset-left) + 60px));
-  top: max(10px, env(safe-area-inset-top));
-  width: 112px;
+  top: var(--hud-top);
+  right: var(--hud-right);
+  display: grid;
+  width: var(--touch-status-width);
+  gap: var(--touch-panel-gap);
+}
+.touch-mode .vitals {
+  position: static;
+  width: 100%;
   padding: 8px 10px;
   border-radius: 12px;
+  overflow: hidden;
 }
 .touch-mode .air-value,
 .touch-mode .speed-value {
@@ -276,8 +278,9 @@ body:not(.touch-mode) .touch-help {
 }
 .touch-mode .map-wrap {
   position: absolute;
-  right: var(--hud-right);
-  top: max(10px, env(safe-area-inset-top));
+  top: calc(var(--hud-top) + var(--hud-action-size) + 12px);
+  right: auto;
+  left: var(--hud-left);
   width: 70px;
   padding: 5px;
   border-radius: 10px;
@@ -420,28 +423,12 @@ body:not(.touch-mode) .touch-help {
   height: 44px;
   border-radius: 14px;
 }
-.touch-mode .vitals {
-  top: calc(
-    var(--hud-top) +
-    var(--touch-score-height) +
-    var(--touch-panel-gap)
-  );
-  right: var(--hud-right);
-  left: auto;
-  width: var(--touch-status-width);
-  overflow: hidden;
-}
 .touch-mode #network-status {
-  position: fixed;
-  top: calc(
-    var(--hud-top) + var(--touch-score-height) + var(--touch-panel-gap) +
-    var(--touch-vitals-height) + var(--touch-network-gap)
-  );
-  right: var(--hud-right);
+  position: static;
   box-sizing: border-box;
-  width: var(--touch-status-width);
+  width: 100%;
   max-width: none;
-  margin: 0;
+  margin: calc(var(--touch-network-gap) - var(--touch-panel-gap)) 0 0;
   padding: 6px 9px;
   line-height: 1.2;
 }
@@ -464,11 +451,6 @@ body:not(.touch-mode) .touch-help {
 }
 .touch-mode .air-value > span {
   font-size: 11px;
-}
-.touch-mode .map-wrap {
-  top: calc(var(--hud-top) + var(--hud-action-size) + 12px);
-  right: auto;
-  left: var(--hud-left);
 }
 .fullscreen-help {
   max-width: min(340px, 85vw);
@@ -549,8 +531,11 @@ body:not(.touch-mode) .touch-help {
     --touch-size: 54px;
     --touch-bottom: max(22px, env(safe-area-inset-bottom));
     --touch-skill-width: calc(
-      var(--touch-size) + var(--touch-size) + var(--touch-size) +
-      var(--touch-gap) + var(--touch-gap)
+      var(--touch-size) +
+      var(--touch-size) +
+      var(--touch-size) +
+      var(--touch-gap) +
+      var(--touch-gap)
     );
   }
   .touch-left {
@@ -563,8 +548,6 @@ body:not(.touch-mode) .touch-help {
   }
   .touch-skills {
     right: max(14px, env(safe-area-inset-right));
-    grid-template-columns: repeat(2, var(--touch-size));
-    grid-template-rows: repeat(3, var(--touch-size));
     gap: 12px;
   }
   .touch-mode .scoreboard {
@@ -607,13 +590,6 @@ body:not(.touch-mode) .touch-help {
   }
 }
 
-.touch-skills {
-  display: flex;
-  width: calc(var(--touch-size) * 3 + var(--touch-gap) * 2);
-  flex-direction: column;
-  align-items: stretch;
-  gap: var(--touch-gap);
-}
 .touch-skills .touch-button {
   width: var(--touch-size);
   height: var(--touch-size);

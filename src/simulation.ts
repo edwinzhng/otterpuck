@@ -601,8 +601,8 @@ const updateHumanMovement = (
   player.curl = curl;
   player.dummy =
     curl === 0 ? controls.dummy || (forwardTurn ? automatic : 0) : 0;
-  const visualTurn = clamp(
-    -player.turnRate /
+  const pointerTurn = clamp(
+    -((controls.yawDelta * 1.3 * pointerGain) / dt) /
       bodyTurnRate({
         ...controls,
         lateral: 1,
@@ -611,8 +611,7 @@ const updateHumanMovement = (
     1,
   );
   if (locomotion.lateral !== 0) player.lateral = locomotion.lateral;
-  else
-    player.lateral += (visualTurn - player.lateral) * (1 - Math.exp(-12 * dt));
+  else player.lateral = pointerTurn;
   player.curlTurnSpeed +=
     (curl * CURL_TURN_SPEED - player.curlTurnSpeed) *
     (1 - Math.exp(-(curl === 0 ? 34 : 24) * dt));

@@ -737,6 +737,22 @@ legend {
 .hud-top button {
   pointer-events: auto;
 }
+.hud-status-stack {
+  display: contents;
+}
+.hud-status-stack > .vitals {
+  position: absolute;
+  bottom: 24px;
+  left: 24px;
+}
+.hud-status-stack > #network-status {
+  position: absolute;
+  top: 20px;
+  left: 24px;
+}
+.hud-bottom .map-wrap {
+  margin-left: auto;
+}
 .scoreboard {
   position: absolute;
   left: 50%;
@@ -1253,6 +1269,14 @@ legend {
   }
   .hud-bottom {
     inset: auto 14px 14px;
+  }
+  .hud-status-stack > .vitals {
+    bottom: 14px;
+    left: 14px;
+  }
+  .hud-status-stack > #network-status {
+    top: 13px;
+    left: 14px;
   }
   .vitals {
     width: 155px;

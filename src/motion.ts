@@ -21,6 +21,7 @@ export type SwimMotion = {
   pitch: number;
   bank: number;
   phase: number;
+  weights: Record<string, number>;
 };
 
 export const createSwimMotion = (
@@ -46,12 +47,23 @@ export const createSwimMotion = (
     pitch: 0,
     bank: 0,
     phase: 0,
+    weights: {},
   };
 };
 
 const turnAxis = new Vector3(0, 0, 1);
 const pitchAxis = new Vector3(1, 0, 0);
 const offset = new Quaternion();
+const syncedActions = new Set([
+  "Swim",
+  "Sprint",
+  "SwimUp",
+  "SwimDown",
+  "BankLeft",
+  "BankRight",
+]);
+const tailBones = ["tail01", "tail02", "tail03", "tail04", "tail05"];
+const tuftBones = ["tuftL", "tuftR"];
 const bend = (
   bones: Map<string, Bone>,
   name: string,
@@ -95,22 +107,30 @@ export const updateSwimMotion = (
   const sprint = player.sprint ? kicking : 0;
   const braking = clamp(-motion.acceleration * 0.045, 0, 0.28);
   const turning = clamp((Math.abs(motion.turn) - 0.12) / 0.9, 0, 0.9) * kicking;
-  const weights: Record<string, number> = {
-    Float: (1 - activity) * (1 - braking),
-    Glide: activity * (1 - kicking),
-    Swim: kicking * (1 - vertical) * (1 - sprint) * (1 - turning),
-    Sprint: sprint * (1 - vertical) * (1 - turning),
-    SwimUp: player.velocity.y > 0 ? kicking * vertical * (1 - turning) : 0,
-    SwimDown: player.velocity.y < 0 ? kicking * vertical * (1 - turning) : 0,
-    BankLeft: motion.turn > 0 ? turning : 0,
-    BankRight: motion.turn < 0 ? turning : 0,
-    Brake: braking,
-    Reach: player.handling ? 0.08 : 0,
-  };
-  const total = Object.values(weights).reduce(
-    (sum, value): number => sum + value,
-    0,
-  );
+  const weights = motion.weights;
+  weights.Float = (1 - activity) * (1 - braking);
+  weights.Glide = activity * (1 - kicking);
+  weights.Swim = kicking * (1 - vertical) * (1 - sprint) * (1 - turning);
+  weights.Sprint = sprint * (1 - vertical) * (1 - turning);
+  weights.SwimUp =
+    player.velocity.y > 0 ? kicking * vertical * (1 - turning) : 0;
+  weights.SwimDown =
+    player.velocity.y < 0 ? kicking * vertical * (1 - turning) : 0;
+  weights.BankLeft = motion.turn > 0 ? turning : 0;
+  weights.BankRight = motion.turn < 0 ? turning : 0;
+  weights.Brake = braking;
+  weights.Reach = player.handling ? 0.08 : 0;
+  const total =
+    weights.Float +
+    weights.Glide +
+    weights.Swim +
+    weights.Sprint +
+    weights.SwimUp +
+    weights.SwimDown +
+    weights.BankLeft +
+    weights.BankRight +
+    weights.Brake +
+    weights.Reach;
   for (const [name, action] of motion.actions) {
     const target = (weights[name] ?? 0) / Math.max(1, total);
     const blended =
@@ -122,16 +142,7 @@ export const updateSwimMotion = (
   }
   motion.phase = (motion.phase + dt / (1.6 - sprint * 0.4)) % 1;
   for (const [name, action] of motion.actions) {
-    if (
-      [
-        "Swim",
-        "Sprint",
-        "SwimUp",
-        "SwimDown",
-        "BankLeft",
-        "BankRight",
-      ].includes(name)
-    )
+    if (syncedActions.has(name))
       action.time = motion.phase * action.getClip().duration;
     else action.time = (action.time + dt) % action.getClip().duration;
   }
@@ -144,17 +155,11 @@ export const updateSwimMotion = (
   const pitchLead = clamp(player.bodyPitch - motion.pitch, -0.3, 0.3);
   bend(bones, "neck", pitchAxis, pitchLead * 0.45);
   bend(bones, "chest", pitchAxis, pitchLead * 0.35);
-  for (const [index, name] of [
-    "tail01",
-    "tail02",
-    "tail03",
-    "tail04",
-    "tail05",
-  ].entries()) {
+  for (const [index, name] of tailBones.entries()) {
     bend(bones, name, turnAxis, -motion.tailTurn * (0.022 + index * 0.003));
     bend(bones, name, pitchAxis, -pitchLead * 0.08);
   }
-  for (const [index, name] of ["tuftL", "tuftR"].entries())
+  for (const [index, name] of tuftBones.entries())
     bend(
       bones,
       name,

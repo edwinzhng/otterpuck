@@ -71,6 +71,9 @@ type SwimmerView = {
   pawSockets: Map<string, Vector3>;
   armLengths: Map<string, number>;
   kickAxes: Map<string, Vector3>;
+  meshes: Mesh[];
+  scratchVectors: Vector3[];
+  scratchQuaternions: Quaternion[];
   stick: Mesh;
   motion: SwimMotion;
   avatar?: Avatar;
@@ -320,6 +323,7 @@ export const createSwimmerView = (
   const bones = new Map<string, Bone>();
   const rests = new Map<string, Quaternion>();
   const restPositions = new Map<string, Vector3>();
+  const meshes: Mesh[] = [];
   model.traverse((object: Object3D): void => {
     object.name =
       object instanceof Bone
@@ -331,6 +335,7 @@ export const createSwimmerView = (
       restPositions.set(object.name, object.position.clone());
     }
     if (object instanceof Mesh) {
+      meshes.push(object);
       const materials = Array.isArray(object.material)
         ? object.material
         : [object.material];
@@ -405,6 +410,9 @@ export const createSwimmerView = (
     pawSockets,
     armLengths,
     kickAxes,
+    meshes,
+    scratchVectors: Array.from({ length: 8 }, () => new Vector3()),
+    scratchQuaternions: Array.from({ length: 6 }, () => new Quaternion()),
     stick,
     motion: createSwimMotion(model, clips),
   };
@@ -446,12 +454,13 @@ const positionHeldStick = (
     alpha,
   );
   view.stick.scale.set(bladeMirror(player), 1, 1);
-  view.stick.position.copy(bladeOrigin(player, view.stick.quaternion)).add(
-    player.previousStick
-      .clone()
-      .sub(player.stick)
-      .multiplyScalar(1 - alpha),
-  );
+  view.stick.position
+    .copy(bladeOrigin(player, view.stick.quaternion))
+    .add(
+      view.scratchVectors[0]
+        .subVectors(player.previousStick, player.stick)
+        .multiplyScalar(1 - alpha),
+    );
   view.stick.updateMatrixWorld(true);
 };
 
@@ -500,8 +509,8 @@ export const poseSwimmer = (
               : 0;
     if (amount)
       bone.quaternion.multiply(
-        new Quaternion().setFromAxisAngle(
-          view.kickAxes.get(name) ?? new Vector3(1, 0, 0),
+        view.scratchQuaternions[0].setFromAxisAngle(
+          view.kickAxes.get(name) ?? view.scratchVectors[1].set(1, 0, 0),
           amount * strength,
         ),
       );
@@ -516,8 +525,7 @@ export const poseSwimmer = (
   }
   const showEquipment = !player.human || !firstPerson || atPlayingDepth(player);
   view.stick.visible = showEquipment;
-  view.model.traverse((object: Object3D): void => {
-    if (!(object instanceof Mesh)) return;
+  for (const object of view.meshes) {
     const protectedSide = player.handedness === "right" ? "R" : "L";
     const isMitten =
       object.name.endsWith("Mitten") || object.name.endsWith("Cuff");
@@ -536,26 +544,26 @@ export const poseSwimmer = (
           object.name.startsWith(
             player.handedness === "right" ? "GripPawR" : "GripPawL",
           )));
-  });
+  }
   view.root.updateMatrixWorld(true);
   const pawName = player.handedness === "right" ? "pawR" : "pawL";
   const paw = view.bones.get(pawName);
   const socket = view.pawSockets.get(pawName);
   if (paw?.parent && socket) {
     const restStick = view.model
-      .getWorldQuaternion(new Quaternion())
+      .getWorldQuaternion(view.scratchQuaternions[1])
       .multiply(bladeOrientation(REST_BLADE_YAW * bladeMirror(player), 0));
-    const orientation = view.stick.quaternion
-      .clone()
+    const orientation = view.scratchQuaternions[2]
+      .copy(view.stick.quaternion)
       .multiply(restStick.invert())
-      .multiply(paw.getWorldQuaternion(new Quaternion()));
+      .multiply(paw.getWorldQuaternion(view.scratchQuaternions[3]));
     const position = view.stick
-      .localToWorld(STICK_GRIP.clone())
-      .sub(socket.clone().applyQuaternion(orientation));
+      .localToWorld(view.scratchVectors[2].copy(STICK_GRIP))
+      .sub(view.scratchVectors[3].copy(socket).applyQuaternion(orientation));
     paw.position.copy(paw.parent.worldToLocal(position));
     paw.quaternion.copy(
       paw.parent
-        .getWorldQuaternion(new Quaternion())
+        .getWorldQuaternion(view.scratchQuaternions[4])
         .invert()
         .multiply(orientation),
     );
@@ -567,23 +575,26 @@ export const poseSwimmer = (
     const length = view.armLengths.get(`arm${side}`);
     if (!arm?.parent || !endpoint || !length) continue;
     const direction = endpoint
-      .getWorldPosition(new Vector3())
-      .sub(arm.getWorldPosition(new Vector3()));
+      .getWorldPosition(view.scratchVectors[4])
+      .sub(arm.getWorldPosition(view.scratchVectors[5]));
     const armLength = Math.min(0.13, direction.length());
     const start = endpoint
-      .getWorldPosition(new Vector3())
-      .addScaledVector(direction.clone().normalize(), -armLength);
+      .getWorldPosition(view.scratchVectors[6])
+      .addScaledVector(
+        view.scratchVectors[7].copy(direction).normalize(),
+        -armLength,
+      );
     arm.position.copy(arm.parent.worldToLocal(start));
-    const restOrientation = arm.getWorldQuaternion(new Quaternion());
-    const orientation = new Quaternion()
+    const restOrientation = arm.getWorldQuaternion(view.scratchQuaternions[1]);
+    const orientation = view.scratchQuaternions[2]
       .setFromUnitVectors(
-        new Vector3(0, 1, 0).applyQuaternion(restOrientation),
-        direction.clone().normalize(),
+        view.scratchVectors[5].set(0, 1, 0).applyQuaternion(restOrientation),
+        view.scratchVectors[7].copy(direction).normalize(),
       )
       .multiply(restOrientation);
     arm.quaternion.copy(
       arm.parent
-        .getWorldQuaternion(new Quaternion())
+        .getWorldQuaternion(view.scratchQuaternions[3])
         .invert()
         .multiply(orientation),
     );

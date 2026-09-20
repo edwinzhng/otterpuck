@@ -240,7 +240,7 @@
 #network-status[data-quality="waiting"] {
   --connection-color: #ffac9d;
 }
-.hud-actions:has(#network-status:not([hidden])) .desktop-shortcuts {
+.hud:has(#network-status:not([hidden])) .desktop-shortcuts {
   display: none;
 }
 @media (max-width: 600px), (max-height: 500px) {

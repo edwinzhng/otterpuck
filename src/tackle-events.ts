@@ -20,6 +20,7 @@ export type TackleTracker = {
   reset: (state: Simulation) => void;
   sample: (state: Simulation) => void;
   events: () => readonly TackleEvent[];
+  revision: () => number;
 };
 
 const possessorOf = (state: Simulation): number | undefined =>
@@ -53,6 +54,7 @@ const recordCover = (
 
 export const createTackleTracker = (): TackleTracker => {
   const log: TackleEvent[] = [];
+  let revision = 0;
   const held = {
     id: undefined as number | undefined,
     team: 0,
@@ -71,12 +73,15 @@ export const createTackleTracker = (): TackleTracker => {
   return {
     reset: (state: Simulation): void => {
       log.length = 0;
+      revision += 1;
       forget(state);
     },
     events: (): readonly TackleEvent[] => log,
+    revision: (): number => revision,
     sample: (state: Simulation): void => {
       if (state.time < held.since) {
         log.length = 0;
+        revision += 1;
         forget(state);
         return;
       }
@@ -126,6 +131,7 @@ export const createTackleTracker = (): TackleTracker => {
             time: state.time,
           });
           log.length = Math.min(log.length, KEPT);
+          revision += 1;
         }
       }
       held.id = current;

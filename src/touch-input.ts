@@ -102,6 +102,7 @@ export const createTouchInput = (
         const action = button.dataset.touch;
         const unavailable =
           ["shot", "dummy", "react"].includes(action ?? "") && !available;
+        button.disabled = unavailable;
         button.setAttribute("aria-disabled", String(unavailable));
         if (action === "react") {
           button.classList.toggle("ready", reaction !== undefined);

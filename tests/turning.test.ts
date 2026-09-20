@@ -61,16 +61,30 @@ test("a gentle turn while carrying keeps the normal turn rate", (): void => {
 
 test("mouse steering uses the same stick motion as A and D", (): void => {
   const keyed = setup(true);
-  drive(keyed.state, 60, { ...swimming(), lateral: 1 });
+  const keyedOrigin = keyed.player.yaw;
+  drive(keyed.state, 1, { ...swimming(), lateral: 1 });
   const pointer = setup(true);
-  drive(pointer.state, 60, swimming(), -GENTLE);
-  expect(pointer.player.lateral).toBeGreaterThan(0);
-  expect(pointer.player.stickOffset.x).toBeGreaterThan(
-    handSide(pointer.player) * 0.13,
+  const matchingPointerTurn = (keyed.player.yaw - keyedOrigin) / (1.3 * 1.45);
+  drive(pointer.state, 1, swimming(), matchingPointerTurn);
+  expect(pointer.player.lateral).toBeCloseTo(keyed.player.lateral, 6);
+  expect(pointer.player.stickOffset.x).toBeCloseTo(
+    keyed.player.stickOffset.x,
+    6,
   );
-  expect(Math.sign(pointer.player.lateral)).toBe(
-    Math.sign(keyed.player.lateral),
+  expect(pointer.player.bladeRotation).toBeCloseTo(
+    keyed.player.bladeRotation,
+    6,
   );
+});
+
+test("mouse steering settles through the stick animation after release", (): void => {
+  const { state, player } = setup(true);
+  drive(state, 1, swimming(), -GENTLE);
+  const turnedOffset = player.stickOffset.x;
+  drive(state, 1, swimming());
+  expect(player.lateral).toBeCloseTo(0, 6);
+  expect(player.stickOffset.x).toBeLessThan(turnedOffset);
+  expect(player.stickOffset.x).toBeGreaterThan(handSide(player) * 0.13);
 });
 
 test("a gentle turn underwater costs a little forward speed", (): void => {

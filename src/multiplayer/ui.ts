@@ -38,7 +38,7 @@ export const multiplayerMarkup = (): string =>
    "mp-team-size",
    "Match size",
    TEAM_SIZES.map((size): [string, string] => [String(size), sizeLabel(size)]),
- )}${field("mp-difficulty", "Bot skill", BOT_DIFFICULTY_OPTIONS)}<p>Choose your team and position.</p></div>
+ )}${field("mp-difficulty", "Bot skill", BOT_DIFFICULTY_OPTIONS)}<p id="mp-team-help">Choose your team and position.</p></div>
  <div class="mp-teams" id="mp-teams"></div>
  </div>
  <div class="mp-room-footer"><span id="mp-waiting" class="mp-room-hint">Empty positions are filled by bots.</span><div class="mp-actions">${button("mp-leave", "Leave", "secondary")}${button("mp-start", "Start match", "primary")}</div></div>
@@ -213,6 +213,10 @@ export const bindMultiplayer = (callbacks: {
         ? document.activeElement.dataset.seat
         : undefined;
     const seats = formationChoices(defaultFormation(room.teamSize));
+    getElement("#mp-team-help", HTMLElement).textContent =
+      room.teamSize === 2
+        ? "Choose your team."
+        : "Choose your team and position.";
     teams.replaceChildren(
       ...([0, 1] as const).map((team) => {
         const side = document.createElement("section");
@@ -227,9 +231,9 @@ export const bindMultiplayer = (callbacks: {
         const header = document.createElement("button");
         header.type = "button";
         header.className = "mp-team-title";
-        header.textContent = `${team === 0 ? "Otters" : "Beavers"} · ${members.length}/6`;
+        header.textContent = `${team === 0 ? "Otters" : "Beavers"} · ${members.length}/${room.teamSize}`;
         header.setAttribute("aria-pressed", side.dataset.selected);
-        const available = formationChoices("2-3-1").find(
+        const available = seats.find(
           (position) =>
             !room.members.some(
               (member) => member.playerId === team * 6 + position.slot,

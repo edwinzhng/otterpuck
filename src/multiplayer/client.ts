@@ -375,7 +375,10 @@ export const connectRoom = (
   connect();
   return {
     start: (): void => send({ type: "start" }),
-    settings: (change): void => send({ type: "settings", ...change }),
+    settings: (change): void => {
+      if (!room || room.hostId !== self || room.phase !== "waiting") return;
+      send({ type: "settings", ...change });
+    },
     profile: (change): void => send({ type: "profile", ...change }),
     leave: (): void => {
       send({ type: "leave" });
