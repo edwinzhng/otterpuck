@@ -296,6 +296,43 @@ describe("multiplayer", () => {
     for (let step = 0; step < 8; step++) match.advance(STEP);
     expect(match.acknowledged[0]).toBe(7);
   });
+  test("the room never holds yaw it has applied but not acknowledged", () => {
+    // The client replays every input past the acknowledgement on top of each
+    // snapshot. If the room applies an input's yaw before naming it, the client
+    // turns by that yaw a second time and hands it back once the room catches
+    // up, which reads as the view creeping or snapping when the turn ends.
+    for (const window of [STEP, 2 * STEP, 3 * STEP, 5 * STEP]) {
+      const match = createNetworkMatch();
+      match.state.faceoff = undefined;
+      match.roster([
+        { id: crypto.randomUUID(), name: "A", playerId: 0, connected: true },
+      ]);
+      const player = match.state.players.find((p) => p.id === 0);
+      const start = player?.yaw ?? 0;
+      const sent = new Map<number, number>();
+      let sequence = 0;
+      for (let frame = 0; frame < 40; frame += 1) {
+        const yawDelta = frame < 25 ? 0.01 : 0;
+        sequence += 1;
+        sent.set(sequence, yawDelta);
+        match.input(0, sequence, { ...freshControls(), yawDelta }, window);
+        match.advance(window);
+        const acknowledged = match.acknowledged[0] ?? 0;
+        // Everything the room applied is named, so replaying the rest lands on
+        // the same yaw the player asked for.
+        const unspent = [...sent]
+          .filter(([id]) => id > acknowledged)
+          .reduce((sum, [, yaw]) => sum + yaw, 0);
+        const applied = (player?.yaw ?? 0) - start;
+        const asked = [...sent.values()].reduce((sum, yaw) => sum + yaw, 0);
+        expect(applied + unspent * 1.3 * 1.45).toBeCloseTo(
+          asked * 1.3 * 1.45,
+          6,
+        );
+      }
+      expect(match.acknowledged[0]).toBe(sequence);
+    }
+  });
   test("stale input stops and repeated sequence cannot replay actions", () => {
     const match = createNetworkMatch();
     match.state.faceoff = undefined;

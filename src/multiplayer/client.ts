@@ -1,4 +1,4 @@
-import { type Controls, freshControls, type Simulation } from "../types";
+import { type Controls, freshControls, type Simulation, STEP } from "../types";
 import { createSnapshotInterpolation } from "./interpolation";
 import {
   createNetworkMatch,
@@ -42,13 +42,18 @@ export const createFrameSends = (
 ): {
   add: (seconds: number) => number | undefined;
 } => {
+  // Report whole room steps and carry the remainder. A window that ends part
+  // way through a step leaves the room holding yaw it has applied but cannot
+  // acknowledge yet, which the client then predicts a second time. Rounding the
+  // threshold up keeps the carry from pushing the send rate past the budget.
+  const minimum = Math.ceil(limit / STEP) * STEP;
   let pending = 0;
   return {
     add: (seconds): number | undefined => {
       pending += seconds;
-      if (pending < limit) return undefined;
-      const window = pending;
-      pending = 0;
+      if (pending < minimum) return undefined;
+      const window = Math.floor(pending / STEP) * STEP;
+      pending -= window;
       return window;
     },
   };
@@ -415,7 +420,15 @@ export const connectRoom = (
     input: (next, seconds = 0): void => {
       if (room?.mode === "lan" && self === room.hostId && match) {
         const member = room.members.find((member) => member.id === self);
-        if (member) match.input(member.playerId, ++sequence, next);
+        // Report the frame that produced this yaw. Without it the room has to
+        // guess the interval from its own clock and drifts into a backlog.
+        if (member)
+          match.input(
+            member.playerId,
+            ++sequence,
+            next,
+            Math.min(seconds, 0.5),
+          );
         controls = {
           ...next,
           yawDelta: 0,
