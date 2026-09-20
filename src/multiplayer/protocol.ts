@@ -1,10 +1,15 @@
 import { z } from "zod";
-export const PROTOCOL = 3;
+import { SWIM_TURNS } from "../swim-turn";
+export const PROTOCOL = 4;
 export const teamSizeSchema = z.union([
   z.literal(2),
   z.literal(3),
   z.literal(6),
 ]);
+export const swimTurnSchema = z.union(
+  SWIM_TURNS.map((turn) => z.literal(turn)),
+);
+export const botDifficultySchema = z.enum(["easy", "medium", "hard", "elite"]);
 const axis = z.number().finite().min(-1).max(1);
 export const controlsSchema = z.object({
   forward: axis,
@@ -63,7 +68,12 @@ export const clientMessageSchema = z.discriminatedUnion("type", [
   }),
   z.object({ type: z.literal("leave") }),
   z.object({ type: z.literal("start") }),
-  z.object({ type: z.literal("settings"), teamSize: teamSizeSchema }),
+  z.object({
+    type: z.literal("settings"),
+    teamSize: teamSizeSchema.optional(),
+    swimTurn: swimTurnSchema.optional(),
+    difficulty: botDifficultySchema.optional(),
+  }),
   z.object({
     type: z.literal("profile"),
     name: z.string().trim().max(24).optional(),
@@ -98,6 +108,8 @@ export const roomSchema = z.object({
   phase: z.enum(["waiting", "playing"]),
   hostId: z.string().uuid(),
   teamSize: teamSizeSchema,
+  swimTurn: swimTurnSchema,
+  difficulty: botDifficultySchema,
   members: z.array(memberSchema).max(12),
 });
 export type RoomView = z.infer<typeof roomSchema>;

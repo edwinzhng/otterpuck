@@ -234,9 +234,27 @@ test("a swim without the puck turns well faster than a curl", (): void => {
     const swung = (player.yaw - origin) / (120 * STEP);
     expect(player.curl).toBe(0);
     expect(swung).toBeGreaterThan(keyed);
-    expect(swung / keyed).toBeCloseTo(1.75, 2);
+    expect(swung / keyed).toBeCloseTo(3, 2);
     expect(horizontalSpeed(player)).toBeGreaterThan(1);
   }
+});
+
+test("a lower room swim turn setting caps the free swim yaw change tighter than a higher one", (): void => {
+  const tight = setup(false);
+  tight.state.swimTurn = 1;
+  const tightOrigin = tight.player.yaw;
+  drive(tight.state, 120, swimming(), FASTER * 20);
+  const tightSwing = Math.abs(tight.player.yaw - tightOrigin);
+
+  const loose = setup(false);
+  loose.state.swimTurn = 5;
+  const looseOrigin = loose.player.yaw;
+  drive(loose.state, 120, swimming(), FASTER * 20);
+  const looseSwing = Math.abs(loose.player.yaw - looseOrigin);
+
+  expect(tight.player.curl).toBe(0);
+  expect(loose.player.curl).toBe(0);
+  expect(tightSwing).toBeLessThan(looseSwing);
 });
 
 test("no puck action unlocks a faster turn than a curl while carrying", (): void => {

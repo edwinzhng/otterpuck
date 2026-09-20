@@ -21,14 +21,14 @@ import { planTeam } from "./formations";
 import { teamSize } from "./positions";
 import { advancePuck, puckFloorHeight } from "./puck-physics";
 import { RULESETS, type Rules } from "./rules";
-import { announce } from "./simulation-events";
+import { announce, announceTo } from "./simulation-events";
 
 export {
   goalSurfaceHeight,
   puckFloorHeight,
   puckInsideGoal,
 } from "./puck-physics";
-export { announce } from "./simulation-events";
+export { announce, announceTo } from "./simulation-events";
 
 import {
   availablePuckMove,
@@ -155,6 +155,8 @@ const makePlayer = (
     curl: 0,
     curlTurnSpeed: 0,
     turnRate: 0,
+    event: "",
+    eventTime: 0,
     dummy: 0,
     lateral: 0,
     cradle: undefined,
@@ -229,6 +231,7 @@ export const createSimulation = (
   const state: Simulation = {
     difficulty: selection.difficulty,
     ruleset,
+    swimTurn: selection.swimTurn ?? 3,
     physics: { drag: 1, lift: 1 },
     playground: {
       slowMotion: false,
@@ -500,9 +503,6 @@ const updateStamina = (rules: Rules, player: Player, dt: number): void => {
 };
 
 const CURL_TURN_SPEED = 2.795;
-// Free of the puck the body pivots well faster than a curl, still bounded so
-// a mouse flick cannot spin the otter on the spot.
-const SWIM_TURN_SPEED = CURL_TURN_SPEED * 1.75;
 const TURN_RESPONSE = 9;
 const HARD_TURN_RATE = 2.6;
 const HARD_TURN_FORWARD_RATE = 4.1;
@@ -643,9 +643,12 @@ const updateHumanMovement = (
     controls.yawDelta * 1.3 * (curl === 0 ? 1 : rules.curlMouseTurn) -
     bodyTurnRate(locomotion) * dt +
     player.curlTurnSpeed * bladeMirror(player) * dt;
+  // Free of the puck the body pivots faster than a curl, by the room's swim
+  // turn setting, still bounded so a mouse flick cannot spin the otter on the
+  // spot.
   const turnLimit =
     curl === 0 && state.puck.controlOwner !== player.id
-      ? SWIM_TURN_SPEED
+      ? CURL_TURN_SPEED * state.swimTurn
       : CURL_TURN_SPEED;
   player.yaw += !rules.autoCurl
     ? steer
@@ -837,8 +840,8 @@ const updateHuman = (
     controls.vertical <= 0
   )
     player.mode = "playing";
-  if (player.air < 24 && state.eventTime <= 0 && underwater)
-    announce(state, "Low air", 2);
+  if (player.air < 24 && player.eventTime <= 0 && underwater)
+    announceTo(player, "Low air", 2);
 };
 
 const prepareAI = (state: Simulation, player: Player): void => {
@@ -1102,7 +1105,7 @@ const updateAir = (state: Simulation, player: Player, dt: number): void => {
     if (player.mode !== "diving") player.mode = "recovering";
     if (player.emergency && player.air >= 80) {
       player.emergency = false;
-      if (player.human) announce(state, "Ready", 2);
+      if (player.human) announceTo(player, "Ready", 2);
     }
   } else {
     const engaged =
@@ -1130,7 +1133,7 @@ const updateAir = (state: Simulation, player: Player, dt: number): void => {
     if (player.air <= 0 && !player.emergency) {
       player.emergency = true;
       player.mode = "ascending";
-      if (player.human) announce(state, "Surfacing", 3);
+      if (player.human) announceTo(player, "Surfacing", 3);
     }
   }
 };
@@ -1911,6 +1914,8 @@ export const stepSimulation = (
   if (state.finished) return;
   state.time += dt;
   state.eventTime = Math.max(0, state.eventTime - dt);
+  for (const player of state.players)
+    player.eventTime = Math.max(0, player.eventTime - dt);
   if (state.restartTime > 0) {
     for (const player of state.players) {
       if (player.human)

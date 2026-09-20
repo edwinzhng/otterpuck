@@ -260,3 +260,24 @@ test("an online room plays the match size the host chose", (): void => {
   expect(state?.players).toHaveLength(6);
   expect(state?.formations.at(0)).toBe(defaultFormation(3));
 });
+
+test("a room's swim turn and bot difficulty settings reach the match simulation", (): void => {
+  const rooms = createRooms("us");
+  const host = peer();
+  rooms.message(host, { type: "create", protocol: PROTOCOL, mode: "online" });
+  rooms.message(host, { type: "settings", swimTurn: 1.5, difficulty: "elite" });
+  expect(view(host).teamSize).toBe(6);
+  const room = host.messages.filter((m) => m.type === "room").at(-1);
+  if (room?.type !== "room") throw new Error("No room");
+  expect(room.room.swimTurn).toBe(1.5);
+  expect(room.room.difficulty).toBe("elite");
+  rooms.message(host, { type: "start" });
+  for (let step = 0; step < 20; step++) rooms.tick(1 / 20);
+  const snapshot = host.messages
+    .filter((m): boolean => m.type === "snapshot")
+    .at(-1);
+  if (snapshot?.type !== "snapshot") throw new Error("No snapshot");
+  const state = parseSnapshot(snapshot.state);
+  expect(state?.swimTurn).toBe(1.5);
+  expect(state?.difficulty).toBe("elite");
+});

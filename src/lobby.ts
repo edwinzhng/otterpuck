@@ -7,6 +7,7 @@ import {
   TEAM_SIZES,
 } from "./positions";
 import { refreshSelectField } from "./select-fields";
+import { SWIM_TURNS, saveSwimTurn, swimTurnChoice } from "./swim-turn";
 import type { Formation, TeamSize } from "./types";
 import { button, field } from "./ui-components";
 import type { UI } from "./ui-types";
@@ -90,6 +91,14 @@ export const lobbyMarkup = (): string => `
             ["hard", "Hard"],
             ["elite", "Elite"],
           ])}
+          ${field(
+            "swim-turn",
+            "Turn rate",
+            SWIM_TURNS.map((turn): [string, string] => [
+              String(turn),
+              `${turn}×`,
+            ]),
+          )}
         </div>
         ${button("start", "Play", "primary", "disabled")}
       </div>
@@ -220,6 +229,17 @@ export const bindLobby = (ui: UI): void => {
         other.setAttribute("aria-pressed", String(other === choice));
       }
     });
+  const swimTurn = document.querySelector<HTMLSelectElement>("#swim-turn");
+  if (swimTurn) {
+    swimTurn.value = String(ui.swimTurn);
+    refreshSelectField(swimTurn);
+  }
+  swimTurn?.addEventListener("change", (): void => {
+    const next = swimTurnChoice(swimTurn.value);
+    if (next === undefined) return;
+    ui.swimTurn = next;
+    saveSwimTurn(next);
+  });
   const difficulty = document.querySelector<HTMLSelectElement>("#difficulty");
   if (difficulty) difficulty.value = ui.difficulty;
   difficulty?.addEventListener("change", (): void => {
