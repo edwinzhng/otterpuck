@@ -222,7 +222,7 @@ export const createSimulation = (
   const state: Simulation = {
     difficulty: selection.difficulty,
     ruleset,
-    swimTurn: selection.swimTurn ?? 3,
+    swimTurn: selection.swimTurn ?? 1,
     physics: { drag: 1, lift: 1 },
     playground: {
       slowMotion: false,
@@ -500,7 +500,7 @@ const POINTER_TURN_GAIN = 1.45;
 const bodyTurnRate = (controls: Controls): number =>
   controls.lateral * (controls.sprint && controls.forward > 0 ? 2.08 : 2.47);
 
-const turnDemand = (
+const requestedTurnRate = (
   controls: Controls,
   dt: number,
   pointerGain: number,
@@ -567,7 +567,7 @@ const updateHumanMovement = (
   const rules = rulesFor(state);
   const pointerGain = POINTER_TURN_GAIN;
   player.turnRate +=
-    (turnDemand(controls, dt, pointerGain) - player.turnRate) *
+    (requestedTurnRate(controls, dt, pointerGain) - player.turnRate) *
     (1 - Math.exp(-TURN_RESPONSE * dt));
   if (
     player.autoDummyLocked &&
@@ -602,7 +602,7 @@ const updateHumanMovement = (
   player.dummy =
     curl === 0 ? controls.dummy || (forwardTurn ? automatic : 0) : 0;
   const pointerTurn = clamp(
-    -((controls.yawDelta * 1.3 * pointerGain) / dt) /
+    -player.turnRate /
       bodyTurnRate({
         ...controls,
         lateral: 1,
@@ -617,12 +617,11 @@ const updateHumanMovement = (
     (1 - Math.exp(-(curl === 0 ? 34 : 24) * dt));
   if (Math.abs(player.curlTurnSpeed) < 0.01) player.curlTurnSpeed = 0;
   const steer =
-    controls.yawDelta *
-      1.3 *
-      pointerGain *
-      (curl === 0 ? 1 : rules.curlMouseTurn) -
-    bodyTurnRate(locomotion) * dt +
-    player.curlTurnSpeed * bladeMirror(player) * dt;
+    curl === 0
+      ? requestedTurnRate(controls, dt, pointerGain) * dt
+      : controls.yawDelta * 1.3 * pointerGain * rules.curlMouseTurn -
+        bodyTurnRate(locomotion) * dt +
+        player.curlTurnSpeed * bladeMirror(player) * dt;
   // Normal swimming uses the room turn rate. Curling keeps its own limit.
   const turnLimit =
     curl === 0 ? CURL_TURN_SPEED * state.swimTurn : CURL_TURN_SPEED;

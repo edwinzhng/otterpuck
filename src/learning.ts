@@ -14,6 +14,9 @@ import type { Simulation } from "./types";
 import { button, keycap } from "./ui-components";
 
 const prefix = "otterpuck-learn-v2";
+const seenKey = `${prefix}-seen`;
+const stepKey = `${prefix}-step`;
+const completeKey = `${prefix}-complete`;
 const read = (key: string): string | null => {
   try {
     return localStorage.getItem(key);
@@ -25,6 +28,10 @@ const save = (key: string, value: string): void => {
   try {
     localStorage.setItem(key, value);
   } catch {}
+};
+const completed = (): boolean => read(completeKey) === "1";
+const saveStep = (step: number): void => {
+  if (!completed()) save(stepKey, String(step));
 };
 export const createLearning = (hooks: {
   state: () => Simulation;
@@ -136,7 +143,7 @@ export const createLearning = (hooks: {
         : "";
     getElement("#lesson-go", HTMLButtonElement).textContent =
       kind === "intro"
-        ? savedLesson(read(prefix + "-step")) > 0
+        ? !completed() && savedLesson(read(stepKey)) > 0
           ? "Continue"
           : "Start"
         : kind === "complete"
@@ -163,12 +170,11 @@ export const createLearning = (hooks: {
   const advance = (): void => {
     session.index += 1;
     if (session.index >= lessonIds.length) {
-      save(prefix + "-complete", "1");
-      save(prefix + "-step", "0");
+      save(completeKey, "1");
       display("complete");
       return;
     }
-    save(prefix + "-step", String(session.index));
+    saveStep(session.index);
     prepare();
     display("lesson");
   };
@@ -181,8 +187,8 @@ export const createLearning = (hooks: {
     "click",
     (): void => {
       if (session.card === "intro") {
-        save(prefix + "-seen", "1");
-        session.index = savedLesson(read(prefix + "-step"));
+        save(seenKey, "1");
+        session.index = completed() ? 0 : savedLesson(read(stepKey));
         getElement("#lesson-go", HTMLButtonElement).disabled = true;
         hooks
           .start()
@@ -216,13 +222,13 @@ export const createLearning = (hooks: {
   getElement("#lesson-close", HTMLButtonElement).addEventListener(
     "click",
     (): void => {
-      save(prefix + "-seen", "1");
+      save(seenKey, "1");
       exit();
     },
   );
   card.addEventListener("cancel", (event): void => {
     event.preventDefault();
-    save(prefix + "-seen", "1");
+    save(seenKey, "1");
     exit();
   });
   getElement("#lesson-help", HTMLButtonElement).addEventListener(
@@ -238,7 +244,9 @@ export const createLearning = (hooks: {
     active: (): boolean => session.active,
     open,
     offer: (): void => {
-      if (!read(prefix + "-seen")) open();
+      if (read(seenKey) || completed()) return;
+      save(seenKey, "1");
+      open();
     },
     stop,
     retry,

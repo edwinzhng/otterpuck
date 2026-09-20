@@ -65,10 +65,12 @@ test("unacknowledged turning is replayed and acknowledged turning is not repeate
   prediction.reconcile(view, -1);
   const yaw = view.players[0]?.yaw ?? 0;
   prediction.advance(view, { ...freshControls(), yawDelta: 0.02 }, STEP, 10);
-  expect(view.players[0]?.yaw).toBeCloseTo(yaw + 0.02 * 1.3 * 1.45);
+  const predictedYaw = view.players[0]?.yaw;
+  expect(predictedYaw).toBeGreaterThan(yaw);
+  expect(predictedYaw).toBeLessThan(yaw + 0.02 * 1.3 * 1.45);
   const snapshot = state();
   prediction.reconcile(snapshot, 9);
-  expect(snapshot.players[0]?.yaw).toBeCloseTo(yaw + 0.02 * 1.3 * 1.45);
+  expect(snapshot.players[0]?.yaw).toBe(predictedYaw);
   const acknowledged = state();
   prediction.reconcile(acknowledged, 10);
   expect(acknowledged.players[0]?.yaw).toBe(yaw);

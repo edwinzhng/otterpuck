@@ -182,7 +182,7 @@ export const snapshotSchema = z.object({
   eventTime: n,
   contacts: n,
   shots: n,
-  swimTurn: n.default(3),
+  swimTurn: n.default(1),
 });
 const rosterSchema = snapshotSchema.refine((state): boolean =>
   ([0, 1] as const).every(

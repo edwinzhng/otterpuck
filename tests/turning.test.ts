@@ -61,30 +61,33 @@ test("a gentle turn while carrying keeps the normal turn rate", (): void => {
 
 test("mouse steering uses the same stick motion as A and D", (): void => {
   const keyed = setup(true);
-  const keyedOrigin = keyed.player.yaw;
-  drive(keyed.state, 1, { ...swimming(), lateral: 1 });
+  drive(keyed.state, 60, { ...swimming(), lateral: 1 });
   const pointer = setup(true);
-  const matchingPointerTurn = (keyed.player.yaw - keyedOrigin) / (1.3 * 1.45);
-  drive(pointer.state, 1, swimming(), matchingPointerTurn);
-  expect(pointer.player.lateral).toBeCloseTo(keyed.player.lateral, 6);
+  const matchingPointerTurn = (-2.47 * STEP) / (1.3 * 1.45);
+  drive(pointer.state, 60, swimming(), matchingPointerTurn);
+  expect(pointer.player.lateral).toBeCloseTo(keyed.player.lateral, 1);
   expect(pointer.player.stickOffset.x).toBeCloseTo(
     keyed.player.stickOffset.x,
-    6,
+    2,
   );
   expect(pointer.player.bladeRotation).toBeCloseTo(
     keyed.player.bladeRotation,
-    6,
+    1,
   );
 });
 
 test("mouse steering settles through the stick animation after release", (): void => {
   const { state, player } = setup(true);
-  drive(state, 1, swimming(), -GENTLE);
+  drive(state, 6, swimming(), -GENTLE);
+  const turnedLateral = player.lateral;
   const turnedOffset = player.stickOffset.x;
   drive(state, 1, swimming());
-  expect(player.lateral).toBeCloseTo(0, 6);
-  expect(player.stickOffset.x).toBeLessThan(turnedOffset);
-  expect(player.stickOffset.x).toBeGreaterThan(handSide(player) * 0.13);
+  expect(player.lateral).toBeGreaterThan(0);
+  expect(player.lateral).toBeLessThan(turnedLateral);
+  expect(player.stickOffset.x).toBeGreaterThan(turnedOffset);
+  drive(state, 60, swimming());
+  expect(Math.abs(player.lateral)).toBeLessThan(0.003);
+  expect(player.stickOffset.x).toBeCloseTo(handSide(player) * 0.13, 2);
 });
 
 test("a gentle turn underwater costs a little forward speed", (): void => {
@@ -218,7 +221,7 @@ test("the auto curl never turns faster than a Q/E curl", (): void => {
   }
 });
 
-test("a swim without the puck turns well faster than a curl", (): void => {
+test("normal swimming and curling share the default turn cap", (): void => {
   const manual = setup(true);
   const keyed = peakTurnRate(manual.state, manual.player, 240, {
     ...freshControls(),
@@ -231,8 +234,7 @@ test("a swim without the puck turns well faster than a curl", (): void => {
     drive(state, 120, swimming(), flick);
     const swung = (player.yaw - origin) / (120 * STEP);
     expect(player.curl).toBe(0);
-    expect(swung).toBeGreaterThan(keyed);
-    expect(swung / keyed).toBeCloseTo(3, 2);
+    expect(swung / keyed).toBeCloseTo(1, 6);
     expect(horizontalSpeed(player)).toBeGreaterThan(1);
   }
 });
@@ -255,21 +257,21 @@ test("a lower room swim turn setting caps the free swim yaw change tighter than 
   expect(tightSwing).toBeLessThan(looseSwing);
 });
 
-test("normal swimming keeps the full turn rate while carrying", (): void => {
+test("normal swimming uses the same turn cap while carrying", (): void => {
   const carrying = setup(true);
   const carryingOrigin = carrying.player.yaw;
-  drive(carrying.state, 60, swimming(), HARD * 4);
+  drive(carrying.state, 240, swimming(), HARD * 4);
   const carryingTurn = Math.abs(carrying.player.yaw - carryingOrigin);
   const free = setup(false);
   const freeOrigin = free.player.yaw;
-  drive(free.state, 60, swimming(), HARD * 4);
+  drive(free.state, 240, swimming(), HARD * 4);
   const freeTurn = Math.abs(free.player.yaw - freeOrigin);
   const curling = setup(true);
   const curlOrigin = curling.player.yaw;
-  drive(curling.state, 60, { ...freshControls(), curl: 1 });
+  drive(curling.state, 240, { ...freshControls(), curl: 1 });
   const curlTurn = Math.abs(curling.player.yaw - curlOrigin);
   expect(carryingTurn).toBeCloseTo(freeTurn, 6);
-  expect(carryingTurn).toBeGreaterThan(curlTurn);
+  expect(carryingTurn / curlTurn).toBeCloseTo(1, 1);
 });
 
 test("a sustained turn finishes one automatic dummy before it can rearm", (): void => {

@@ -1,6 +1,6 @@
-export const SWIM_TURNS = [1.5, 2, 3] as const;
+export const SWIM_TURNS = [1, 1.5, 2, 3] as const;
 export type SwimTurn = (typeof SWIM_TURNS)[number];
-export const DEFAULT_SWIM_TURN: SwimTurn = 2;
+export const DEFAULT_SWIM_TURN: SwimTurn = 1;
 const STORAGE_KEY = "otterpuck-swim-turn";
 
 export const swimTurnChoice = (value: string | null): SwimTurn | undefined =>

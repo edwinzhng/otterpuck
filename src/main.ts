@@ -413,9 +413,9 @@ const boot = async (): Promise<void> => {
       if (app.state.finished) finish();
     }
     const renderDt = (now - app.renderTime) / 1000;
-    const renderLimit =
-      app.phase === "playing" ? 61 : app.phase === "menu" ? 31 : 16;
-    if (renderDt + 0.0015 < 1 / renderLimit) return;
+    const idleRenderLimit = app.phase === "menu" ? 31 : 16;
+    if (app.phase !== "playing" && renderDt + 0.0015 < 1 / idleRenderLimit)
+      return;
     app.renderTime = now;
     world.frameAverage += (renderDt - world.frameAverage) * 0.06;
     world.frameRate = 1 / world.frameAverage;

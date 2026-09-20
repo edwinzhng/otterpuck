@@ -243,7 +243,7 @@ export const createRooms = (
           phase: "waiting",
           hostId: "",
           teamSize: 6,
-          swimTurn: 3,
+          swimTurn: 1,
           difficulty: "medium",
           members: [],
           checkpointAt: 0,

@@ -36,7 +36,7 @@ export const createRoomSimulation = (settings: {
 export const createNetworkMatch = (
   initial = createRoomSimulation({
     teamSize: 6,
-    swimTurn: 3,
+    swimTurn: 1,
     difficulty: "medium",
   }),
 ): {
