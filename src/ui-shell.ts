@@ -37,7 +37,7 @@ export const uiShell = (): string => `
   )}
   ${dialog("controls-dialog", "Controls", controlsMarkup(), "close-controls")}
   <section id="hud" class="hud hidden" aria-label="Game information">
-    <div class="hud-top"><div class="hud-actions">${button("touch-fullscreen", "⛶", "icon", 'aria-label="Enter fullscreen"')}${button("pause-button", "Ⅱ", "icon", 'aria-label="Pause"')}<div id="network-status" hidden><div class="network-server"><span class="network-dot" aria-hidden="true"></span><strong id="network-region"></strong><span id="network-ping">—</span></div><span class="desktop-shortcuts">${keycap("Esc")} Pause · ${keycap("Ctrl F")} Fullscreen</span></div>
+    <div class="hud-top"><div class="hud-actions">${button("touch-fullscreen", "⛶", "icon", 'aria-label="Enter fullscreen"')}${button("pause-button", "Ⅱ", "icon", 'aria-label="Pause"')}<div id="network-status" hidden><div class="network-server"><span class="network-dot" aria-hidden="true"></span><strong id="network-region"></strong><span id="network-ping">—</span></div><span id="network-issue" role="status" hidden></span></div><span class="desktop-shortcuts">${keycap("Esc")} Pause · ${keycap("Ctrl F")} Fullscreen</span></div>
       <div class="scoreboard panel"><div class="score-team otters"><span>OTTERS</span><strong id="home-score">0</strong></div><time id="clock">03:00</time><div class="score-team beavers"><strong id="away-score">0</strong><span>BEAVERS</span></div><span id="match-label" hidden></span></div>
       <div id="fps" class="performance panel"></div>
       <div id="tackle-log" class="tackle-log panel" aria-label="Tackle log"></div>

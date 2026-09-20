@@ -148,9 +148,9 @@ const breathHold = (
 };
 
 test("alternative spends a full breath on the tuned schedule", (): void => {
-  expect(breathHold("alternative", freshControls())).toBeCloseTo(30, 1);
-  expect(breathHold("alternative", swimming())).toBeCloseTo(20, 1);
-  expect(breathHold("alternative", sprinting(), true)).toBeCloseTo(20, 1);
+  expect(breathHold("alternative", freshControls())).toBeCloseTo(24, 1);
+  expect(breathHold("alternative", swimming())).toBeCloseTo(16, 1);
+  expect(breathHold("alternative", sprinting(), true)).toBeCloseTo(16, 1);
 });
 
 test("original keeps its own longer breath schedule", (): void => {
@@ -177,7 +177,7 @@ test("a smaller air supply also refills in proportion", (): void => {
     }
     return taken;
   };
-  expect(refill("alternative") / refill("original")).toBeCloseTo(0.6, 2);
+  expect(refill("alternative") / refill("original")).toBeCloseTo(0.48, 2);
 });
 
 test("alternative and original diverge on a sustained sprint", (): void => {

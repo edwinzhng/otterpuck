@@ -61,16 +61,7 @@ export const updateUI = (
   ui.elements.bottomGuidance.classList.toggle("hidden", guidance === undefined);
   if (guidance) {
     setText(ui.elements.bottomTitle, guidance.title);
-    setText(
-      ui.elements.bottomDetail,
-      world.headLift > 0.25 && !player.emergency
-        ? input.touch.enabled
-          ? "Release Rise to lower your head · Dive to descend"
-          : "Release Space to lower your head · Ctrl to dive"
-        : input.touch.enabled
-          ? guidance.detail.replace("Space", "Rise").replace("Ctrl", "Dive")
-          : guidance.detail,
-    );
+    setText(ui.elements.bottomDetail, guidance.detail);
     ui.elements.descendCue.classList.toggle("hidden", !guidance.descend);
   }
   const celebrating = state.restartTime > 0 && state.eventTime > 0;

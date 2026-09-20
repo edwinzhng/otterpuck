@@ -66,7 +66,7 @@ export const lobbyMarkup = (): string => `
         ${cardButton(`<img data-src="${assetUrl("/art/arenas/city-map.webp")}" decoding="async" alt="Full Neon Rooftop pool"/><strong>Neon Rooftop</strong>`, "map-card city-card", 'data-arena="city"')}
       </div>
     </section>
-    <section class="lobby-screen setup-screen" data-screen="setup" aria-label="Game setup" hidden>
+    <section class="lobby-screen setup-screen" data-screen="setup" data-mode="match" aria-label="Game setup" hidden>
       <div class="selected-map"><img id="selected-map-image" data-src="${assetUrl("/art/arenas/tropical-map.webp")}" decoding="async" alt="Selected pool"/>${cardButton('Tropical Cove <span aria-hidden="true">↩</span>', "", 'id="change-map"')}</div>
       <div class="setup-panel"><h1 id="selected-mode">Quick match</h1>
         <section class="setup-section game-setup" data-match-only><h2>Setup</h2>
@@ -235,6 +235,8 @@ export const bindLobby = (ui: UI): void => {
           : choice.dataset.mode === "playground"
             ? "playground"
             : "practice";
+      const setup = document.querySelector<HTMLElement>(".setup-screen");
+      if (setup) setup.dataset.mode = ui.mode;
       describeMode();
       for (const matchOnly of document.querySelectorAll<HTMLElement>(
         "[data-match-only]",

@@ -16,12 +16,7 @@ export type DepthGuidance = {
 
 export const depthGuidance = (player: Player): DepthGuidance | undefined => {
   if (atPlayingDepth(player)) return undefined;
-  if (player.wallReady)
-    return {
-      title: "AT THE WALL",
-      detail: "Waiting for the strike",
-      descend: false,
-    };
+  if (player.wallReady) return undefined;
   if (player.emergency || (player.mode === "recovering" && player.air <= 8))
     return {
       title: "RECOVER YOUR BREATH",
@@ -32,20 +27,13 @@ export const depthGuidance = (player: Player): DepthGuidance | undefined => {
       descend: false,
     };
   if (player.position.y <= FLOOR_HEIGHT + 0.06 && player.mode !== "ascending")
-    return {
-      title: "SETTLING ON THE BOTTOM",
-      detail: "Leveling out for puck work",
-      descend: false,
-    };
+    return undefined;
+  if (player.position.y >= SURFACE_HEIGHT - 0.045) return undefined;
+  const heightAboveBottom = Math.max(0, player.position.y - FLOOR_HEIGHT);
+  if (heightAboveBottom + 1e-6 >= 1) return undefined;
   return {
-    title:
-      player.position.y >= SURFACE_HEIGHT - 0.045
-        ? "AT THE SURFACE"
-        : "OFF THE BOTTOM",
-    detail:
-      player.position.y >= SURFACE_HEIGHT - 0.045
-        ? "Hold Space to look above water"
-        : `${Math.max(0, player.position.y - FLOOR_HEIGHT).toFixed(1)} m above the bottom`,
+    title: "OFF THE BOTTOM",
+    detail: `${heightAboveBottom.toFixed(1)} m above bottom`,
     descend: true,
   };
 };

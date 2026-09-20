@@ -922,34 +922,6 @@ legend {
   height: auto;
   margin-top: 4px;
 }
-body:not(.touch-mode) .scoreboard {
-  top: 0;
-  right: 0;
-  left: auto;
-  transform: none;
-  box-sizing: border-box;
-  width: 215px;
-  min-height: 52px;
-  justify-content: center;
-  gap: 12px;
-}
-body:not(.touch-mode) .hud-bottom {
-  inset: 0;
-  display: block;
-}
-body:not(.touch-mode) .vitals {
-  position: absolute;
-  top: 84px;
-  right: 24px;
-  left: auto;
-  width: 215px;
-}
-body:not(.touch-mode) .map-wrap {
-  position: absolute;
-  top: 80px;
-  right: auto;
-  left: 24px;
-}
 .tactics .map-wrap {
   width: 230px;
 }
@@ -1523,25 +1495,28 @@ body:not(.touch-mode) .map-wrap {
   display: none;
 }
 
-.desktop-shortcuts,
 .lesson-shortcuts {
   display: none;
 }
-.pointer-captured .hud-actions > button,
 .pointer-captured .lesson-tools {
   display: none;
 }
-.pointer-captured .desktop-shortcuts,
 .pointer-captured .lesson-shortcuts {
   display: block;
   font-size: 12px;
   font-weight: 700;
 }
-.pointer-captured .desktop-shortcuts {
+.desktop-shortcuts {
+  display: block;
   padding: 8px 12px;
   border-radius: 12px;
   color: var(--ink);
   background: var(--panel);
+  font-size: 12px;
+  font-weight: 700;
+}
+body:not(.touch-mode) .hud-actions > button {
+  display: none;
 }
 
 .announcement.goal-celebration {

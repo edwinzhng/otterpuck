@@ -37,7 +37,7 @@ export const RULESETS: Record<Ruleset, Rules> = {
     surfaceRecovery: 10.5,
     surfaceSprint: 0.5,
     emergencyRecovery: 0.45,
-    airSupply: 0.6,
+    airSupply: 0.48,
     airDrain: {
       idle: 1.5,
       kick: 0.75,

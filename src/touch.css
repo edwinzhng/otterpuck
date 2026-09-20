@@ -22,10 +22,19 @@ body:not(.touch-mode) .touch-help {
 }
 .touch-mode {
   --hud-top: max(10px, env(safe-area-inset-top));
+  --hud-left: max(16px, env(safe-area-inset-left));
+  --hud-right: max(16px, env(safe-area-inset-right));
   --hud-action-size: 48px;
   --touch-status-width: 132px;
   --touch-score-height: 48px;
   --touch-panel-gap: 10px;
+  --touch-size: clamp(48px, 13vh, 60px);
+  --touch-gap: 8px;
+  --touch-bottom: max(16px, env(safe-area-inset-bottom));
+  --touch-skill-width: calc(
+    var(--touch-size) + var(--touch-size) + var(--touch-size) +
+    var(--touch-gap) + var(--touch-gap)
+  );
   overscroll-behavior: none;
 }
 .touch-playing {
@@ -45,9 +54,6 @@ body:not(.touch-mode) .touch-help {
   inset: 0;
   z-index: 4;
   pointer-events: none;
-  --touch-size: clamp(48px, 13vh, 60px);
-  --touch-gap: 8px;
-  --touch-bottom: max(16px, env(safe-area-inset-bottom));
   color: #16496a;
 }
 .touch-left {
@@ -205,8 +211,7 @@ body:not(.touch-mode) .touch-help {
   box-shadow: inset 0 0 0 6px #ffe98150;
 }
 .touch-mode .hud-top {
-  inset: var(--hud-top) max(16px, env(safe-area-inset-right)) auto
-    max(16px, env(safe-area-inset-left));
+  inset: var(--hud-top) var(--hud-right) auto var(--hud-left);
 }
 .touch-mode #pause-button {
   min-width: 48px;
@@ -219,19 +224,29 @@ body:not(.touch-mode) .touch-help {
   transform: none;
   box-sizing: border-box;
   width: var(--touch-status-width);
+  max-width: calc(100vw - var(--hud-left) - var(--hud-right) - 116px);
   min-height: var(--touch-score-height);
   justify-content: center;
   padding: 7px 10px;
   gap: 8px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.touch-mode .score-team {
+  min-width: 0;
+  gap: 0;
 }
 .touch-mode .score-team span {
   display: none;
 }
 .touch-mode .score-team strong {
-  font-size: 23px;
+  min-width: 1ch;
+  font-size: clamp(18px, 5vw, 23px);
+  text-align: center;
 }
 .touch-mode .scoreboard time {
-  font-size: 16px;
+  flex: 0 0 auto;
+  font-size: clamp(13px, 3.6vw, 16px);
 }
 .touch-mode .hud-bottom {
   inset: 0;
@@ -259,7 +274,7 @@ body:not(.touch-mode) .touch-help {
 }
 .touch-mode .map-wrap {
   position: absolute;
-  right: max(16px, env(safe-area-inset-right));
+  right: var(--hud-right);
   top: max(10px, env(safe-area-inset-top));
   width: 70px;
   padding: 5px;
@@ -270,20 +285,34 @@ body:not(.touch-mode) .touch-help {
   justify-content: center;
 }
 .touch-mode .hud kbd,
+.touch-mode .desktop-shortcuts,
 .touch-mode .reaction,
 .touch-mode .bottom-guidance #descend-cue,
 .touch-mode #handling-mode {
   display: none;
 }
 .touch-mode .handling {
-  bottom: max(14px, env(safe-area-inset-bottom));
-  max-width: 200px;
+  top: 50%;
+  right: auto;
+  bottom: auto;
+  left: 50%;
+  width: max-content;
+  max-width: none;
+  transform: translate(-50%, -50%);
 }
 .touch-mode .bottom-guidance {
   display: block;
+  width: max-content;
   padding: 8px 11px;
   font-size: 10px;
-  max-width: 180px;
+  max-width: 100%;
+  margin-right: auto;
+  margin-left: auto;
+  white-space: nowrap;
+}
+.touch-mode .bottom-guidance > span {
+  max-width: none;
+  white-space: nowrap;
 }
 .touch-mode .shot-charge {
   display: none;
@@ -357,7 +386,7 @@ body:not(.touch-mode) .touch-help {
   }
 }
 @media (max-width: 740px) and (orientation: landscape) {
-  .touch-controls {
+  .touch-mode {
     --touch-gap: 5px;
     --touch-size: 48px;
   }
@@ -367,12 +396,8 @@ body:not(.touch-mode) .touch-help {
   .touch-left {
     left: max(12px, env(safe-area-inset-left));
   }
-  .touch-mode .handling {
-    left: 44%;
-    max-width: 140px;
-  }
   .touch-mode .bottom-guidance {
-    max-width: 140px;
+    max-width: 100%;
   }
   .touch-mode .map-wrap {
     width: 58px;
@@ -399,7 +424,7 @@ body:not(.touch-mode) .touch-help {
     var(--touch-score-height) +
     var(--touch-panel-gap)
   );
-  right: max(16px, env(safe-area-inset-right));
+  right: var(--hud-right);
   left: auto;
   width: var(--touch-status-width);
   overflow: hidden;
@@ -423,7 +448,7 @@ body:not(.touch-mode) .touch-help {
 .touch-mode .map-wrap {
   top: calc(var(--hud-top) + var(--hud-action-size) + 12px);
   right: auto;
-  left: max(16px, env(safe-area-inset-left));
+  left: var(--hud-left);
 }
 .fullscreen-help {
   max-width: min(340px, 85vw);
@@ -500,9 +525,13 @@ body:not(.touch-mode) .touch-help {
 }
 
 @media (orientation: portrait) and (max-width: 700px) {
-  .touch-controls {
+  .touch-mode {
     --touch-size: 54px;
     --touch-bottom: max(22px, env(safe-area-inset-bottom));
+    --touch-skill-width: calc(
+      var(--touch-size) + var(--touch-size) + var(--touch-size) +
+      var(--touch-gap) + var(--touch-gap)
+    );
   }
   .touch-left {
     left: max(14px, env(safe-area-inset-left));
@@ -527,11 +556,6 @@ body:not(.touch-mode) .touch-help {
   .touch-mode .map-wrap {
     width: 62px;
   }
-  .touch-mode .handling {
-    bottom: calc(var(--touch-bottom, 22px) + 218px);
-    left: 50%;
-    max-width: 210px;
-  }
   .touch-mode .lobby-screen {
     top: max(88px, calc(env(safe-area-inset-top) + 76px));
   }
@@ -548,6 +572,10 @@ body:not(.touch-mode) .touch-help {
     overscroll-behavior-y: contain;
     touch-action: pan-y;
     -webkit-overflow-scrolling: touch;
+  }
+  .touch-mode .setup-screen[data-mode="playground"] .setup-panel {
+    flex: 0 0 auto;
+    max-height: none;
   }
   .touch-mode .selected-map {
     flex: 0 0 140px;

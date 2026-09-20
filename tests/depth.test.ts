@@ -15,15 +15,16 @@ test("depth guidance shows Ctrl above the bottom and disappears when the swimmer
   expect(atPlayingDepth(player)).toBe(true);
   expect(depthGuidance(player)).toBeUndefined();
   player.position.y = FLOOR_HEIGHT + 1;
+  expect(depthGuidance(player)).toBeUndefined();
+  player.position.y = FLOOR_HEIGHT + 0.9;
   expect(depthGuidance(player)).toEqual({
     title: "OFF THE BOTTOM",
-    detail: "1.0 m above the bottom",
+    detail: "0.9 m above bottom",
     descend: true,
   });
   player.position.y = SURFACE_HEIGHT;
   player.mode = "recovering";
-  expect(depthGuidance(player)?.title).toBe("AT THE SURFACE");
-  expect(depthGuidance(player)?.descend).toBe(true);
+  expect(depthGuidance(player)).toBeUndefined();
   player.air = 5;
   expect(depthGuidance(player)?.descend).toBe(false);
   player.air = 100;
@@ -35,15 +36,11 @@ test("depth guidance shows Ctrl above the bottom and disappears when the swimmer
   expect(depthGuidance(player)).toBeUndefined();
 });
 
-test("the guidance does not offer descent during a wall start or forced air recovery", (): void => {
+test("guidance stays hidden at the wall and blocks descent during forced air recovery", (): void => {
   const state = createSimulation();
   const player = state.players.at(0);
   if (!player) throw new Error("Otter missing");
-  expect(depthGuidance(player)).toEqual({
-    title: "AT THE WALL",
-    detail: "Waiting for the strike",
-    descend: false,
-  });
+  expect(depthGuidance(player)).toBeUndefined();
   player.wallReady = false;
   player.emergency = true;
   player.mode = "ascending";
@@ -57,6 +54,5 @@ test("the guidance does not offer descent during a wall start or forced air reco
   player.position.y = FLOOR_HEIGHT;
   player.mode = "diving";
   player.bodyPitch = -0.5;
-  expect(depthGuidance(player)?.title).toBe("SETTLING ON THE BOTTOM");
-  expect(depthGuidance(player)?.descend).toBe(false);
+  expect(depthGuidance(player)).toBeUndefined();
 });
