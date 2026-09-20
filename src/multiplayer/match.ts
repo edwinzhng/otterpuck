@@ -14,11 +14,8 @@ import {
 } from "../types";
 import type { RoomView } from "./protocol";
 
-// Snapshots carry the correction that reconciliation applies, so their rate
-// sets how coarsely a turn is nudged: at 20Hz the nudge landed on every third
-// frame and read as a rocking turn. The room advances at 60Hz, so this is one
-// snapshot per advance. They deflate to about a ninth of their size, which is
-// what makes the rate affordable.
+// Send one snapshot for each 60 Hz room step. Lower rates make reconciliation
+// corrections visible during turns. Compression keeps this rate practical.
 const SNAPSHOT_HZ = 60;
 export const createRoomSimulation = (settings: {
   teamSize: TeamSize;
@@ -54,12 +51,8 @@ export const createNetworkMatch = (
 } => {
   const inputs = new Map<number, Controls>();
   const received = new Map<number, { sequence: number; time: number }>();
-  // A message carries the yaw a client accumulated over its own send interval,
-  // which is longer than one room tick: the online sender runs at 30Hz against
-  // a 60Hz room. Spending that in the tick that happens to receive it would
-  // compress the turn into a fraction of the time it was made over, and the
-  // per-step cap in the simulation then discards the remainder. Hold it as a
-  // rate instead and pay it out across the interval it belongs to.
+  // Apply yaw across its reported interval. Applying all yaw in one room step
+  // can exceed the per-step turn limit and discard movement.
   const turning = new Map<
     number,
     { sequence: number; yaw: number; seconds: number }
@@ -67,11 +60,8 @@ export const createNetworkMatch = (
   let accumulator = 0;
   let sinceSnapshot = 0;
   const acknowledged: Record<string, number> = {};
-  // Acknowledging an input the moment it lands would be a lie while its yaw is
-  // still being paid out: the client drops acknowledged inputs from the queue
-  // it replays over each snapshot, so the turn would vanish from its prediction
-  // and reappear a snapshot later, rocking the view back and forth. A sequence
-  // is only settled once the room has actually spent it.
+  // Acknowledge an input only after the room applies all its yaw. An earlier
+  // acknowledgement removes the input from client prediction and rocks the view.
   const settle = (id: number): void => {
     const pending = turning.get(id);
     if (pending) acknowledged[id] = pending.sequence;
@@ -108,12 +98,8 @@ export const createNetworkMatch = (
       const current = inputs.get(id);
       if (!current || sequence <= (received.get(id)?.sequence ?? -1)) return;
       const previous = received.get(id);
-      // Clients report the interval they accumulated over; fall back to the gap
-      // since their last message. Time left unspent from the previous message
-      // carries, so messages arriving faster than the room steps still pay out
-      // in full, and the backlog is capped so neither jitter nor a hostile
-      // value can leave a player turning through stale input. Carrying forward
-      // settles the previous message, whose own window has by now elapsed.
+      // Use the client interval, or the time since its previous input. Carry
+      // unused yaw forward, but limit the backlog to prevent stale turning.
       const pending = turning.get(id);
       const window = Math.max(
         duration ?? (previous ? initial.time - previous.time : STEP),

@@ -11,6 +11,7 @@ import {
   type ClientMessage,
   clientMessageSchema,
   decodeMessage,
+  encodeClientMessage,
   PROTOCOL,
   type RoomView,
   serverMessageSchema,
@@ -32,20 +33,9 @@ export type Session = {
   alpha: () => number;
   room: () => RoomView | undefined;
 };
-// A message's yaw is made frame by frame, and the room spends it over the
-// interval the message reports. A timer of its own never lines those up: at
-// 144Hz against a 60Hz timer some windows carry two frames of mouse movement
-// and some carry none, so the room pays a doubled window out at twice the rate
-// the mouse moved at and the turn cap discards the difference. How often that
-// happens depends on how the two clocks sit relative to each other, which is
-// fixed for a session, which is why the same turn felt different game to game.
-// Input goes out on the frame that made it instead, carrying that frame's own
-// duration, so nothing is ever compressed into a window shorter than the one it
-// was made in.
-//
-// Frames are coalesced up to this rate: input is gathered on every animation
-// frame, not every rendered one, and a high refresh screen runs past the
-// hundred messages a second the room accepts.
+// Send yaw with the frame duration that produced it. A separate timer can
+// compress yaw into a shorter interval and cause the turn limit to discard it.
+// Coalesce frames to stay below the room limit of 100 messages per second.
 const FRAME_SEND_LIMIT = 1 / 90;
 export const createFrameSends = (
   limit = FRAME_SEND_LIMIT,
@@ -63,7 +53,7 @@ export const createFrameSends = (
     },
   };
 };
-// What is left for the timer: pings, socket health and the host's safety net.
+// Use this timer only for connection checks and the LAN host fallback.
 const HOUSEKEEPING_HZ = 10;
 export const connectRoom = (
   region: Region,
@@ -107,7 +97,7 @@ export const connectRoom = (
         socket.close();
         return;
       }
-      socket.send(JSON.stringify(message));
+      socket.send(encodeClientMessage(message));
     }
   };
   const apply = (
@@ -335,9 +325,7 @@ export const connectRoom = (
       type: "input",
       sequence: ++sequence,
       controls,
-      // Capped to what the protocol accepts: a stalled frame can leave a gap
-      // longer than any interval worth crediting, and the room would reject the
-      // whole message over it.
+      // Limit stalled-frame gaps to the maximum protocol duration.
       duration: Math.min(seconds, 0.5),
     };
     if (room.mode === "online") send(input);
@@ -367,8 +355,7 @@ export const connectRoom = (
       }
     }
     if (room?.phase !== "playing" || view?.finished) return;
-    // A host advances its own room on the frame; this keeps it going if frames
-    // stall, and is where its checkpoints go out from.
+    // Advance the LAN host here if animation frames stop.
     if (room.mode === "lan" && self === room.hostId && match) {
       if (now - hostFrameAt > 100) advanceHost(now);
       if (now - checkpointAt > 1000) {
@@ -452,8 +439,7 @@ export const connectRoom = (
       next.shot = 0;
       next.dive = false;
       next.knockdown = false;
-      // The prediction above ran against the sequence this send is about to
-      // claim, so the room and the client agree on what the message covers.
+      // Use the predicted sequence for the next sent input.
       if (room?.phase !== "playing" || view?.finished) return;
       const window = frameSends.add(seconds);
       if (window !== undefined) dispatchInput(window);

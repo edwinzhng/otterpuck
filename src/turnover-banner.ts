@@ -10,9 +10,7 @@ export type TurnoverBanner = {
   render: (ui: UI, state: Simulation, events: readonly TackleEvent[]) => void;
 };
 
-// Only the local player's own turnovers reach the banner: the puck taken off
-// them, taken by them, or won by the pincer they closed. A teammate losing it
-// across the pool is left to the tackle log.
+// Show only turnovers that involve the local player. Other events stay in the log.
 export const turnoverOutcome = (
   state: Simulation,
   event: TackleEvent,
@@ -28,8 +26,7 @@ export const turnoverOutcome = (
 export const createTurnoverBanner = (): TurnoverBanner => ({
   render: (ui, state, events): void => {
     const banner = ui.elements.turnover;
-    // Newest first, so the first match is the local player's latest turnover;
-    // a teammate's steal logged on top of it must not cut ours short.
+    // Events are newest first. Skip newer events that do not involve the local player.
     const latest = events.find(
       (event): boolean => turnoverOutcome(state, event) !== undefined,
     );

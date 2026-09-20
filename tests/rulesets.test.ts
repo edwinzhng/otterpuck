@@ -108,7 +108,7 @@ test("original never hands a hard turn over to the curl", (): void => {
   const origin = player.yaw;
   drive(state, 60, swimming(), 0.03);
   expect(player.curl).toBe(0);
-  expect(player.yaw - origin).toBeCloseTo(60 * 0.03 * 1.3, 6);
+  expect(player.yaw - origin).toBeCloseTo(60 * 0.03 * 1.3 * 1.45, 6);
   expect(horizontalSpeed(player)).toBeGreaterThan(1);
 });
 
@@ -124,7 +124,7 @@ test("original leaves the mouse at full authority during a Q/E curl", (): void =
   drive(loose.state, 60, { ...freshControls(), curl: 1 });
 
   expect(player.yaw - origin - (loose.player.yaw - looseOrigin)).toBeCloseTo(
-    60 * 0.008 * 1.3,
+    60 * 0.008 * 1.3 * 1.45,
     6,
   );
 });
@@ -150,7 +150,7 @@ const breathHold = (
 test("alternative spends a full breath on the tuned schedule", (): void => {
   expect(breathHold("alternative", freshControls())).toBeCloseTo(30, 1);
   expect(breathHold("alternative", swimming())).toBeCloseTo(20, 1);
-  expect(breathHold("alternative", sprinting(), true)).toBeCloseTo(10, 1);
+  expect(breathHold("alternative", sprinting(), true)).toBeCloseTo(20, 1);
 });
 
 test("original keeps its own longer breath schedule", (): void => {
@@ -159,11 +159,10 @@ test("original keeps its own longer breath schedule", (): void => {
   expect(breathHold("original", sprinting(), true)).toBeGreaterThan(11);
 });
 
-test("an empty stamina bar shortens the breath further", (): void => {
+test("an empty stamina bar does not shorten the breath", (): void => {
   const fresh = breathHold("alternative", swimming(), true);
   const spent = breathHold("alternative", swimming(), true, 0);
-  expect(spent).toBeLessThan(fresh * 0.75);
-  expect(spent).toBeGreaterThan(fresh * 0.4);
+  expect(spent).toBeCloseTo(fresh, 6);
 });
 
 test("a smaller air supply also refills in proportion", (): void => {

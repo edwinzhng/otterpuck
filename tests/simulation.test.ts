@@ -129,7 +129,7 @@ describe("Physical puck", (): void => {
 });
 
 describe("Movement and breath", (): void => {
-  test("power kicking accelerates faster and uses more air", (): void => {
+  test("power kicking accelerates faster without an air penalty", (): void => {
     const normal = createSimulation("3-3", "3-3", "practice");
     const sprint = createSimulation("3-3", "3-3", "practice");
     normal.puck.position.x = 5;
@@ -139,8 +139,9 @@ describe("Movement and breath", (): void => {
     expect(sprint.players.at(0)?.velocity.length()).toBeGreaterThan(
       normal.players.at(0)?.velocity.length() ?? 0,
     );
-    expect(sprint.players.at(0)?.air).toBeLessThan(
+    expect(sprint.players.at(0)?.air).toBeCloseTo(
       normal.players.at(0)?.air ?? 0,
+      8,
     );
   });
   test("empty air triggers an ascent and sustained recovery", (): void => {

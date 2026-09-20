@@ -295,6 +295,8 @@ test("mobile shell exposes every action, settings and contextual help once", asy
       "descend",
       "curl",
       "reverse",
+      "glanceLeft",
+      "glanceRight",
       "dummy",
     ].sort(),
   );

@@ -161,7 +161,6 @@ test("menu markup has unique IDs, complete position choices, and only mode label
     "Learn",
   ]);
   for (const id of [
-    "team-size",
     "formation",
     "position",
     "difficulty",

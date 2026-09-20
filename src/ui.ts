@@ -78,8 +78,7 @@ export const updateUI = (
     ui.elements.descendCue.classList.toggle("hidden", !guidance.descend);
   }
   const celebrating = state.restartTime > 0 && state.eventTime > 0;
-  // A player's own announcement outranks the match-wide one, except while the
-  // room is celebrating a goal.
+  // A goal event has priority. A private player event has the next priority.
   const announcement = celebrating
     ? "GOAL!"
     : player.eventTime > 0

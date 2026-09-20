@@ -1,5 +1,7 @@
 import {
+  type ClientMessage,
   decodeMessage,
+  encodeClientMessage,
   type RoomView,
   type Signal,
   signalSchema,
@@ -21,7 +23,7 @@ export const createPeers = (
 ): {
   sync: (room: RoomView) => void;
   signal: (from: string, signal: Signal) => Promise<void>;
-  send: (to: string, data: unknown) => void;
+  send: (to: string, data: ClientMessage) => void;
   broadcast: (data: unknown) => void;
   close: () => void;
   ping: (to: string) => void;
@@ -189,7 +191,7 @@ export const createPeers = (
     send: (to, data): void => {
       const channel = links.get(to)?.channel;
       if (channel?.readyState === "open" && channel.bufferedAmount < 128000)
-        channel.send(JSON.stringify(data));
+        channel.send(encodeClientMessage(data));
     },
     broadcast: (data): void => {
       const text = stringifySnapshot(data);

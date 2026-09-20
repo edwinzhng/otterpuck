@@ -55,7 +55,7 @@ test("a gentle turn while carrying keeps the normal turn rate", (): void => {
   const origin = player.yaw;
   drive(state, 60, swimming(), GENTLE);
   expect(player.curl).toBe(0);
-  expect(player.yaw - origin).toBeCloseTo(60 * GENTLE * 1.3, 6);
+  expect(player.yaw - origin).toBeCloseTo(60 * GENTLE * 1.3 * 1.45, 6);
 });
 
 test("a gentle turn underwater costs a little forward speed", (): void => {
@@ -87,7 +87,7 @@ test("a hard turn from a stop hands over to the curl mechanic", (): void => {
 
 test("forward swimming allows a wider turn before an automatic puck move", (): void => {
   const { state, player } = setup(true);
-  drive(state, 60, swimming(), 0.025);
+  drive(state, 60, swimming(), 0.015);
   expect(player.curl).toBe(0);
   expect(player.dummy).toBe(0);
   expect(horizontalSpeed(player)).toBeGreaterThan(1);
@@ -314,7 +314,7 @@ test("the mouse loses most of its authority while curling", (): void => {
   const looseOrigin = loose.player.yaw;
   drive(loose.state, 60, { ...freshControls(), curl: 1 });
   expect(curled - (loose.player.yaw - looseOrigin)).toBeCloseTo(
-    60 * GENTLE * 1.3 * 0.3,
+    60 * GENTLE * 1.3 * 1.45 * 0.3,
     6,
   );
 });

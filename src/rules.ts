@@ -14,9 +14,7 @@ export type Rules = {
   airDrain: {
     idle: number;
     kick: number;
-    sprint: number;
     engaged: number;
-    engagedSprint: number;
     curl: number;
   };
   airBase: number;
@@ -43,14 +41,12 @@ export const RULESETS: Record<Ruleset, Rules> = {
     airDrain: {
       idle: 1.5,
       kick: 0.75,
-      sprint: 4.5,
       engaged: 3.8,
-      engagedSprint: 1.45,
       curl: 0.44,
     },
     airBase: 4.2,
     airStamina: 8.8,
-    spentAirDrain: 2.2,
+    spentAirDrain: 0,
     carveDrag: 0.12,
     autoCurl: true,
     shielding: 1,
@@ -70,9 +66,7 @@ export const RULESETS: Record<Ruleset, Rules> = {
     airDrain: {
       idle: 1.5,
       kick: 1.3,
-      sprint: 6.2,
       engaged: 5.2,
-      engagedSprint: 2,
       curl: 0.6,
     },
     airBase: 10,

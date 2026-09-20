@@ -6,6 +6,21 @@ export const button = (
 ): string =>
   `<button id="${id}" class="button button-${kind}" type="button" ${attributes}>${label}</button>`;
 
+export const cardButton = (
+  content: string,
+  className: string,
+  attributes = "",
+): string =>
+  `<button class="${className}" type="button" ${attributes}>${content}</button>`;
+
+export const segmentedButton = (
+  label: string,
+  selected: boolean,
+  attributes: string,
+  className = "",
+): string =>
+  `<button class="${selected ? `selected ${className}`.trim() : className}" type="button" aria-pressed="${selected}" ${attributes}>${label}</button>`;
+
 export const field = (
   id: string,
   label: string,

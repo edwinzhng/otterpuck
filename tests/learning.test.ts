@@ -8,7 +8,11 @@ import {
   savedLesson,
 } from "../src/learning-progress";
 import { prepareLesson } from "../src/learning-setup";
-import { createSimulation, stepSimulation } from "../src/simulation";
+import {
+  createSimulation,
+  resetPracticePuck,
+  stepSimulation,
+} from "../src/simulation";
 import { freshControls, STEP } from "../src/types";
 
 const exercise = (id: LessonId): { passed: boolean; value: number } => {
@@ -21,16 +25,12 @@ const exercise = (id: LessonId): { passed: boolean; value: number } => {
   const result = { passed: false, value: 0 };
   for (const frame of Array.from({ length: 1200 }, (_, i): number => i)) {
     if (id === "swim") controls.forward = 1;
+    if (id === "glance") controls.glance = frame < 10 ? -1 : 1;
     if (id === "grab" && frame === 12) controls.knockdown = true;
-    if (id === "flick" && frame === 60) controls.shot = 0.7;
+    if (id === "flick") controls.shot = frame === 60 || frame === 240 ? 0.7 : 0;
+    if (id === "flick" && frame === 180) resetPracticePuck(state);
     if (id === "curl") controls.curl = 1;
     if (id === "reverse") controls.curl = -1;
-    // A hard forward turn with the puck hands over to the automatic swerve,
-    // short of the harder turn that would curl instead.
-    if (id === "swerve") {
-      controls.forward = 1;
-      if (frame > 40) controls.yawDelta = 0.04;
-    }
     if (id === "dummy") {
       controls.dummy = 1;
       controls.dummyMode = true;
@@ -41,7 +41,13 @@ const exercise = (id: LessonId): { passed: boolean; value: number } => {
     if (id === "dive") controls.vertical = -1;
     const attemptedGrab = controls.knockdown;
     stepSimulation(state, controls, STEP);
-    result.value = advanceProgress(id, progress, state, attemptedGrab);
+    result.value = advanceProgress(
+      id,
+      progress,
+      state,
+      attemptedGrab,
+      controls.glance,
+    );
     if (result.value >= 1) {
       result.passed = true;
       break;
@@ -51,11 +57,11 @@ const exercise = (id: LessonId): { passed: boolean; value: number } => {
 };
 const exercised: readonly LessonId[] = [
   "swim",
+  "glance",
   "grab",
   "flick",
   "curl",
   "reverse",
-  "swerve",
   "dummy",
   "rise",
   "dive",
@@ -67,21 +73,13 @@ describe("learning exercises", () => {
     );
   test("idle cannot complete puck skills", () => {
     const s = createSimulation("2-3-1", "2-3-1", "playground");
-    for (const id of [
-      "grab",
-      "flick",
-      "curl",
-      "reverse",
-      "swerve",
-      "dummy",
-    ] as const) {
+    for (const id of ["grab", "flick", "curl", "reverse", "dummy"] as const) {
       const p = beginProgress(s);
       expect(advanceProgress(id, p, s)).toBe(0);
     }
   });
-  test("every lesson is either practised or a study card", () => {
-    for (const id of lessonIds)
-      expect(exercised.includes(id) || id === "shield").toBe(true);
+  test("every lesson is practised", () => {
+    for (const id of lessonIds) expect(exercised.includes(id)).toBe(true);
   });
   test("progress restoration rejects malformed values", () => {
     expect(savedLesson(String(lessonIds.length - 1))).toBe(
@@ -122,15 +120,17 @@ test("hints appear after ten active seconds and reset for a fresh attempt", (): 
   expect(lessonFeedback(retry, 30, 0).hint).toBe(false);
   expect(lessonFeedback(retry, 30, 0).success).toBe(false);
 });
-test("both curls require 360 degrees with puck control", (): void => {
-  for (const direction of [1, -1]) {
+test("each curl requires 360 degrees in the correct direction", (): void => {
+  for (const [id, direction] of [
+    ["curl", 1],
+    ["reverse", -1],
+  ] as const) {
     const state = createSimulation("2-3-1", "2-3-1", "playground");
     const player = state.players.at(0);
     if (!player) throw new Error("Missing player");
     const progress = beginProgress(state);
     player.curl = direction;
     state.puck.controlOwner = player.id;
-    const id = direction === 1 ? "curl" : "reverse";
     for (const unused of Array.from({ length: 7 })) {
       void unused;
       player.yaw += (direction * Math.PI) / 4;
@@ -139,6 +139,14 @@ test("both curls require 360 degrees with puck control", (): void => {
     player.yaw += (direction * Math.PI) / 4;
     expect(advanceProgress(id, progress, state)).toBeCloseTo(1, 8);
   }
+});
+test("each flick fills exactly half the progress bar on release", (): void => {
+  const state = createSimulation("2-3-1", "2-3-1", "playground");
+  const progress = beginProgress(state);
+  state.shots += 1;
+  expect(advanceProgress("flick", progress, state)).toBe(0.5);
+  state.shots += 1;
+  expect(advanceProgress("flick", progress, state)).toBe(1);
 });
 test("dummy succeeds as soon as its sprint burst starts", (): void => {
   const state = createSimulation("2-3-1", "2-3-1", "playground");

@@ -137,9 +137,11 @@ test("a small side never sends its whole team up for air at once", (): void => {
 
 test("the lobby offers every match size and names the quick match after it", (): void => {
   const markup = uiShell();
-  expect(markup).toContain('<select id="team-size" hidden>');
+  expect(markup).toContain("Quick match");
   for (const size of TEAM_SIZES)
-    expect(markup).toContain(`<option value="${size}">${sizeLabel(size)}`);
+    expect(markup).toContain(
+      `data-team-size="${size}"${size === 6 ? "" : `>${sizeLabel(size)}`}`,
+    );
   expect(markup).toContain("Play vs AI");
   expect(markup).toContain('<select id="mp-team-size" hidden>');
 });

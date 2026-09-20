@@ -190,8 +190,7 @@ test("a squarely laid blade still wins the puck from an open carrier", (): void 
   expect(contestReach("alternative", 1, 0)).toBeGreaterThan(0);
 });
 
-// The geometry of the original "blade breaks the curl hold" case: a challenger
-// laying the blade squarely on the puck from directly in front of the carrier.
+// Reproduce a front challenge with the blade square to the puck.
 const frontChallengeHolds = (ruleset: Ruleset): boolean => {
   const state = createSimulation("3-3", "3-3", "practice", 180, "right", {
     species: "otter",

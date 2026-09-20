@@ -1,9 +1,8 @@
 import type { Quaternion, Vector3 } from "three";
 import { clamp, type Player, type Simulation } from "../types";
 
-// Enough history to cover the longest interpolation delay below with room to
-// spare, at the rate the room sends snapshots. Too few and the playhead runs
-// off the front of the buffer and remote players stall.
+// Keep enough history for the maximum interpolation delay. A smaller buffer
+// can make remote players stop when the playhead reaches the newest sample.
 const SAMPLES = 24;
 type Pose = {
   id: number;

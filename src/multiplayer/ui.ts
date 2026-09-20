@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { getElement } from "../dom";
+import { BOT_DIFFICULTY_OPTIONS, botDifficultyChoice } from "../game-options";
 import {
   defaultFormation,
   formationChoices,
@@ -13,19 +14,13 @@ import {
   saveSwimTurn,
   swimTurnChoice,
 } from "../swim-turn";
-import type { BotDifficulty, Controls, Handedness, Simulation } from "../types";
+import type { Controls, Handedness, Simulation } from "../types";
 import { button, dialog, field } from "../ui-components";
 import { connectRoom, type Session } from "./client";
 import { customPlayerName } from "./names";
 import { PROTOCOL, type RoomView } from "./protocol";
 import { loadRegions, measurePing, type Region } from "./regions";
 
-const DIFFICULTIES: readonly (readonly [BotDifficulty, string])[] = [
-  ["easy", "Easy"],
-  ["medium", "Medium"],
-  ["hard", "Hard"],
-  ["elite", "Elite"],
-];
 export const multiplayerMarkup = (): string =>
   dialog(
     "multiplayer-dialog",
@@ -40,7 +35,7 @@ export const multiplayerMarkup = (): string =>
  <details class="mp-disclosure" id="mp-region-picker"><summary><span>Server</span><strong id="mp-region-summary">Loading…</strong></summary>
  <fieldset id="mp-regions"><legend class="mp-sr-only">Server region</legend></fieldset>
  ${button("mp-ping", "Refresh ping", "secondary")}</details>
- <p id="mp-mode-help" hidden>Keep the host device awake on the same Wi-Fi, with internet needed to join.</p>
+ <p id="mp-mode-help" hidden>Host must be awake and connected to the same Wi-Fi</p>
  <div class="mp-actions">${button("mp-create", "Create room", "primary")}${button("mp-join", "Join room", "primary", "hidden")}</div>
  </div>
  <section id="mp-room" hidden>
@@ -54,7 +49,7 @@ export const multiplayerMarkup = (): string =>
    "mp-swim-turn",
    "Turn rate",
    SWIM_TURNS.map((turn): [string, string] => [String(turn), `${turn}×`]),
- )}${field("mp-difficulty", "Bots", DIFFICULTIES)}<p>Choose a team and a position.</p></div>
+ )}${field("mp-difficulty", "Bot skill", BOT_DIFFICULTY_OPTIONS)}<p>Choose your team and position.</p></div>
  <div class="mp-teams" id="mp-teams"></div>
  </div>
  <div class="mp-room-footer"><span id="mp-waiting" class="mp-room-hint">Empty positions are filled by bots.</span><div class="mp-actions">${button("mp-leave", "Leave", "secondary")}${button("mp-start", "Start match", "primary")}</div></div>
@@ -532,10 +527,8 @@ export const bindMultiplayer = (callbacks: {
   });
   const difficultySelect = getElement("#mp-difficulty", HTMLSelectElement);
   difficultySelect.addEventListener("change", (): void => {
-    const match = DIFFICULTIES.find(
-      ([candidate]): boolean => candidate === difficultySelect.value,
-    );
-    if (match) session?.settings({ difficulty: match[0] });
+    const difficulty = botDifficultyChoice(difficultySelect.value);
+    if (difficulty) session?.settings({ difficulty });
   });
   getElement("#mp-leave", HTMLButtonElement).addEventListener(
     "click",

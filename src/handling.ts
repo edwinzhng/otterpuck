@@ -181,9 +181,7 @@ const bladeChallengesPuck = (
   });
 };
 
-// Cover makes the challenger lay the blade ever more exactly on the puck, and
-// past SEALED there is no placement that reaches it at all: the carrier's body
-// and blade are simply in the way.
+// More cover reduces the challenge range. Full cover blocks the challenge.
 const challengeReach = (
   state: Simulation,
   player: Player,

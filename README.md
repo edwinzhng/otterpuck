@@ -118,6 +118,8 @@ bun run benchmark
 
 CPU simulation and input benchmarks do not measure GPU or phone performance; verify interactive changes in a browser and on target devices.
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) before submitting a change.
+
 ## Credits
 
 The multiplayer swords icon is from [Lucide](public/licenses/lucide.txt). Music and splash recordings are credited with their sources and licenses in [audio credits](public/audio/CREDITS.md). Generated environment artwork is documented in `art/arenas/backgrounds.md` and `art/arenas/rock-texture.md`. No blanket license is granted for the game's code or authored assets by this repository.

@@ -301,6 +301,12 @@ legend {
   border-color: #ffb4b9;
   box-shadow: 0 3px 0 #b73c54;
 }
+.setup-segmented .selected {
+  color: white;
+  background: #208fce;
+  border-color: #78d4ff;
+  box-shadow: 0 3px 0 #1374af;
+}
 .menu {
   position: fixed;
   inset: 0;
@@ -468,13 +474,6 @@ legend {
   font-size: clamp(22px, 2.7vw, 36px);
   letter-spacing: -0.8px;
 }
-.map-card > span {
-  position: absolute;
-  bottom: 27px;
-  right: 60px;
-  z-index: 1;
-  font-size: 33px;
-}
 .tropical-card {
   clip-path: polygon(0 0, 100% 0, 91% 100%, 0 100%);
   border-radius: 24px 0 0 24px;
@@ -519,6 +518,7 @@ legend {
   bottom: 20px;
   right: 20px;
   display: flex;
+  align-items: center;
   justify-content: space-between;
   padding: 15px 20px;
   border-radius: 13px;
@@ -527,11 +527,16 @@ legend {
   font-weight: 850;
   font-size: 20px;
 }
+.selected-map button span {
+  margin-left: auto;
+  font-size: 24px;
+  line-height: 1;
+}
 .setup-panel {
   display: flex;
   flex-direction: column;
-  gap: 22px;
-  padding: 27px;
+  gap: 16px;
+  padding: 24px;
   background: var(--panel);
   border: 3px solid white;
   border-radius: 23px;
@@ -541,10 +546,45 @@ legend {
   font-size: 28px;
   letter-spacing: -1px;
 }
-.match-setup {
+.setup-section,
+.team-match-settings {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
+}
+.setup-section {
+  padding-top: 12px;
+  border-top: 1px solid #c4dce6;
+}
+.setup-section h2 {
+  font-size: 17px;
+  letter-spacing: -0.2px;
+}
+.setup-section legend {
+  color: #42697f;
+  margin-bottom: 6px;
+}
+.setup-panel .segmented {
+  gap: 6px;
+}
+.setup-panel .segmented button {
+  min-height: 40px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+.setup-panel .field {
+  gap: 5px;
+}
+.setup-panel .select-field-trigger {
+  min-height: 40px;
+  padding: 8px 11px;
+  font-size: max(var(--input-font-min, 0px), 14px);
+}
+.setup-panel #start {
+  min-height: 49px;
+  padding: 9px 18px;
+  font-size: 19px;
 }
 .rules-setup {
   display: flex;
@@ -1181,9 +1221,6 @@ legend {
   .city-card strong {
     left: 42px;
   }
-  .map-card > span {
-    display: none;
-  }
   .mode-list {
     width: 330px;
   }
@@ -1233,14 +1270,9 @@ legend {
   .setup-panel h1 {
     font-size: 23px;
   }
-  .match-setup {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-  }
-  .match-setup .field:nth-child(2) {
-    grid-column: 1 / -1;
-    grid-row: 2;
+  .setup-section,
+  .team-match-settings {
+    gap: 11px;
   }
   .mode-list {
     width: min(100%, 350px);
@@ -1312,7 +1344,8 @@ legend {
     gap: 14px;
     padding: 20px;
   }
-  .match-setup {
+  .setup-section,
+  .team-match-settings {
     gap: 10px;
   }
   .field {
@@ -1722,13 +1755,4 @@ legend {
   .match-result[data-outcome="win"] .pause-card {
     animation: none;
   }
-}
-
-#arena-fade {
-  position: fixed;
-  inset: 0;
-  z-index: 1;
-  background: #103c5a;
-  opacity: 0;
-  pointer-events: none;
 }

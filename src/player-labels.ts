@@ -1,5 +1,5 @@
 import { type PerspectiveCamera, Vector3 } from "three";
-import { playerPosition, projectPlayerLabel } from "./positions";
+import { playerPosition, projectPlayerLabel, teamSize } from "./positions";
 import { projectPuckDirection } from "./puck-indicator";
 import type { Simulation } from "./types";
 import type { UI } from "./ui-types";
@@ -13,6 +13,7 @@ export const renderPlayerLabels = (
   camera: PerspectiveCamera,
   alpha: number,
 ): void => {
+  const showPositions = teamSize(state.formations[0]) !== 2;
   const direction =
     state.restartTime > 0 || state.finished
       ? undefined
@@ -33,6 +34,7 @@ export const renderPlayerLabels = (
   for (const [id, label] of ui.playerLabels.entries()) {
     const player = state.players.at(id);
     const point =
+      showPositions &&
       state.mode === "match" &&
       player &&
       !player.human &&

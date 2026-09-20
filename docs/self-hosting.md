@@ -20,7 +20,7 @@ ACME HTTP challenge and will never get a certificate for the new name.
 On the Pi, clone the repository and write `.env` beside `docker-compose.yml`:
 
 ```sh
-PUBLIC_ROOMS_HOME_URL=wss://otterpuck.example.com/socket
+PUBLIC_ROOMS_SELF_HOSTED_URL=wss://otterpuck.example.com/socket
 ALLOWED_ORIGINS=https://otterpuck.example.com
 TRUST_PROXY=1
 ```
@@ -29,7 +29,7 @@ Both names must match the address friends actually type, exactly and with no
 trailing slash: the room server compares the browser's `Origin` header against
 `ALLOWED_ORIGINS` literally and rejects anything else with 403.
 
-`PUBLIC_ROOMS_HOME_URL` is a build argument, baked into `dist/multiplayer.json`
+`PUBLIC_ROOMS_SELF_HOSTED_URL` is a build argument, baked into `dist/multiplayer.json`
 when the web image builds. Changing the hostname later means rebuilding, not
 just restarting.
 

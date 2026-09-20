@@ -8,10 +8,5 @@
     "id": "eu",
     "label": "🇪🇺 EU West",
     "url": "wss://rooms-eu-production.up.railway.app/socket"
-  },
-  {
-    "id": "home",
-    "label": "🏠 Home server",
-    "url": ""
   }
 ]

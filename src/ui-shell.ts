@@ -1,3 +1,4 @@
+import { DESKTOP_CONTROL_HELP } from "./control-registry";
 import { goalConfettiMarkup } from "./goal-confetti";
 import { lobbyMarkup } from "./lobby";
 import { multiplayerMarkup } from "./multiplayer/ui";
@@ -14,32 +15,12 @@ const handednessField = (): string =>
     ["left", "Left"],
   ]);
 export const controlsMarkup = (): string =>
-  `<div class="controls-grid keyboard-help">${[
-    ["W / S", "Swim / brake"],
-    ["A / D", "Turn and swim"],
-    ["Shift", "Sprint"],
-    ["Space", "Rise / lift head at surface"],
-    ["Ctrl", "Descend"],
-    ["C", "Duck dive"],
-    ["LMB", "Hold to charge · release to shoot"],
-    ["RMB + A / D", "Swerve"],
-    ["Q / E", "Glance left / right"],
-    ["Z", "Pull / push puck"],
-    ["X", "Grab / knock down"],
-    ["R", "Backhand"],
-    ["T", "Tactics"],
-    ["P", "Reset practice puck"],
-    ["F / V / G", "Practice: feed / camera / slow motion"],
-    ["Esc", "Pause / release mouse"],
-    ["Ctrl + F", "Toggle fullscreen"],
-    ["H / P", "Tutorial: help / retry"],
-    ["Shift + L", "Toggle tackle log"],
-  ]
-    .map(([key, label]): string => control(key ?? "", label ?? ""))
-    .join("")}</div>${touchHelpMarkup()}`;
+  `<div class="controls-grid keyboard-help">${DESKTOP_CONTROL_HELP.map(
+    ([key, label]): string => control(key ?? "", label ?? ""),
+  ).join("")}</div>${touchHelpMarkup()}`;
 
 export const uiShell = (): string => `
-  <canvas id="pool" tabindex="0" aria-label="Otterpuck playing pool"></canvas><div class="water-vignette" aria-hidden="true"></div><div id="arena-fade" aria-hidden="true"></div>
+  <canvas id="pool" tabindex="0" aria-label="Otterpuck playing pool"></canvas><div class="water-vignette" aria-hidden="true"></div>
   ${lobbyMarkup()}
   ${multiplayerMarkup()}
   ${dialog(
