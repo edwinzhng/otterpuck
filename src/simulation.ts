@@ -60,6 +60,7 @@ import {
   SHOT_RELEASE,
   STICK_GRIP,
   SWERVE_PULL_DURATION,
+  SWERVE_EXTEND_DURATION,
   shotProgress,
   shotPuckOrientation,
   shotPuckPosition,
@@ -127,6 +128,8 @@ const makePlayer = (
     previousYaw: team === 0 ? 0 : Math.PI,
     previousBodyPitch: 0,
     dummyBurstUntil: 0,
+    autoDummyUntil: 0,
+    autoDummyLocked: false,
     velocity: new Vector3(),
     yaw: team === 0 ? 0 : Math.PI,
     aimYaw: undefined,
@@ -354,7 +357,12 @@ export const requestShot = (
   return true;
 };
 
-const updateCradle = (state: Simulation, player: Player, dt: number): void => {
+const updateCradle = (
+  state: Simulation,
+  player: Player,
+  dt: number,
+  automaticDummy = false,
+): void => {
   if (
     !canCarryPuck(state, player) ||
     player.puckMove ||
@@ -402,9 +410,12 @@ const updateCradle = (state: Simulation, player: Player, dt: number): void => {
       (kind === "curl" ? 0.18 : 0.2),
   );
   if (kind === "dummy") {
+    const dummyTiming = automaticDummy ? AUTO_DUMMY_TIMING : 1;
+    const pullDuration = SWERVE_PULL_DURATION * dummyTiming;
     if (
-      cradle.elapsed >= SWERVE_PULL_DURATION &&
-      cradle.elapsed - dt < SWERVE_PULL_DURATION
+      cradle.elapsed >= pullDuration &&
+      cradle.elapsed - dt < pullDuration &&
+      !automaticDummy
     )
       player.dummyBurstUntil = state.time + 0.7;
     const pulled = cradle.origin
@@ -416,8 +427,8 @@ const updateCradle = (state: Simulation, player: Player, dt: number): void => {
     );
     cradle.target
       .copy(cradle.origin)
-      .lerp(pulled, smoothMotion(cradle.elapsed / SWERVE_PULL_DURATION))
-      .lerp(extended, swerveExtension(player));
+      .lerp(pulled, smoothMotion(cradle.elapsed / pullDuration))
+      .lerp(extended, swerveExtension(player, dummyTiming));
   } else if (kind === "charge") {
     cradle.target.copy(cradle.origin);
     cradle.target.z = Math.min(
@@ -491,7 +502,9 @@ const updateStamina = (rules: Rules, player: Player, dt: number): void => {
 const CURL_TURN_SPEED = 2.795;
 const TURN_RESPONSE = 9;
 const HARD_TURN_RATE = 2.6;
+const HARD_TURN_FORWARD_RATE = 4.1;
 const HARD_TURN_RELEASE = 1.6;
+const AUTO_DUMMY_TIMING = 1.6;
 
 const bodyTurnRate = (controls: Controls): number =>
   controls.lateral * (controls.sprint && controls.forward > 0 ? 2.08 : 2.47);
@@ -499,25 +512,32 @@ const bodyTurnRate = (controls: Controls): number =>
 const turnDemand = (controls: Controls, dt: number): number =>
   (controls.yawDelta * 1.3) / dt - bodyTurnRate(controls);
 
-const turningHard = (player: Player): boolean =>
+const turningHard = (player: Player, forward: number): boolean =>
   Math.abs(player.turnRate) >
-  (player.curl === 0 ? HARD_TURN_RATE : HARD_TURN_RELEASE);
+  (player.curl === 0
+    ? forward > 0
+      ? HARD_TURN_FORWARD_RATE
+      : HARD_TURN_RATE
+    : HARD_TURN_RELEASE);
 
-const autoCurlDirection = (
+const autoTurnDirection = (
   rules: Rules,
   state: Simulation,
   player: Player,
   controls: Controls,
-): number =>
-  rules.autoCurl &&
-  state.puck.controlOwner === player.id &&
-  !controls.charging &&
-  !controls.dummyMode &&
-  !player.puckMove &&
-  !player.grab &&
-  turningHard(player)
+): number => {
+  if (player.autoDummyLocked && controls.forward > 0)
+    return state.time < player.autoDummyUntil ? player.dummy : 0;
+  return rules.autoCurl &&
+    state.puck.controlOwner === player.id &&
+    !controls.charging &&
+    !controls.dummyMode &&
+    !player.puckMove &&
+    !player.grab &&
+    turningHard(player, controls.forward)
     ? Math.sign(player.turnRate) * bladeMirror(player)
     : 0;
+};
 
 const carveThrottle = (
   rules: Rules,
@@ -539,10 +559,23 @@ const updateHumanMovement = (
   player.turnRate +=
     (turnDemand(controls, dt) - player.turnRate) *
     (1 - Math.exp(-TURN_RESPONSE * dt));
+  if (
+    player.autoDummyLocked &&
+    Math.abs(player.turnRate) <= HARD_TURN_RELEASE
+  ) {
+    player.autoDummyLocked = false;
+    player.autoDummyUntil = 0;
+  }
+  const automatic = autoTurnDirection(rules, state, player, controls);
+  if (controls.forward > 0 && automatic !== 0 && !player.autoDummyLocked) {
+    player.autoDummyLocked = true;
+    player.autoDummyUntil =
+      state.time +
+      (SWERVE_PULL_DURATION + SWERVE_EXTEND_DURATION) * AUTO_DUMMY_TIMING;
+  }
+  const forwardTurn = controls.forward > 0;
   const curl =
-    controls.curl !== 0
-      ? controls.curl
-      : autoCurlDirection(rules, state, player, controls);
+    controls.curl !== 0 ? controls.curl : forwardTurn ? 0 : automatic;
   const locomotion =
     curl === 0
       ? controls
@@ -556,7 +589,8 @@ const updateHumanMovement = (
         };
   const underwater = player.position.y < SURFACE_HEIGHT - 0.07;
   player.curl = curl;
-  player.dummy = curl === 0 ? controls.dummy : 0;
+  player.dummy =
+    curl === 0 ? controls.dummy || (forwardTurn ? automatic : 0) : 0;
   player.lateral = locomotion.lateral;
   player.curlTurnSpeed +=
     (curl * CURL_TURN_SPEED - player.curlTurnSpeed) *
@@ -646,6 +680,9 @@ const updateHuman = (
   dt: number,
 ): void => {
   updateHumanMovement(state, player, controls, dt);
+  const automaticDummy =
+    player.dummy !== 0 && controls.dummy === 0 && controls.forward > 0;
+  if (automaticDummy) player.dummyBurstUntil = 0;
   const forward = forwardVector(player.yaw);
   const underwater = player.position.y < SURFACE_HEIGHT - 0.07;
   updateHumanCharge(player, controls, dt);
@@ -664,7 +701,7 @@ const updateHuman = (
   )
     endPuckMove(state, player);
   if (player.puckMove) player.puckMove.elapsed += dt;
-  updateCradle(state, player, dt);
+  updateCradle(state, player, dt, automaticDummy);
   if (player.grab) {
     player.grab.elapsed += dt;
     player.grab.target.copy(state.puck.position);
@@ -1668,6 +1705,8 @@ export const resetPracticePuck = (state: Simulation): void => {
   const human = state.players.at(0);
   if (!human || state.mode === "match") return;
   human.dummyBurstUntil = 0;
+  human.autoDummyUntil = 0;
+  human.autoDummyLocked = false;
   human.shotTime = 0;
   human.shotOrigin = undefined;
   human.shotFired = false;

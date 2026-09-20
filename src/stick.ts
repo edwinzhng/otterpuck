@@ -81,10 +81,11 @@ export const smoothMotion = (value: number): number => {
   return t * t * (3 - 2 * t);
 };
 
-export const swerveExtension = (player: Player): number =>
+export const swerveExtension = (player: Player, timing = 1): number =>
   player.cradle?.kind === "dummy"
     ? smoothMotion(
-        (player.cradle.elapsed - SWERVE_PULL_DURATION) / SWERVE_EXTEND_DURATION,
+        (player.cradle.elapsed - SWERVE_PULL_DURATION * timing) /
+          (SWERVE_EXTEND_DURATION * timing),
       )
     : 1;
 
@@ -106,17 +107,21 @@ const reverseBladeYaw = (player: Player): number => {
 };
 
 export const updateBladePose = (player: Player, dt: number): void => {
+  const automaticDummy = player.autoDummyLocked && player.dummy !== 0;
+  const dummyTiming = automaticDummy ? 1.6 : 1;
   const pulling = player.puckMove?.kind === "pull";
   const inside =
     pulling || player.backhand || player.curl !== 0 || player.charging;
-  const extension = swerveExtension(player);
+  const extension = swerveExtension(player, dummyTiming);
   const cradle = player.cradle;
   const face = inside
     ? 1
     : cradle?.kind === "dummy"
       ? (cradle.originFace +
           (1 - cradle.originFace) *
-            smoothMotion(cradle.elapsed / (SWERVE_PULL_DURATION * 0.7))) *
+            smoothMotion(
+              cradle.elapsed / (SWERVE_PULL_DURATION * dummyTiming * 0.7),
+            )) *
         (1 - extension)
       : cradle?.kind === "settling"
         ? cradle.originFace * (1 - smoothMotion(cradle.elapsed / 0.26))
@@ -131,7 +136,14 @@ export const updateBladePose = (player: Player, dt: number): void => {
     player.curl < 0
       ? reverseBladeYaw(player) * bladeMirror(player)
       : REST_BLADE_YAW + sideways * 0.42;
-  const response = player.dummy !== 0 ? 32 : player.curl !== 0 ? 26 : 12;
+  const response =
+    player.dummy !== 0
+      ? automaticDummy
+        ? 22
+        : 32
+      : player.curl !== 0
+        ? 26
+        : 12;
   if (player.shotTime <= 0) {
     player.bladeRotation +=
       angleDifference(desired, player.bladeRotation) *

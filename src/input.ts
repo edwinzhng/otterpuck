@@ -98,7 +98,7 @@ export const createInput = (
     if (event.code === "KeyV") onLabAction("camera");
     if (event.code === "KeyG") onLabAction("slow");
     if (event.code === "KeyF") onLabAction("feed");
-    if (event.code === "KeyL") onLabAction("log");
+    if (event.code === "KeyL" && event.shiftKey) onLabAction("log");
   });
   window.addEventListener("keyup", (event: KeyboardEvent): void => {
     keys.delete(event.code);

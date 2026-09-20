@@ -155,7 +155,7 @@ test("menu markup has unique IDs, complete position choices, and only mode label
   await response.text();
   expect(new Set(ids).size).toBe(ids.length);
   expect(modes).toEqual([
-    "Quick match vs AI",
+    "Play vs AI",
     "Play with friends",
     "Free swim",
     "Learn",

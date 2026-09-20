@@ -3,9 +3,8 @@ import type { TackleEvent } from "./tackle-events";
 import type { Simulation } from "./types";
 import type { UI } from "./ui-types";
 
-const HOLD = 1.5;
-const POP = 0.12;
-const FADE = 0.25;
+const HOLD = 1;
+const FADE = 0.2;
 
 export type TurnoverBanner = {
   render: (ui: UI, state: Simulation, events: readonly TackleEvent[]) => void;
@@ -47,14 +46,9 @@ export const createTurnoverBanner = (): TurnoverBanner => ({
     if (banner.dataset.outcome !== outcome) banner.dataset.outcome = outcome;
     setText(
       ui.elements.turnoverTitle,
-      outcome === "won" ? "PUCK WON" : "TACKLED",
+      outcome === "won" ? "Puck won" : "Puck lost",
     );
-    setText(ui.elements.turnoverDetail, latest.label);
     const remaining = HOLD - elapsed;
-    banner.style.setProperty(
-      "--turnover-pop",
-      String(Math.min(1, elapsed / POP)),
-    );
     banner.style.setProperty(
       "--turnover-fade",
       String(Math.min(1, remaining / FADE)),

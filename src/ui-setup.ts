@@ -24,10 +24,6 @@ export const createUI = (): UI => {
     species: "otter",
     position: 0,
     difficulty: "medium",
-    ruleset:
-      localStorage.getItem("otterpuck-ruleset") === "original"
-        ? "original"
-        : "alternative",
     handedness:
       localStorage.getItem("otter-hockey-handedness") === "left"
         ? "left"
@@ -50,10 +46,10 @@ export const createUI = (): UI => {
       air: element("air"),
       airLabel: element("air-label"),
       stamina: element("stamina-fill"),
+      staminaValue: element("stamina-value"),
       event: element("announcement"),
       turnover: element("turnover"),
       turnoverTitle: element("turnover-title"),
-      turnoverDetail: element("turnover-detail"),
       puckIndicator: element("puck-indicator"),
       role: element("role"),
       handling: element("handling-mode"),

@@ -3,7 +3,6 @@ import type {
   Formation,
   GameMode,
   Handedness,
-  Ruleset,
   Species,
   TeamSize,
 } from "./types";
@@ -19,7 +18,6 @@ export type UI = {
   species: Species;
   position: number;
   difficulty: BotDifficulty;
-  ruleset: Ruleset;
   formation: Formation;
   opposition: Formation;
   teamSize: TeamSize;
@@ -39,10 +37,10 @@ export type UI = {
     air: HTMLElement;
     airLabel: HTMLElement;
     stamina: HTMLElement;
+    staminaValue: HTMLElement;
     event: HTMLElement;
     turnover: HTMLElement;
     turnoverTitle: HTMLElement;
-    turnoverDetail: HTMLElement;
     puckIndicator: HTMLElement;
     role: HTMLElement;
     handling: HTMLElement;
