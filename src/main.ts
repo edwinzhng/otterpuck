@@ -1,9 +1,16 @@
 import { inject } from "@vercel/analytics";
+import { ARENA_IDS, isArenaId } from "./arena-catalog";
 import { createAudio, type PoolAudio } from "./audio";
 import { createAudioEventTracker } from "./audio-events";
+import { createBackgroundTransition } from "./background-transition";
+import { loadCharacter } from "./character-assets";
+import { randomOpponent } from "./characters";
+import { createGameTransition } from "./game-transition";
 import { createInput } from "./input";
 import { createLearning } from "./learning";
 import { matchResult } from "./match-result";
+import { createHudPresentation } from "./multiplayer/hud";
+import { createRoomSimulation } from "./multiplayer/match";
 import { bindMultiplayer } from "./multiplayer/ui";
 import { enableOffline } from "./offline";
 import { createFrameMeter } from "./performance";
@@ -20,12 +27,13 @@ import {
 import { createTackleTracker } from "./tackle-events";
 import { createTurnoverBanner } from "./turnover-banner";
 import { freshControls, POOL, STEP } from "./types";
-import { createUI, getElement, updateUI } from "./ui";
+import { createUI, getElement, updateHudValues, updateUI } from "./ui";
 import { createSpeedLines } from "./view-effects";
 import {
   createWorld,
   disposeWorld,
   loadSwimmers,
+  prepareSwimmers,
   renderWorld,
   resizeWorld,
   setWorldArena,
@@ -34,9 +42,12 @@ import {
 const boot = async (): Promise<void> => {
   inject();
   const ui = createUI();
+  const gameTransition = createGameTransition();
+  let revealGame = false;
   const world = createWorld(ui.canvas);
   const speedLines = createSpeedLines();
   const meter = createFrameMeter();
+  const multiplayerHud = createHudPresentation();
   const audioEvents = createAudioEventTracker();
   const tackleEvents = createTackleTracker();
   const turnoverBanner = createTurnoverBanner();
@@ -167,18 +178,6 @@ const boot = async (): Promise<void> => {
     },
     { capture: true },
   );
-  const coverGameStart = async (): Promise<void> => {
-    document.body.classList.remove("game-transition");
-    void document.body.offsetWidth;
-    document.body.classList.add("game-transition");
-    const finish = (): void =>
-      document.body.classList.remove("game-transition");
-    document.body.addEventListener("animationend", finish, { once: true });
-    window.setTimeout(finish, 1600);
-    await new Promise<void>((resolve): void => {
-      window.setTimeout(resolve, 525);
-    });
-  };
   getElement("#pause-settings", HTMLButtonElement).addEventListener(
     "click",
     (): void => getElement("#settings-dialog", HTMLDialogElement).showModal(),
@@ -198,8 +197,11 @@ const boot = async (): Promise<void> => {
       ui.start.disabled = false;
     }
     world.arenaRequest++;
-    const arena =
-      multiplayer?.active() || ui.arena.value !== "city" ? "tropical" : "city";
+    const arena = multiplayer?.active()
+      ? multiplayer.arena()
+      : isArenaId(ui.arena.value)
+        ? ui.arena.value
+        : "tropical";
     if (world.arena?.id !== arena && !(await setWorldArena(world, arena)))
       return;
     ui.status.textContent = "";
@@ -208,9 +210,6 @@ const boot = async (): Promise<void> => {
       audio.context.resume().catch(console.error);
       audio.setPlaying(true);
     }
-    if (coverStart) await coverGameStart();
-    await requestMouseCapture();
-    input.setActive(true);
     if (fresh) {
       multiplayer?.leave();
       app.state = createSimulation(
@@ -221,6 +220,7 @@ const boot = async (): Promise<void> => {
         ui.handedness,
         {
           species: ui.species,
+          team: ui.team,
           position: ui.position,
           difficulty: ui.difficulty,
           swimTurn: ui.swimTurn,
@@ -228,12 +228,22 @@ const boot = async (): Promise<void> => {
       );
       input.clear();
       Object.assign(input.controls, freshControls());
+      if (ui.mode === "match") {
+        const opponent = randomOpponent(ui.species);
+        for (const player of app.state.players)
+          if (player.team !== ui.team) player.species = opponent;
+      }
       app.accumulator = 0;
       audioEvents.reset(app.state);
       tackleEvents.reset(app.state);
     }
+    await prepareSwimmers(world, app.state.players);
+    if (coverStart) await gameTransition.cover();
+    await requestMouseCapture();
+    input.setActive(true);
     input.touch.update(app.state);
     app.phase = "playing";
+    revealGame = true;
     if (!app.state.faceoff) app.audio?.startGameplayMusic();
     meter.reset();
     ui.menu.classList.add("hidden");
@@ -250,24 +260,29 @@ const boot = async (): Promise<void> => {
   };
   const enterWithFeedback = (fresh: boolean): void => {
     enter(fresh).catch((error: Error): void => {
+      gameTransition.cancel();
       const message = `Could not start the game: ${error.message}. Select Play or Resume to retry.`;
       ui.status.textContent = message;
       getElement("#pause-description", HTMLElement).textContent = message;
       console.error(error);
     });
   };
+  let arenaSelection = 0;
   ui.arena.addEventListener("change", (): void => {
-    const id = ui.arena.value === "city" ? "city" : "tropical";
+    const selection = ++arenaSelection;
+    world.arenaRequest++;
+    const id = isArenaId(ui.arena.value) ? ui.arena.value : "tropical";
     const alreadyLoaded = world.arena?.id === id;
     ui.start.disabled = true;
     ui.status.textContent = "Loading pool…";
     (alreadyLoaded ? Promise.resolve(true) : setWorldArena(world, id))
       .then((selected): void => {
-        if (!selected) return;
+        if (!selected || selection !== arenaSelection) return;
         ui.start.disabled = false;
         ui.status.textContent = "";
       })
       .catch((error: Error): void => {
+        if (selection !== arenaSelection) return;
         ui.status.textContent =
           "Pool could not load: " +
           error.message +
@@ -410,7 +425,7 @@ const boot = async (): Promise<void> => {
     );
     ui.pause.dataset.outcome = result.outcome;
     ui.pause.dataset.team =
-      app.state.players.at(0)?.team === 1 ? "beavers" : "otters";
+      app.state.players.at(0)?.team === 1 ? "white" : "black";
     getElement("#pause-title", HTMLElement).textContent = result.title;
     getElement("#pause-description", HTMLElement).textContent = result.score;
     getElement("#pause-description", HTMLElement).dataset.teams = result.teams;
@@ -490,8 +505,12 @@ const boot = async (): Promise<void> => {
       app.phase === "playing" ? input.controls.glance : 0,
     );
     meter.sample(renderDt * 1000, performance.now() - frameStart);
+    if (revealGame && app.phase === "playing") {
+      revealGame = false;
+      gameTransition.reveal();
+    }
     if (
-      ui.hud.classList.contains("show-performance") &&
+      document.body.classList.contains("show-performance") &&
       now - app.metricsTime > 100
     ) {
       ui.elements.fps.dataset.metrics = JSON.stringify(
@@ -520,6 +539,13 @@ const boot = async (): Promise<void> => {
           : app.phase === "playing"
             ? app.accumulator / STEP
             : 1,
+        world.renderer.getPixelRatio(),
+      );
+    if (app.phase !== "menu")
+      updateHudValues(
+        ui,
+        app.state,
+        multiplayer?.active() ? multiplayerHud.read(now) : undefined,
       );
     if (now - app.uiTime > 100 && app.phase !== "menu") {
       updateUI(ui, app.state, input, world);
@@ -529,6 +555,38 @@ const boot = async (): Promise<void> => {
   requestAnimationFrame(frame);
   ui.arena.disabled = true;
   await setWorldArena(world, "tropical");
+  const homeScreen = document.querySelector<HTMLElement>(
+    '[data-screen="mode"]',
+  );
+  const isHome = (): boolean =>
+    app.phase === "menu" &&
+    !multiplayer?.active() &&
+    !document.hidden &&
+    homeScreen?.hidden === false;
+  let rotatingBackground = false;
+  const backgroundTransition = createBackgroundTransition(
+    world.renderer.domElement,
+  );
+  const backgroundRotation = window.setInterval((): void => {
+    if (!isHome() || rotatingBackground) return;
+    const index = ARENA_IDS.indexOf(world.arena?.id ?? "tropical");
+    const next = ARENA_IDS[(index + 1) % ARENA_IDS.length];
+    if (!next) return;
+    rotatingBackground = true;
+    void setWorldArena(world, next, isHome, async (): Promise<void> => {
+      backgroundTransition.capture((): void =>
+        world.renderer.render(world.scene, world.camera),
+      );
+    })
+      .catch(console.warn)
+      .finally((): void => {
+        backgroundTransition.reveal();
+        rotatingBackground = false;
+      });
+  }, 10_000);
+  window.addEventListener("pagehide", (event: PageTransitionEvent): void => {
+    if (!event.persisted) window.clearInterval(backgroundRotation);
+  });
   ui.arena.disabled = false;
   ui.start.disabled = false;
   ui.start.textContent = "Play";
@@ -540,21 +598,63 @@ const boot = async (): Promise<void> => {
   getElement("#learn-button", HTMLButtonElement).disabled = false;
   getElement("#boot-cover", HTMLElement).classList.add("ready");
   setTimeout((): void => getElement("#boot-cover", HTMLElement).remove(), 400);
+  const preparePreviews = (): void => {
+    if (app.phase !== "menu") return;
+    void import("./arena-previews")
+      .then(({ showArenaPreviews }): Promise<void> => showArenaPreviews())
+      .catch(console.warn);
+  };
+  if ("requestIdleCallback" in window)
+    window.requestIdleCallback(preparePreviews);
+  else setTimeout(preparePreviews, 500);
   multiplayer = bindMultiplayer({
+    cancelPreparation: gameTransition.cancel,
     handedness: () => ui.handedness,
+    prepare: async (room, isCurrent): Promise<void> => {
+      await gameTransition.cover();
+      if (!isCurrent()) return;
+      world.arenaRequest++;
+      const arenaReady =
+        world.arena?.id === room.arena
+          ? Promise.resolve(true)
+          : setWorldArena(world, room.arena, isCurrent);
+      if (!world.loaded) {
+        swimmersLoading ??= loadSwimmers(world).catch((error: unknown) => {
+          swimmersLoading = undefined;
+          throw error;
+        });
+      }
+      const [selected] = await Promise.all([
+        arenaReady,
+        swimmersLoading,
+        ...[...new Set(room.teamSpecies)].map(loadCharacter),
+      ]);
+      if (!isCurrent()) return;
+      if (!selected) throw new Error("Selected map preparation was superseded");
+      await prepareSwimmers(world, createRoomSimulation(room).players);
+      if (!isCurrent()) return;
+    },
     play: (state): void => {
       app.state = state;
+      multiplayerHud.push(state, performance.now());
       ui.mode = "match";
       audioEvents.reset(state);
       const begin = async (): Promise<void> => {
-        if (world.arena?.id !== "tropical")
-          await setWorldArena(world, "tropical");
-        await enter(false, true);
+        await enter(false, false);
       };
-      void begin().catch(console.error);
+      void begin().catch((error: unknown): void => {
+        gameTransition.cancel();
+        console.error(error);
+        multiplayer?.leave();
+        app.phase = "menu";
+        ui.menu.classList.remove("hidden");
+        ui.status.textContent =
+          "Could not load your character. Please try again.";
+      });
     },
     state: (state): void => {
       app.state = state;
+      multiplayerHud.push(state, performance.now());
     },
     ended: (): void => {
       getElement("#return-menu", HTMLButtonElement).click();

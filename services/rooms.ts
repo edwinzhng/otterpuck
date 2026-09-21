@@ -14,11 +14,12 @@ import { packSnapshot, parseSnapshot } from "../src/multiplayer/snapshot";
 import type { Simulation } from "../src/types";
 
 type Peer = { send: (message: ServerMessage) => void; close: () => void };
-type Member = RoomView["members"][number] & {
+type Member = Omit<RoomView["members"][number], "species"> & {
   token: string;
   peer: Peer | undefined;
   expires: number;
   defaultName: string;
+  loaded: boolean;
 };
 type Room = Omit<RoomView, "members"> & {
   members: Member[];
@@ -27,6 +28,7 @@ type Room = Omit<RoomView, "members"> & {
   checkpointAt: number;
   created: number;
   nextPlayerNumber: number;
+  loadingAt: number;
 };
 export const createRooms = (
   region: string,
@@ -42,12 +44,15 @@ export const createRooms = (
   let nextCleanup = 0;
   const membership = new Map<Peer, { room: Room; member: Member }>();
   const view = (room: Room): RoomView => ({
+    arena: room.arena,
     code: room.code,
     region: room.region,
     mode: room.mode,
     phase: room.phase,
+    loadId: room.loadId,
     hostId: room.hostId,
     teamSize: room.teamSize,
+    teamSpecies: room.teamSpecies,
     swimTurn: room.swimTurn,
     difficulty: room.difficulty,
     members: room.members.map(({ id, name, playerId, peer, handedness }) => ({
@@ -56,14 +61,24 @@ export const createRooms = (
       playerId,
       connected: Boolean(peer),
       handedness,
+      species: room.teamSpecies[playerId < 6 ? 0 : 1],
     })),
   });
   const broadcast = (room: Room, message: ServerMessage): void => {
     for (const member of room.members) member.peer?.send(message);
   };
   const updated = (room: Room): void => {
+    if (
+      room.phase === "loading" &&
+      room.members.some((m) => m.peer) &&
+      room.members.filter((m) => m.peer).every((m) => m.loaded)
+    ) {
+      room.phase = "playing";
+      if (room.mode === "online")
+        room.match = createNetworkMatch(createRoomSimulation(room));
+    }
     const snapshot = view(room);
-    room.match?.roster(snapshot.members);
+    room.match?.roster(snapshot.members, snapshot.teamSpecies);
     broadcast(room, { type: "room", room: snapshot });
   };
   const error = (peer: Peer, message: string, fatal = false): void =>
@@ -100,6 +115,7 @@ export const createRooms = (
       previous.close();
     }
     member.peer = peer;
+    if (room.phase === "loading") member.loaded = false;
     member.connected = true;
     member.expires = 0;
     membership.set(peer, { room, member });
@@ -159,6 +175,7 @@ export const createRooms = (
       token: crypto.randomUUID(),
       name: customPlayerName(name) ?? defaultName,
       defaultName,
+      loaded: false,
       handedness,
       playerId,
       connected: true,
@@ -241,8 +258,12 @@ export const createRooms = (
           region,
           mode: message.mode,
           phase: "waiting",
+          loadId: 0,
+          loadingAt: 0,
           hostId: "",
           teamSize: 6,
+          teamSpecies: ["otter", "beaver"],
+          arena: "tropical",
           swimTurn: 1,
           difficulty: "medium",
           members: [],
@@ -268,7 +289,10 @@ export const createRooms = (
           room.phase !== "waiting" &&
           (message.name !== undefined || message.playerId !== undefined)
         ) {
-          error(peer, "Team and position are locked once the match starts.");
+          error(
+            peer,
+            "Name, team and position are locked once the match starts.",
+          );
           return;
         }
         if (
@@ -302,9 +326,26 @@ export const createRooms = (
           return;
         }
         if (room.phase !== "waiting") return;
-        room.phase = "playing";
-        if (room.mode === "online")
-          room.match = createNetworkMatch(createRoomSimulation(room));
+        room.phase = "loading";
+        room.loadId++;
+        room.loadingAt = now();
+        for (const other of room.members) other.loaded = false;
+        updated(room);
+        return;
+      }
+      if (message.type === "loaded") {
+        if (room.phase !== "loading" || message.loadId !== room.loadId) return;
+        if (message.ok) member.loaded = true;
+        else {
+          room.phase = "waiting";
+          updated(room);
+          broadcast(room, {
+            type: "error",
+            message:
+              "A player could not load the match. Try Start match again.",
+          });
+          return;
+        }
         updated(room);
         return;
       }
@@ -314,6 +355,9 @@ export const createRooms = (
           return;
         }
         if (room.phase !== "waiting") return;
+        if (message.arena !== undefined) room.arena = message.arena;
+        if (message.teamSpecies !== undefined)
+          room.teamSpecies = message.teamSpecies;
         if (message.teamSize !== undefined) {
           room.teamSize = message.teamSize;
           for (const other of room.members)
@@ -378,6 +422,14 @@ export const createRooms = (
           for (const member of [...room.members])
             if (member.expires && member.expires <= time) remove(room, member);
         if (!rooms.has(room.code)) continue;
+        if (room.phase === "loading" && time - room.loadingAt > 45_000) {
+          room.phase = "waiting";
+          updated(room);
+          broadcast(room, {
+            type: "error",
+            message: "Match loading timed out. Try Start match again.",
+          });
+        }
         if (cleanup && time - room.created > 2 * 60 * 60 * 1000) {
           broadcast(room, {
             type: "error",

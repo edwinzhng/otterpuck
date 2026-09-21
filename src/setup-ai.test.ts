@@ -5,48 +5,72 @@ import {
   safeAirReserve,
   shouldSprintToPuck,
 } from "./bots";
+import { CHARACTER_SPECIES } from "./characters";
 import { planTeam } from "./formations";
 import { formationChoices, playerPosition } from "./positions";
 import { createSimulation, stepSimulation } from "./simulation";
 import { attackDirection, freshControls, STEP } from "./types";
 import { uiShell } from "./ui-shell";
 
+test("faceoff resets preserve character appearance independently of team", (): void => {
+  for (const species of CHARACTER_SPECIES) {
+    const state = createSimulation("2-3-1", "2-3-1", "match", 180, "right", {
+      species,
+      team: 1,
+      position: 2,
+      difficulty: "medium",
+    });
+    state.faceoff = undefined;
+    state.restartTime = STEP;
+    stepSimulation(state, freshControls(), STEP);
+    expect(state.players.at(0)).toMatchObject({ id: 8, team: 1, species });
+  }
+});
+
 test("every team and position controls its selected swimmer with the selected formation", (): void => {
-  for (const species of ["otter", "beaver"] as const)
-    for (const formation of ["3-3", "2-3-1", "1-3-2"] as const)
-      for (const position of formationChoices(formation)) {
-        const state = createSimulation(
-          formation,
-          "3-3",
-          "match",
-          180,
-          "right",
-          { species, position: position.slot, difficulty: "hard" },
-        );
-        const human = state.players.at(0);
-        if (!human) throw new Error("Missing selected swimmer");
-        expect(human.human).toBe(true);
-        expect(human.team).toBe(species === "otter" ? 0 : 1);
-        expect(human.slot).toBe(position.slot);
-        expect(
-          state.players.filter((player): boolean => player.human),
-        ).toHaveLength(1);
-        expect(
-          new Set(state.players.map((player): number => player.id)).size,
-        ).toBe(12);
-        expect(state.formations.at(human.team)).toBe(formation);
-        expect(playerPosition(state, human).code).toBe(position.code);
-        state.faceoff = undefined;
-        planTeam(state, human.team);
-        stepSimulation(state, { ...freshControls(), forward: 1 }, STEP);
-        expect(human.velocity.length()).toBeGreaterThan(0);
-      }
+  for (const team of [0, 1] as const)
+    for (const species of CHARACTER_SPECIES)
+      for (const formation of ["3-3", "2-3-1", "1-3-2"] as const)
+        for (const position of formationChoices(formation)) {
+          const state = createSimulation(
+            formation,
+            "3-3",
+            "match",
+            180,
+            "right",
+            { team, species, position: position.slot, difficulty: "hard" },
+          );
+          const human = state.players.at(0);
+          if (!human) throw new Error("Missing selected swimmer");
+          expect(human.human).toBe(true);
+          expect(human.team).toBe(team);
+          expect(human.species).toBe(species);
+          expect(
+            state.players
+              .filter((player): boolean => player.team === team)
+              .every((player): boolean => player.species === species),
+          ).toBe(true);
+          expect(human.slot).toBe(position.slot);
+          expect(
+            state.players.filter((player): boolean => player.human),
+          ).toHaveLength(1);
+          expect(
+            new Set(state.players.map((player): number => player.id)).size,
+          ).toBe(12);
+          expect(state.formations.at(human.team)).toBe(formation);
+          expect(playerPosition(state, human).code).toBe(position.code);
+          state.faceoff = undefined;
+          planTeam(state, human.team);
+          stepSimulation(state, { ...freshControls(), forward: 1 }, STEP);
+          expect(human.velocity.length()).toBeGreaterThan(0);
+        }
 });
 
 test("free swim and puck lab use the chosen species as their only swimmer", (): void => {
   for (const mode of ["practice", "playground"] as const) {
     const state = createSimulation("2-3-1", "2-3-1", mode, 180, "left", {
       species: "beaver",
+      team: 1,
       position: 4,
       difficulty: "elite",
     });

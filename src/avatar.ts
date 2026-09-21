@@ -3,10 +3,10 @@ import {
   Bone,
   Group,
   Matrix3,
+  Matrix4,
   Mesh,
   type Object3D,
   Quaternion,
-  type SkinnedMesh,
   Vector3,
 } from "three";
 import { clone } from "three/addons/utils/SkeletonUtils.js";
@@ -15,7 +15,10 @@ import {
   type FinClearance,
   keepFinsAboveFloor,
 } from "./fin-clearance";
-import { createFirstPersonArms } from "./first-person-arms";
+import {
+  createFirstPersonArms,
+  type FirstPersonArm,
+} from "./first-person-arms";
 import { createSwimMotion, type SwimMotion, updateSwimMotion } from "./motion";
 import { shareCharacterSkeleton } from "./skeletons";
 import { STICK_GRIP } from "./stick";
@@ -32,6 +35,7 @@ type Arm = {
   upperRotation: Quaternion;
   lowerRotation: Quaternion;
   pawRotation: Quaternion;
+  bendDirection: Vector3;
 };
 export type Avatar = {
   root: Group;
@@ -39,9 +43,11 @@ export type Avatar = {
   bones: Map<string, Bone>;
   arms: Map<string, Arm>;
   motion: SwimMotion;
-  firstPersonArms: Map<string, SkinnedMesh[]>;
+  firstPersonArms: Map<string, FirstPersonArm>;
   finClearance: FinClearance;
   visibility: string;
+  maxArmStretch: number;
+  floorLift: number;
 };
 
 export const createAvatar = (
@@ -54,7 +60,13 @@ export const createAvatar = (
   root.add(model);
   root.updateMatrixWorld(true);
   const bones = new Map<string, Bone>();
+  let maxArmStretch = Number.POSITIVE_INFINITY;
+  let floorLift = 0;
   model.traverse((object): void => {
+    if (typeof object.userData.maxArmStretch === "number")
+      maxArmStretch = object.userData.maxArmStretch;
+    if (typeof object.userData.floorLift === "number")
+      floorLift = object.userData.floorLift;
     if (object instanceof Bone)
       bones.set(object.name.replaceAll(".", ""), object);
   });
@@ -63,7 +75,15 @@ export const createAvatar = (
     const upper = bones.get(`arm${side}`),
       lower = bones.get(`forearm${side}`),
       paw = bones.get(`paw${side}`);
-    if (upper && lower && paw)
+    if (upper && lower && paw && upper.parent) {
+      const start = upper.getWorldPosition(new Vector3());
+      const end = paw.getWorldPosition(new Vector3()).sub(start).normalize();
+      const bendDirection = lower
+        .getWorldPosition(new Vector3())
+        .sub(start)
+        .projectOnPlane(end)
+        .normalize()
+        .transformDirection(upper.parent.matrixWorld.clone().invert());
       arms.set(side, {
         upper,
         lower,
@@ -79,7 +99,9 @@ export const createAvatar = (
         upperRotation: upper.quaternion.clone(),
         lowerRotation: lower.quaternion.clone(),
         pawRotation: paw.quaternion.clone(),
+        bendDirection,
       });
+    }
   }
   return {
     root,
@@ -90,24 +112,46 @@ export const createAvatar = (
     finClearance: createFinClearance(model, bones),
     firstPersonArms: createFirstPersonArms(model),
     visibility: "",
+    maxArmStretch,
+    floorLift,
   };
 };
 
+const aimDirection = new Vector3();
+const aimAxis = new Vector3();
+const aimInverse = new Matrix4();
+const aimRotation = new Quaternion();
+const reachStart = new Vector3();
+const reachDelta = new Vector3();
+const reachPole = new Vector3();
+const reachElbow = new Vector3();
+const reachEnd = new Vector3();
+const reachDirection = new Vector3();
+const reachScale = new Vector3();
+const reachMatrix = new Matrix3();
+const gripTarget = new Vector3();
+const gripDelta = new Vector3();
+const gripShoulder = new Vector3();
+const gripOffset = new Vector3();
+const freeTarget = new Vector3();
+
 const aimBone = (bone: Bone, direction: Vector3): void => {
   if (!bone.parent) return;
-  const localDirection = direction
-    .clone()
-    .transformDirection(bone.parent.matrixWorld.clone().invert());
-  const current = new Vector3(0, 1, 0).applyQuaternion(bone.quaternion);
+  const localDirection = aimDirection
+    .copy(direction)
+    .transformDirection(aimInverse.copy(bone.parent.matrixWorld).invert());
+  const current = aimAxis.set(0, 1, 0).applyQuaternion(bone.quaternion);
   bone.quaternion.premultiply(
-    new Quaternion().setFromUnitVectors(current, localDirection),
+    aimRotation.setFromUnitVectors(current, localDirection),
   );
   bone.updateMatrixWorld(true);
 };
 
-const reach = (arm: Arm, target: Vector3, side: number, yaw: number): void => {
-  const start = arm.upper.getWorldPosition(new Vector3());
-  const delta = target.clone().sub(start);
+const reach = (arm: Arm, target: Vector3): void => {
+  const parent = arm.upper.parent;
+  if (!parent) return;
+  const start = arm.upper.getWorldPosition(reachStart);
+  const delta = reachDelta.copy(target).sub(start);
   const stretch = Math.max(
     1,
     delta.length() / ((arm.upperLength + arm.lowerLength) * 0.995),
@@ -120,27 +164,29 @@ const reach = (arm: Arm, target: Vector3, side: number, yaw: number): void => {
     (upperLength + lowerLength) * 0.995,
   );
   const direction = delta.normalize();
-  const pole = new Vector3(side, 0.1, 0.15)
-    .applyAxisAngle(new Vector3(0, 1, 0), yaw)
+  const pole = reachPole
+    .copy(arm.bendDirection)
+    .transformDirection(parent.matrixWorld)
     .projectOnPlane(direction)
     .normalize();
   const along =
     (upperLength ** 2 - lowerLength ** 2 + distance ** 2) / (2 * distance);
-  const elbow = start
-    .clone()
+  const elbow = reachElbow
+    .copy(start)
     .addScaledVector(direction, along)
     .addScaledVector(
       pole,
       Math.sqrt(Math.max(0, upperLength ** 2 - along ** 2)),
     );
-  const end = start.clone().addScaledVector(direction, distance);
+  const end = reachEnd.copy(start).addScaledVector(direction, distance);
   arm.upper.scale.y = stretch;
-  aimBone(arm.upper, elbow.clone().sub(start));
-  aimBone(arm.lower, end.clone().sub(elbow));
+  aimBone(arm.upper, reachDirection.copy(elbow).sub(start));
+  aimBone(arm.lower, reachDirection.copy(end).sub(elbow));
   if (arm.lower.parent) {
-    const inheritedScale = new Vector3(0, 1, 0)
+    const inheritedScale = reachScale
+      .set(0, 1, 0)
       .applyQuaternion(arm.lower.quaternion)
-      .applyMatrix3(new Matrix3().setFromMatrix4(arm.lower.parent.matrixWorld))
+      .applyMatrix3(reachMatrix.setFromMatrix4(arm.lower.parent.matrixWorld))
       .length();
     arm.lower.scale.y = stretch / inheritedScale;
     arm.lower.updateMatrixWorld(true);
@@ -178,12 +224,22 @@ export const poseAvatar = (
     floorApproach * (1 - clamp(Math.abs(player.bodyPitch) / 0.6, 0, 1));
   const upWeight = motion.actions.get("SwimUp")?.getEffectiveWeight() ?? 0;
   const downWeight = motion.actions.get("SwimDown")?.getEffectiveWeight() ?? 0;
+  const sprintWeight = motion.actions.get("Sprint")?.getEffectiveWeight() ?? 0;
   model.rotation.set(
-    (motion.pitch - (upWeight - downWeight) * 0.28) * (1 - bottom),
+    (motion.pitch - (upWeight - downWeight) * 0.72) * (1 - bottom),
     -motion.turn * 0.018,
     motion.bank * (1 - bottom * 0.7),
   );
-  root.position.y += floorApproach * 0.02 - bottom * 0.26;
+  // Keep clearance from the fixed gameplay grip when the body pitches or banks.
+  model.position
+    .set(
+      0,
+      0.045 + Math.min(0.06, downWeight * 0.14) + sprintWeight * 0.015,
+      0.065,
+    )
+    .multiplyScalar(1 - bottom)
+    .applyQuaternion(model.quaternion);
+  root.position.y += floorApproach * 0.02 - bottom * (0.26 - avatar.floorLift);
   const side = player.handedness === "right" ? "R" : "L";
   const visibility = `${side}:${firstPerson}`;
   if (avatar.visibility !== visibility) {
@@ -193,7 +249,9 @@ export const poseAvatar = (
       if (object.name.startsWith("FirstPersonArm")) {
         object.visible = firstPerson && object.name === `FirstPersonArm${side}`;
       } else
-        object.visible = equipment ? equipment.at(1) === side : !firstPerson;
+        object.visible = equipment
+          ? equipment.at(1) === side && !object.name.endsWith("Cuff")
+          : !firstPerson;
     });
     avatar.visibility = visibility;
   }
@@ -201,30 +259,48 @@ export const poseAvatar = (
   const arm = avatar.arms.get(side);
   if (!arm) return;
   const target = stick
-    .localToWorld(STICK_GRIP.clone())
-    .add(new Vector3(0, 0.03, 0).applyQuaternion(stick.quaternion));
-  const delta = target.clone().sub(arm.upper.getWorldPosition(new Vector3()));
-  const maximumReach = (arm.upperLength + arm.lowerLength) * 3;
+    .localToWorld(gripTarget.copy(STICK_GRIP))
+    .add(gripOffset.set(0, 0.03, 0).applyQuaternion(stick.quaternion));
+  const delta = gripDelta
+    .copy(target)
+    .sub(arm.upper.getWorldPosition(gripShoulder));
+  const maximumReach =
+    (arm.upperLength + arm.lowerLength) * Math.min(3, avatar.maxArmStretch);
   const horizontalReach = Math.sqrt(
     Math.max(0.001, maximumReach ** 2 - delta.y ** 2),
   );
   const horizontalDistance = Math.hypot(delta.x, delta.z);
-  if (horizontalDistance > horizontalReach)
+  if (horizontalDistance > horizontalReach) {
     root.position.add(
       delta.setY(0).multiplyScalar(1 - horizontalReach / horizontalDistance),
     );
-  root.updateMatrixWorld(true);
+    root.updateMatrixWorld(true);
+  }
+  // Compact characters follow the authoritative grip with their body, not elongated arms.
+  gripOffset.copy(target).sub(arm.upper.getWorldPosition(gripShoulder));
+  const naturalReach =
+    (arm.upperLength + arm.lowerLength) * 0.995 * avatar.maxArmStretch;
+  if (gripOffset.length() > naturalReach) {
+    root.position.addScaledVector(
+      gripOffset,
+      (1 - naturalReach / gripOffset.length()) * (1 - floorApproach),
+    );
+    root.updateMatrixWorld(true);
+  }
   keepFinsAboveFloor(avatar.finClearance, viewYaw);
-  reach(arm, target, side === "R" ? 1 : -1, viewYaw);
+  reach(arm, target);
   const freeArm = avatar.arms.get(side === "R" ? "L" : "R");
-  if (freeArm && bottom > 0.001) {
-    const restingPaw = new Vector3(side === "R" ? -0.15 : 0.15, 0, -0.26)
-      .applyAxisAngle(new Vector3(0, 1, 0), viewYaw)
-      .add(root.position)
-      .setY(0.055);
-    const freeTarget = freeArm.paw
-      .getWorldPosition(new Vector3())
-      .lerp(restingPaw, bottom);
-    reach(freeArm, freeTarget, side === "R" ? -1 : 1, viewYaw);
+  if (freeArm) {
+    const phase = motion.phase * Math.PI * 2;
+    const activity = clamp(motion.speed / 1.3, 0, 1);
+    model.localToWorld(
+      freeTarget.set(
+        side === "R" ? -0.15 : 0.15,
+        -0.05 + Math.sin(phase - 0.8) * 0.006 * activity,
+        -0.18 + Math.sin(phase) * 0.008 * activity,
+      ),
+    );
+    freeTarget.y = Math.max(0.055, freeTarget.y);
+    reach(freeArm, freeTarget);
   }
 };

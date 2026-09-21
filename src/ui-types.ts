@@ -5,6 +5,7 @@ import type {
   GameMode,
   Handedness,
   Species,
+  Team,
   TeamSize,
 } from "./types";
 
@@ -17,6 +18,7 @@ export type UI = {
   status: HTMLElement;
   arena: HTMLSelectElement;
   species: Species;
+  team: Team;
   position: number;
   difficulty: BotDifficulty;
   swimTurn: SwimTurn;

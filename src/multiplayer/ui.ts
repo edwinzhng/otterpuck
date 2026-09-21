@@ -1,4 +1,16 @@
 import { z } from "zod";
+import {
+  ARENA_IDS,
+  ARENA_LABELS,
+  type ArenaId,
+  isArenaId,
+} from "../arena-catalog";
+import {
+  bindCharacterRoster,
+  characterRosterMarkup,
+  showCharacterRoster,
+  updateCharacterChoice,
+} from "../character-roster";
 import { getElement } from "../dom";
 import { BOT_DIFFICULTY_OPTIONS, botDifficultyChoice } from "../game-options";
 import {
@@ -38,7 +50,11 @@ export const multiplayerMarkup = (): string =>
    "mp-team-size",
    "Match size",
    TEAM_SIZES.map((size): [string, string] => [String(size), sizeLabel(size)]),
- )}${field("mp-difficulty", "Bot skill", BOT_DIFFICULTY_OPTIONS)}<p id="mp-team-help">Choose your team and position.</p></div>
+ )}${field("mp-difficulty", "Bot skill", BOT_DIFFICULTY_OPTIONS)}${field(
+   "mp-arena",
+   "Map",
+   ARENA_IDS.map((id): [string, string] => [id, ARENA_LABELS[id]]),
+ )}<p id="mp-team-help">Choose your team and position.</p></div>
  <div class="mp-teams" id="mp-teams"></div>
  </div>
  <div class="mp-room-footer"><span id="mp-waiting" class="mp-room-hint">Empty positions are filled by bots.</span><div class="mp-actions">${button("mp-leave", "Leave", "secondary")}${button("mp-start", "Start match", "primary")}</div></div>
@@ -46,14 +62,23 @@ export const multiplayerMarkup = (): string =>
  <p id="mp-status" role="status" aria-live="polite" hidden></p>
  `,
     "close-multiplayer",
+  ) +
+  dialog(
+    "mp-character-dialog",
+    "Choose team character",
+    characterRosterMarkup(),
+    "close-mp-character",
   );
 export const bindMultiplayer = (callbacks: {
+  cancelPreparation: () => void;
   handedness: () => Handedness;
+  prepare: (room: RoomView, isCurrent: () => boolean) => Promise<void>;
   play: (state: Simulation) => void;
   state: (state: Simulation) => void;
   ended: () => void;
 }): {
   active: () => boolean;
+  arena: () => ArenaId;
   handedness: (value: Handedness) => void;
   input: (controls: Controls, seconds?: number) => void;
   cancelInput: () => void;
@@ -62,6 +87,7 @@ export const bindMultiplayer = (callbacks: {
   leave: () => void;
 } => {
   const modal = getElement("#multiplayer-dialog", HTMLDialogElement);
+  const characterModal = getElement("#mp-character-dialog", HTMLDialogElement);
   const status = getElement("#mp-status", HTMLElement);
   const regionList = getElement("#mp-regions", HTMLElement);
   let regions: Region[] = [];
@@ -69,6 +95,22 @@ export const bindMultiplayer = (callbacks: {
   const pings = new Map<string, number>();
   let regionChosen = false;
   let session: Session | undefined;
+  let editingTeam: 0 | 1 | undefined;
+  let canEditTeams = false;
+  let preparation = "";
+  bindCharacterRoster(characterModal, (species): void => {
+    const room = session?.room();
+    if (room && canEditTeams && editingTeam !== undefined) {
+      const teamSpecies: RoomView["teamSpecies"] = [...room.teamSpecies];
+      teamSpecies[editingTeam] = species;
+      session?.settings({ teamSpecies });
+    }
+    characterModal.close();
+  });
+  getElement("#close-mp-character", HTMLButtonElement).addEventListener(
+    "click",
+    (): void => characterModal.close(),
+  );
   let started = false;
   let connection: "online" | "lan" = "online";
   let hosting = false;
@@ -165,6 +207,11 @@ export const bindMultiplayer = (callbacks: {
           !regions.find((region) => region.id === input.value)?.url);
   };
   const leave = (): void => {
+    callbacks.cancelPreparation();
+    preparation = "";
+    canEditTeams = false;
+    editingTeam = undefined;
+    if (characterModal.open) characterModal.close();
     session?.leave();
     session = undefined;
     started = false;
@@ -177,6 +224,7 @@ export const bindMultiplayer = (callbacks: {
     getElement("#mp-room", HTMLElement).hidden = true;
   };
   const updateRoom = (room: RoomView, self: string): void => {
+    if (room.phase === "waiting") callbacks.cancelPreparation();
     lock(true);
     getElement("#mp-setup", HTMLElement).hidden = true;
     modal.classList.add("mp-lobby");
@@ -195,6 +243,7 @@ export const bindMultiplayer = (callbacks: {
         ? "Local Network"
         : (regions.find((r) => r.id === selected)?.label ?? selected);
     const locked = room.hostId !== self || room.phase !== "waiting";
+    canEditTeams = !locked;
     const size = getElement("#mp-team-size", HTMLSelectElement);
     size.value = String(room.teamSize);
     size.dispatchEvent(new Event("input"));
@@ -203,7 +252,12 @@ export const bindMultiplayer = (callbacks: {
     difficulty.value = room.difficulty;
     difficulty.dispatchEvent(new Event("input"));
     difficulty.disabled = locked;
+    const arena = getElement("#mp-arena", HTMLSelectElement);
+    arena.value = room.arena;
+    arena.dispatchEvent(new Event("input"));
+    arena.disabled = locked;
     const me = room.members.find((member) => member.id === self);
+    if (locked && characterModal.open) characterModal.close();
     assignedName = me?.name ?? "";
     const name = getElement("#mp-name", HTMLInputElement);
     name.disabled = room.phase !== "waiting";
@@ -231,7 +285,7 @@ export const bindMultiplayer = (callbacks: {
         const header = document.createElement("button");
         header.type = "button";
         header.className = "mp-team-title";
-        header.textContent = `${team === 0 ? "Otters" : "Beavers"} · ${members.length}/${room.teamSize}`;
+        header.textContent = `${team === 0 ? "Black" : "White"} · ${members.length}/${room.teamSize}`;
         header.setAttribute("aria-pressed", side.dataset.selected);
         const available = seats.find(
           (position) =>
@@ -247,6 +301,29 @@ export const bindMultiplayer = (callbacks: {
             session?.profile({ playerId: team * 6 + available.slot });
         });
         side.append(header);
+        const character = document.createElement("button");
+        character.type = "button";
+        character.className = "button button-secondary";
+        character.dataset.mpCharacter = String(team);
+        character.disabled = locked;
+        character.title = locked
+          ? "The host chooses team characters."
+          : "Choose team character";
+        updateCharacterChoice(character, room.teamSpecies[team]);
+        character.setAttribute(
+          "aria-label",
+          `${team === 0 ? "Black" : "White"} team character: ${character.textContent}`,
+        );
+        character.addEventListener("click", (): void => {
+          editingTeam = team;
+          getElement(
+            "#mp-character-dialog > header h2",
+            HTMLElement,
+          ).textContent = `${team === 0 ? "Black" : "White"} team character`;
+          characterModal.showModal();
+          showCharacterRoster(characterModal, room.teamSpecies[team]);
+        });
+        side.append(character);
         for (const position of seats) {
           const id = team * 6 + position.slot;
           const member = room.members.find(
@@ -280,16 +357,40 @@ export const bindMultiplayer = (callbacks: {
         ?.focus();
     getElement("#mp-start", HTMLButtonElement).hidden = room.hostId !== self;
     getElement("#mp-waiting", HTMLElement).textContent =
-      room.hostId === self
-        ? "Empty positions are filled by bots."
-        : "Waiting for the host to start…";
+      room.phase === "loading"
+        ? "Loading the match for all players…"
+        : room.hostId === self
+          ? "Empty positions are filled by bots."
+          : "Waiting for the host to start…";
     getElement("#mp-start", HTMLButtonElement).disabled =
       room.hostId !== self || room.phase !== "waiting";
     setStatus(
-      room.phase === "waiting"
-        ? "Room ready. Share the code or invite link."
-        : "Match connected",
+      room.phase === "loading"
+        ? "Preparing the pool and characters…"
+        : room.phase === "waiting"
+          ? "Room ready. Share the code or invite link."
+          : "Match connected",
     );
+    const key = `${room.code}:${room.loadId}`;
+    if (room.phase === "loading" && preparation !== key) {
+      preparation = key;
+      const current = session;
+      const isCurrent = (): boolean =>
+        session === current &&
+        preparation === key &&
+        current?.room()?.phase === "loading" &&
+        current.room()?.loadId === room.loadId;
+      void callbacks
+        .prepare(room, isCurrent)
+        .then((): void => {
+          if (isCurrent()) current?.loaded(room.loadId, true);
+        })
+        .catch((error: unknown): void => {
+          if (isCurrent()) callbacks.cancelPreparation();
+          console.warn("Match preparation failed", error);
+          if (isCurrent()) current?.loaded(room.loadId, false);
+        });
+    }
   };
   const open = (
     request: Parameters<typeof connectRoom>[1],
@@ -308,7 +409,11 @@ export const bindMultiplayer = (callbacks: {
     session = connectRoom(region, request, {
       room: updateRoom,
       status: setStatus,
-      rejected,
+      rejected: (message): void => {
+        leave();
+        setStatus(message);
+        rejected?.(message);
+      },
       ping: (milliseconds): void => {
         latency.textContent = hosting
           ? "0 ms (Host)"
@@ -333,6 +438,7 @@ export const bindMultiplayer = (callbacks: {
         } else callbacks.state(state);
       },
       ended: (): void => {
+        callbacks.cancelPreparation();
         session = undefined;
         started = false;
         badge.hidden = true;
@@ -504,6 +610,11 @@ export const bindMultiplayer = (callbacks: {
     if (next) session?.settings({ teamSize: next });
   });
   const difficultySelect = getElement("#mp-difficulty", HTMLSelectElement);
+  const arenaSelect = getElement("#mp-arena", HTMLSelectElement);
+  arenaSelect.addEventListener("change", (): void => {
+    if (isArenaId(arenaSelect.value))
+      session?.settings({ arena: arenaSelect.value });
+  });
   difficultySelect.addEventListener("change", (): void => {
     const difficulty = botDifficultyChoice(difficultySelect.value);
     if (difficulty) session?.settings({ difficulty });
@@ -644,6 +755,7 @@ export const bindMultiplayer = (callbacks: {
     );
   return {
     active: () => Boolean(session),
+    arena: () => session?.room()?.arena ?? "tropical",
     handedness: (value): void => session?.profile({ handedness: value }),
     input: (controls, seconds): void => session?.input(controls, seconds),
     cancelInput: (): void => session?.cancelInput(),

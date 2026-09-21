@@ -24,14 +24,18 @@ export const createRoomSimulation = (settings: {
   teamSize: TeamSize;
   swimTurn: number;
   difficulty: BotDifficulty;
+  teamSpecies?: RoomView["teamSpecies"];
 }): Simulation => {
   const formation = defaultFormation(settings.teamSize);
-  return createSimulation(formation, formation, "match", 180, "right", {
+  const state = createSimulation(formation, formation, "match", 180, "right", {
     species: "otter",
     position: 0,
     difficulty: settings.difficulty,
     swimTurn: settings.swimTurn,
   });
+  const species = settings.teamSpecies ?? ["otter", "beaver"];
+  for (const player of state.players) player.species = species[player.team];
+  return state;
 };
 export const createNetworkMatch = (
   initial = createRoomSimulation({
@@ -42,7 +46,10 @@ export const createNetworkMatch = (
 ): {
   state: Simulation;
   acknowledged: Record<string, number>;
-  roster: (members: RoomView["members"]) => void;
+  roster: (
+    members: RoomView["members"],
+    teamSpecies?: RoomView["teamSpecies"],
+  ) => void;
   input: (
     id: number,
     sequence: number,
@@ -93,11 +100,14 @@ export const createNetworkMatch = (
     state: initial,
     acknowledged,
     alpha: (): number => accumulator / STEP,
-    roster: (members: RoomView["members"]): void => {
+    roster: (
+      members: RoomView["members"],
+      teamSpecies?: RoomView["teamSpecies"],
+    ): void => {
       for (const player of initial.players) {
-        const member = members.find(
-          (m) => m.playerId === player.id && m.connected,
-        );
+        const owner = members.find((m) => m.playerId === player.id);
+        const member = owner?.connected ? owner : undefined;
+        if (teamSpecies) player.species = teamSpecies[player.team];
         player.human = Boolean(member);
         if (member)
           setPlayerHandedness(initial, member.handedness ?? "right", player.id);

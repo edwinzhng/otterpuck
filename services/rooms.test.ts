@@ -35,6 +35,22 @@ const session = (
   if (message?.type !== "session") throw new Error("No session");
   return message;
 };
+const loaded = (
+  rooms: ReturnType<typeof createRooms>,
+  ...players: ReturnType<typeof peer>[]
+): void => {
+  for (const player of players) {
+    const update = player.messages
+      .filter((message) => message.type === "room")
+      .at(-1);
+    if (update?.type !== "room") throw new Error("Missing loading room");
+    rooms.message(player, {
+      type: "loaded",
+      loadId: update.room.loadId,
+      ok: true,
+    });
+  }
+};
 test("default names follow successful room joins, survive resume and never reuse departed numbers", () => {
   const rooms = createRooms("us");
   const host = peer();
@@ -87,6 +103,95 @@ test("default names follow successful room joins, survive resume and never reuse
   expect(customPlayerName("Player 3")).toBeUndefined();
 });
 describe("multiplayer", () => {
+  test("countdown waits for every connected client and ignores stale readiness", () => {
+    const rooms = createRooms("local");
+    const host = peer();
+    const guest = peer();
+    rooms.message(host, { type: "create", protocol: PROTOCOL, mode: "online" });
+    rooms.message(guest, {
+      type: "join",
+      protocol: PROTOCOL,
+      code: session(host).room.code,
+    });
+    rooms.message(host, { type: "start" });
+    loaded(rooms, host);
+    rooms.tick(3);
+    expect(host.messages.some((message) => message.type === "snapshot")).toBe(
+      false,
+    );
+    rooms.message(guest, { type: "loaded", loadId: 0, ok: true });
+    rooms.tick(1);
+    expect(host.messages.some((message) => message.type === "snapshot")).toBe(
+      false,
+    );
+    loaded(rooms, guest);
+    rooms.tick(0.05);
+    const snapshot = host.messages.find(
+      (message) => message.type === "snapshot",
+    );
+    expect(snapshot?.type).toBe("snapshot");
+    if (snapshot?.type === "snapshot") {
+      const faceoff = parseSnapshot(snapshot.state)?.faceoff;
+      expect(faceoff?.phase).toBe("ready");
+      if (faceoff?.phase === "ready")
+        expect(faceoff.remaining).toBeGreaterThan(2.9);
+    }
+  });
+  test("failed or timed-out preparation returns to the lobby and can retry", () => {
+    let now = 0;
+    const rooms = createRooms("local", () => now);
+    const host = peer();
+    rooms.message(host, { type: "create", protocol: PROTOCOL, mode: "online" });
+    rooms.message(host, { type: "start" });
+    rooms.message(host, { type: "loaded", loadId: 1, ok: false });
+    expect(host.messages.at(-1)?.type).toBe("error");
+    rooms.message(host, { type: "start" });
+    rooms.message(host, { type: "loaded", loadId: 1, ok: true });
+    now = 46_000;
+    rooms.tick(STEP);
+    expect(host.messages.at(-1)?.type).toBe("error");
+    expect(host.messages.some((message) => message.type === "snapshot")).toBe(
+      false,
+    );
+    rooms.message(host, { type: "start" });
+    loaded(rooms, host);
+    rooms.tick(0.05);
+    expect(host.messages.some((message) => message.type === "snapshot")).toBe(
+      true,
+    );
+  });
+  test("reconnecting during loading must prepare the replacement client again", () => {
+    const rooms = createRooms("local");
+    const host = peer();
+    const guest = peer();
+    rooms.message(host, { type: "create", protocol: PROTOCOL, mode: "online" });
+    const saved = session(host);
+    rooms.message(guest, {
+      type: "join",
+      protocol: PROTOCOL,
+      code: saved.room.code,
+    });
+    rooms.message(host, { type: "start" });
+    loaded(rooms, host);
+    rooms.disconnect(host);
+    const resumed = peer();
+    rooms.message(resumed, {
+      type: "resume",
+      protocol: PROTOCOL,
+      code: saved.room.code,
+      token: saved.token,
+    });
+    loaded(rooms, guest);
+    rooms.tick(0.1);
+    expect(
+      resumed.messages.some((message) => message.type === "snapshot"),
+    ).toBe(false);
+    loaded(rooms, resumed);
+    rooms.tick(0.1);
+    expect(
+      resumed.messages.some((message) => message.type === "snapshot"),
+    ).toBe(true);
+  });
   test("independent controls survive faceoff and do not move another human", () => {
     const state = createSimulation();
     state.faceoff = undefined;
@@ -155,6 +260,7 @@ describe("multiplayer", () => {
     rooms.message(guest, { type: "start" });
     expect(guest.messages.at(-1)?.type).toBe("error");
     rooms.message(host, { type: "start" });
+    loaded(rooms, host, guest);
     rooms.tick(0.1);
     const hs = host.messages.filter((m) => m.type === "snapshot").at(-1);
     const gs = guest.messages.filter((m) => m.type === "snapshot").at(-1);
@@ -230,6 +336,7 @@ describe("multiplayer", () => {
     });
     expect(host.messages.at(-1)?.type).toBe("signal");
     rooms.message(host, { type: "start" });
+    loaded(rooms, host, guest);
     rooms.tick(0.1);
     expect(host.messages.some((m) => m.type === "snapshot")).toBe(false);
   });
@@ -239,7 +346,13 @@ describe("multiplayer", () => {
       const match = createNetworkMatch();
       match.state.faceoff = undefined;
       match.roster([
-        { id: crypto.randomUUID(), name: "A", playerId: 0, connected: true },
+        {
+          id: crypto.randomUUID(),
+          name: "A",
+          playerId: 0,
+          species: "otter",
+          connected: true,
+        },
       ]);
       const player = match.state.players.find((p) => p.id === 0);
       const before = player?.yaw ?? 0;
@@ -260,7 +373,13 @@ describe("multiplayer", () => {
       const match = createNetworkMatch();
       match.state.faceoff = undefined;
       match.roster([
-        { id: crypto.randomUUID(), name: "A", playerId: 0, connected: true },
+        {
+          id: crypto.randomUUID(),
+          name: "A",
+          playerId: 0,
+          species: "otter",
+          connected: true,
+        },
       ]);
       const player = match.state.players.find((p) => p.id === 0);
       const before = player?.yaw ?? 0;
@@ -289,7 +408,13 @@ describe("multiplayer", () => {
     const match = createNetworkMatch();
     match.state.faceoff = undefined;
     match.roster([
-      { id: crypto.randomUUID(), name: "A", playerId: 0, connected: true },
+      {
+        id: crypto.randomUUID(),
+        name: "A",
+        playerId: 0,
+        species: "otter",
+        connected: true,
+      },
     ]);
     match.input(0, 7, { ...freshControls(), yawDelta: 0.4 }, 8 * STEP);
     match.advance(STEP);
@@ -306,7 +431,13 @@ describe("multiplayer", () => {
       const match = createNetworkMatch();
       match.state.faceoff = undefined;
       match.roster([
-        { id: crypto.randomUUID(), name: "A", playerId: 0, connected: true },
+        {
+          id: crypto.randomUUID(),
+          name: "A",
+          playerId: 0,
+          species: "otter",
+          connected: true,
+        },
       ]);
       const player = match.state.players.find((p) => p.id === 0);
       const start = player?.yaw ?? 0;
@@ -338,7 +469,13 @@ describe("multiplayer", () => {
     const match = createNetworkMatch();
     match.state.faceoff = undefined;
     match.roster([
-      { id: crypto.randomUUID(), name: "A", playerId: 0, connected: true },
+      {
+        id: crypto.randomUUID(),
+        name: "A",
+        playerId: 0,
+        species: "otter",
+        connected: true,
+      },
     ]);
     match.input(0, 1, { ...freshControls(), yawDelta: 0.02 });
     match.advance(0.1);
@@ -422,6 +559,7 @@ test("waiting room changes reserve positions, broadcast names, and lock at start
       ?.playerId,
   ).toBe(8);
   rooms.message(resumed, { type: "start" });
+  loaded(rooms, resumed, guest);
   rooms.message(guest, { type: "profile", playerId: 2 });
   expect(guest.messages.at(-1)?.type).toBe("error");
   rooms.tick(0.1);
@@ -454,6 +592,7 @@ test("room handedness reaches the match and can change without moving another pl
   });
   rooms.message(host, { type: "profile", playerId: 8 });
   rooms.message(host, { type: "start" });
+  loaded(rooms, host, guest);
   rooms.tick(0.1);
   const snapshot = (): ReturnType<typeof parseSnapshot> =>
     parseSnapshot(
@@ -500,6 +639,7 @@ test("curl and reverse curl turn in mirrored directions for left-handed network 
           id: crypto.randomUUID(),
           name: "Player 1",
           playerId: 8,
+          species: "otter",
           connected: true,
           handedness,
         },

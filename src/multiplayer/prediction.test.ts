@@ -82,7 +82,9 @@ test("prediction respects countdown and bounds disconnected input history", () =
 });
 test("server acknowledges inputs only after a simulation step", () => {
   const match = createNetworkMatch();
-  match.roster([{ id: "self", playerId: 0, connected: true, name: "Me" }]);
+  match.roster([
+    { id: "self", playerId: 0, species: "otter", connected: true, name: "Me" },
+  ]);
   match.input(0, 7, freshControls());
   expect(match.acknowledged[0]).toBeUndefined();
   match.advance(STEP);

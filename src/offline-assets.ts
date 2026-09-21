@@ -1,3 +1,5 @@
+import { CHARACTER_SPECIES } from "./characters";
+
 export const offlineShell = [
   "/manifest.webmanifest",
   "/favicon.png",
@@ -8,15 +10,12 @@ export const offlineShell = [
 
 export const runtimeContent = [
   "/models/otter-paws.glb",
-  "/models/characters/otter.glb",
-  "/models/characters/beaver.glb",
-  "/models/arenas/tropical.glb",
-  "/models/arenas/city.glb",
-  "/art/arenas/tropical-panorama-painted.webp",
-  "/art/arenas/city-panorama-painted.webp",
+  ...CHARACTER_SPECIES.map(
+    (species): string => `/models/characters/${species}.glb`,
+  ),
+  ...ARENA_IDS.map((id): string => `/models/arenas/${id}.glb`),
+  ...ARENA_IDS.map((id): string => `/art/arenas/${id}-panorama-painted.webp`),
   "/art/arenas/island-rock-painted.webp",
-  "/art/arenas/tropical-map.webp",
-  "/art/arenas/city-map.webp",
   "/art/learn/dummy-toon-v1.webp",
   "/art/learn/curl-toon-v1.webp",
   "/art/learn/shot-toon-v1.webp",
@@ -28,3 +27,5 @@ export const runtimeContent = [
   "/audio/electric-stream.m4a",
   "/audio/electric-stream-2.m4a",
 ] as const;
+
+import { ARENA_IDS } from "./arena-catalog";

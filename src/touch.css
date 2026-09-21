@@ -314,11 +314,11 @@ body:not(.touch-mode) .touch-help {
   display: none;
 }
 .touch-mode .performance {
-  position: absolute;
-  right: 84px;
-  top: 0;
+  position: static;
+  order: 1;
+  justify-self: end;
   font-size: 9px;
-  padding: 7px;
+  padding: 4px 7px;
 }
 .touch-mode .announcement {
   font-size: clamp(24px, 5vw, 44px);

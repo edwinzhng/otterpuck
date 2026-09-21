@@ -1,167 +1,140 @@
-import { BufferGeometry, type Object3D, SkinnedMesh } from "three";
+import {
+  type Bone,
+  BufferGeometry,
+  Float32BufferAttribute,
+  Matrix4,
+  Mesh,
+  type Object3D,
+  type PerspectiveCamera,
+  SkinnedMesh,
+  Vector3,
+} from "three";
 
-const armGeometry = new WeakMap<BufferGeometry, Map<string, BufferGeometry>>();
-
-const closeArmBoundary = (indices: number[]): number[] => {
-  const edges = new Map<string, readonly [number, number]>();
-  const surfaceEdges = new Set<string>();
-  for (const triangle of Array.from(
-    { length: indices.length / 3 },
-    (_, i): number => i,
-  )) {
-    const corners = indices.slice(triangle * 3, triangle * 3 + 3);
-    for (const [index, start] of corners.entries()) {
-      const end = corners.at((index + 1) % 3);
-      if (end === undefined) continue;
-      const key = `${Math.min(start, end)}:${Math.max(start, end)}`;
-      surfaceEdges.add(key);
-      if (edges.has(key)) edges.delete(key);
-      else edges.set(key, [start, end]);
-    }
-  }
-  const next = new Map(
-    [...edges.values()].map(([start, end]): [number, number] => [start, end]),
-  );
-  const caps: number[] = [];
-  for (const start of [...next.keys()]) {
-    if (!next.has(start)) continue;
-    const ring = [start];
-    while (next.has(ring.at(-1) ?? -1)) {
-      const last = ring.at(-1) ?? -1;
-      const end = next.get(last);
-      next.delete(last);
-      if (end === undefined || end === start) break;
-      ring.push(end);
-    }
-    const pivot = Math.max(
-      0,
-      ring.findIndex((anchor, index): boolean =>
-        Array.from(
-          { length: Math.max(0, ring.length - 3) },
-          (_, i): number => ring.at((index + i + 2) % ring.length) ?? anchor,
-        ).every(
-          (other): boolean =>
-            !surfaceEdges.has(
-              `${Math.min(anchor, other)}:${Math.max(anchor, other)}`,
-            ),
-        ),
-      ),
-    );
-    const cap = [...ring.slice(pivot), ...ring.slice(0, pivot)];
-    for (const index of Array.from(
-      { length: Math.max(0, ring.length - 2) },
-      (_, i): number => i + 1,
-    )) {
-      const a = cap.at(index),
-        b = cap.at(index + 1),
-        anchor = cap.at(0);
-      if (a !== undefined && b !== undefined && anchor !== undefined)
-        caps.push(anchor, b, a);
-    }
-  }
-  return [...indices, ...caps];
-};
-
-const isolateArm = (source: SkinnedMesh, side: string): BufferGeometry => {
-  const cached =
-    armGeometry.get(source.geometry) ?? new Map<string, BufferGeometry>();
-  armGeometry.set(source.geometry, cached);
-  const existing = cached.get(side);
-  if (existing) return existing;
-  const bones = new Set(
-    source.skeleton.bones.flatMap((bone, index): number[] =>
-      [`arm${side}`, `forearm${side}`, `paw${side}`].includes(
-        bone.name.replaceAll(".", ""),
-      )
-        ? [index]
-        : [],
-    ),
-  );
-  const skinIndex = source.geometry.getAttribute("skinIndex");
-  const skinWeight = source.geometry.getAttribute("skinWeight");
-  const belongsToArm = (vertex: number): boolean =>
-    (bones.has(skinIndex.getX(vertex)) ? skinWeight.getX(vertex) : 0) +
-      (bones.has(skinIndex.getY(vertex)) ? skinWeight.getY(vertex) : 0) +
-      (bones.has(skinIndex.getZ(vertex)) ? skinWeight.getZ(vertex) : 0) +
-      (bones.has(skinIndex.getW(vertex)) ? skinWeight.getW(vertex) : 0) >
-    0.12;
-  const sourceIndex = source.geometry.getIndex();
-  const count =
-    sourceIndex?.count ?? source.geometry.getAttribute("position").count;
-  const indices = Array.from({ length: count / 3 }, (_, triangle): number[] => {
-    const vertices = [0, 1, 2].map(
-      (corner): number =>
-        sourceIndex?.getX(triangle * 3 + corner) ?? triangle * 3 + corner,
-    );
-    return vertices.every(belongsToArm) ? vertices : [];
-  }).flat();
-  const geometry = new BufferGeometry();
-  for (const [name, attribute] of Object.entries(source.geometry.attributes))
-    geometry.setAttribute(name, attribute);
-  const positions = source.geometry.getAttribute("position");
-  const vertexKeys = new Map<string, number>();
-  const welded = new Map<number, number>();
-  for (const index of new Set(indices)) {
-    const key = [
-      positions.getX(index),
-      positions.getY(index),
-      positions.getZ(index),
-      skinIndex.getX(index),
-      skinWeight.getX(index),
-      skinIndex.getY(index),
-      skinWeight.getY(index),
-      skinIndex.getZ(index),
-      skinWeight.getZ(index),
-      skinIndex.getW(index),
-      skinWeight.getW(index),
-    ]
-      .map((value): number => Math.round(value * 100000))
-      .join(":");
-    const canonical = vertexKeys.get(key) ?? index;
-    vertexKeys.set(key, canonical);
-    welded.set(index, canonical);
-  }
-  geometry.setIndex(
-    closeArmBoundary(
-      indices.map((index): number => welded.get(index) ?? index),
-    ),
-  );
-  geometry.boundingBox = source.geometry.boundingBox?.clone() ?? null;
-  geometry.boundingSphere = source.geometry.boundingSphere?.clone() ?? null;
-  cached.set(side, geometry);
-  return geometry;
+const rings = 12;
+const sides = 32;
+export type FirstPersonArm = {
+  mesh: Mesh;
+  paw: Bone;
+  grip: Vector3;
+  side: number;
 };
 
 export const createFirstPersonArms = (
   model: Object3D,
-): Map<string, SkinnedMesh[]> => {
-  const parts = new Map<string, SkinnedMesh[]>();
-  const sources: SkinnedMesh[] = [];
+): Map<string, FirstPersonArm> => {
+  const parts = new Map<string, FirstPersonArm>();
+  let skin: SkinnedMesh | undefined;
   model.traverse((object): void => {
     if (
       object instanceof SkinnedMesh &&
-      object.name.startsWith("ContinuousCharacterMesh")
+      !Array.isArray(object.material) &&
+      /^(Paw fur|Fur)$/.test(object.material.name)
     )
-      sources.push(object);
+      if (!skin || object.material.name === "Paw fur") skin = object;
   });
+  if (!skin) return parts;
   for (const side of ["L", "R"]) {
-    parts.set(
-      side,
-      sources.flatMap((source): SkinnedMesh[] => {
-        const geometry = isolateArm(source, side);
-        if (!geometry.getIndex()?.count) return [];
-        const mesh = new SkinnedMesh(geometry, source.material);
-        mesh.name = `FirstPersonArm${side}`;
-        mesh.position.copy(source.position);
-        mesh.quaternion.copy(source.quaternion);
-        mesh.scale.copy(source.scale);
-        mesh.bindMode = source.bindMode;
-        mesh.bind(source.skeleton, source.bindMatrix);
-        mesh.visible = false;
-        source.parent?.add(mesh);
-        return [mesh];
-      }),
+    const mitten = model.getObjectByName(`GripPaw${side}Mitten`);
+    const paw = skin.skeleton.bones.find(
+      (bone) => bone.name.replaceAll(".", "") === `paw${side}`,
     );
+    if (!(mitten instanceof SkinnedMesh) || !paw) continue;
+    mitten.geometry.computeBoundingBox();
+    const grip =
+      mitten.geometry.boundingBox?.getCenter(new Vector3()) ?? new Vector3();
+    paw.worldToLocal(mitten.localToWorld(grip));
+    const geometry = new BufferGeometry();
+    const count = (rings + 1) * sides;
+    geometry.setAttribute(
+      "position",
+      new Float32BufferAttribute(new Float32Array(count * 3), 3),
+    );
+    geometry.setAttribute(
+      "normal",
+      new Float32BufferAttribute(new Float32Array(count * 3), 3),
+    );
+    geometry.setAttribute(
+      "color",
+      new Float32BufferAttribute(new Float32Array(count * 3).fill(1), 3),
+    );
+    const indices: number[] = [];
+    for (let ring = 0; ring < rings; ring++)
+      for (let edge = 0; edge < sides; edge++) {
+        const a = ring * sides + edge,
+          b = ring * sides + ((edge + 1) % sides);
+        indices.push(a, b, a + sides, b, b + sides, a + sides);
+      }
+    geometry.setIndex(indices);
+    const mesh = new Mesh(geometry, skin.material);
+    mesh.name = `FirstPersonArm${side}`;
+    mesh.frustumCulled = false;
+    mesh.visible = false;
+    model.add(mesh);
+    parts.set(side, { mesh, paw, grip, side: side === "R" ? 1 : -1 });
   }
   return parts;
+};
+
+const start = new Vector3(),
+  end = new Vector3(),
+  middle = new Vector3();
+const center = new Vector3(),
+  tangent = new Vector3(),
+  across = new Vector3();
+const up = new Vector3(),
+  normal = new Vector3(),
+  point = new Vector3();
+const inverse = new Matrix4();
+
+// The camera-side end stays behind the viewer; the wrist follows the unchanged paw rig.
+export const updateFirstPersonArms = (
+  parts: Map<string, FirstPersonArm>,
+  camera: PerspectiveCamera,
+): void => {
+  camera.updateMatrixWorld();
+  for (const arm of parts.values()) {
+    if (!arm.mesh.visible) continue;
+    start.set(arm.side * 0.24, -0.27, 0.22).applyMatrix4(camera.matrixWorld);
+    end.copy(arm.grip).applyMatrix4(arm.paw.matrixWorld);
+    middle.copy(start).lerp(end, 0.55);
+    middle.y -= 0.035;
+    arm.mesh.updateWorldMatrix(true, false);
+    inverse.copy(arm.mesh.matrixWorld).invert();
+    const positions = arm.mesh.geometry.getAttribute("position");
+    const normals = arm.mesh.geometry.getAttribute("normal");
+    for (let ring = 0; ring <= rings; ring++) {
+      const t = ring / rings;
+      center
+        .copy(start)
+        .multiplyScalar((1 - t) ** 2)
+        .addScaledVector(middle, 2 * t * (1 - t))
+        .addScaledVector(end, t * t);
+      tangent
+        .copy(middle)
+        .sub(start)
+        .multiplyScalar(1 - t)
+        .addScaledVector(point.copy(end).sub(middle), t)
+        .normalize();
+      across.set(0, 1, 0).cross(tangent).normalize();
+      up.crossVectors(tangent, across).normalize();
+      const radius = 0.075 * (1 - t) + 0.033 * t;
+      for (let edge = 0; edge < sides; edge++) {
+        const angle = (edge / sides) * Math.PI * 2;
+        normal
+          .copy(across)
+          .multiplyScalar(Math.cos(angle))
+          .addScaledVector(up, Math.sin(angle));
+        point
+          .copy(center)
+          .addScaledVector(normal, radius)
+          .applyMatrix4(inverse);
+        normal.transformDirection(inverse);
+        const index = ring * sides + edge;
+        positions.setXYZ(index, point.x, point.y, point.z);
+        normals.setXYZ(index, normal.x, normal.y, normal.z);
+      }
+    }
+    positions.needsUpdate = true;
+    normals.needsUpdate = true;
+  }
 };

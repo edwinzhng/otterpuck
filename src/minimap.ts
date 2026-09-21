@@ -50,8 +50,8 @@ export const drawMap = (
     context.strokeStyle = player.human
       ? "#dcf994"
       : player.team === 0
-        ? "#63c8ff"
-        : "#ff888f";
+        ? "#202b36"
+        : "#ffffff";
     context.fillStyle = context.strokeStyle;
     context.lineWidth = 2;
     context.beginPath();
@@ -80,7 +80,7 @@ export const drawMap = (
         : "";
     const labelY = player.position.z < -11 ? y + 25 : y - 12;
     context.strokeText(code, x, labelY);
-    context.fillStyle = player.team === 0 ? "#d5ffff" : "#ffd2bb";
+    context.fillStyle = player.team === 0 ? "#202b36" : "#ffffff";
     context.fillText(code, x, labelY);
     context.textAlign = "start";
   }

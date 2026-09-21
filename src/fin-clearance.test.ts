@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import { Scene, SkinnedMesh, Vector3 } from "three";
 import { createAvatar } from "./avatar";
+import { CHARACTER_SPECIES } from "./characters";
 import { keepFinsAboveFloor } from "./fin-clearance";
 import { createSimulation, stepSimulation } from "./simulation";
 import {
@@ -10,9 +11,10 @@ import {
 import { freshControls, STEP } from "./types";
 import { createSwimmerView, poseSwimmer } from "./world";
 
-test("deformed fins and body stay above the tiles throughout kicks, turns, braking and landing", async (): Promise<void> => {
-  const proxy = await loadFirstPersonModel();
-  for (const species of ["otter", "beaver"] as const) {
+test.each([...CHARACTER_SPECIES])(
+  "%s deformed fins and body stay above the tiles throughout kicks, turns, braking and landing",
+  async (species): Promise<void> => {
+    const proxy = await loadFirstPersonModel();
     const asset = await loadCharacterModel(species);
     for (const mode of [
       "idle",
@@ -73,7 +75,10 @@ test("deformed fins and body stay above the tiles throughout kicks, turns, braki
         heights.push(localTip.y);
         avatar.root.worldToLocal(localTip);
         if (frame > 0)
-          expect(localTip.distanceTo(previousTip)).toBeLessThan(0.025);
+          expect(
+            localTip.distanceTo(previousTip),
+            `${species} ${mode} frame ${frame}`,
+          ).toBeLessThan(0.025);
         previousTip.copy(localTip);
         if (frame % 8 !== 0) continue;
         for (const { mesh, indices } of surfaces) {
@@ -93,8 +98,9 @@ test("deformed fins and body stay above the tiles throughout kicks, turns, braki
           Math.max(...heights.slice(120)) - Math.min(...heights.slice(120)),
         ).toBeGreaterThan(0.04);
     }
-  }
-}, 10_000);
+  },
+  10_000,
+);
 
 test("floor avoidance leaves open-water leg animations unchanged", async (): Promise<void> => {
   const asset = await loadCharacterModel("otter");

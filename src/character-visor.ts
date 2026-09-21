@@ -54,12 +54,13 @@ export const applyCharacterVisorReflection = (
     for (const material of materials) {
       if (
         !(material instanceof MeshStandardMaterial) ||
-        material.name !== "Lens"
+        !["Lens", "Eyes", "Nose"].includes(material.name)
       )
         continue;
       material.envMap = reflection;
-      material.envMapIntensity = 0.9;
-      material.depthWrite = false;
+      material.envMapIntensity = material.name === "Eyes" ? 1.2 : 0.9;
+      if (material.name === "Lens") material.depthWrite = false;
+      if (material.name === "Eyes") material.roughness = 0.16;
       material.needsUpdate = true;
     }
   });

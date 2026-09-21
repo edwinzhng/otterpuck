@@ -1,5 +1,6 @@
 import { Quaternion, Vector3 } from "three";
 import { z } from "zod";
+import { CHARACTER_SPECIES } from "../characters";
 import { teamSize } from "../positions";
 import type { Simulation } from "../types";
 
@@ -9,6 +10,7 @@ const vector = z
   .transform((v) => new Vector3(v.x, v.y, v.z));
 const quaternion = z.tuple([n, n, n, n]).transform((v) => new Quaternion(...v));
 const playerFields = z.object({
+  species: z.enum(CHARACTER_SPECIES),
   id: n,
   team: z.union([z.literal(0), z.literal(1)]),
   slot: n,

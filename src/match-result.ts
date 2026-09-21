@@ -17,6 +17,6 @@ export const matchResult = (
     title:
       outcome === "win" ? "YOU WIN!" : outcome === "loss" ? "DEFEAT" : "DRAW",
     score: `${own} — ${opponent}`,
-    teams: team === 0 ? "OTTERS · BEAVERS" : "BEAVERS · OTTERS",
+    teams: team === 0 ? "BLACK · WHITE" : "WHITE · BLACK",
   };
 };

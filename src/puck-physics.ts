@@ -134,7 +134,7 @@ export const advancePuck = (state: Simulation, dt: number): void => {
       const scoring: Team = puck.position.z < 0 ? 0 : 1;
       state.scores[scoring] += 1;
       state.restartTime = 3;
-      announce(state, scoring === 0 ? "Otters score" : "Beavers score", 3);
+      announce(state, scoring === 0 ? "Black scores" : "White scores", 3);
       puck.velocity.set(0, 0, 0);
     } else if (Math.abs(puck.position.z) > POOL.length / 2 - PUCK_RADIUS) {
       puck.position.z =

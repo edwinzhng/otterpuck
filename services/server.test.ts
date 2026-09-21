@@ -90,6 +90,14 @@ test("idle server wakes for a match and sends decodable compact snapshots", asyn
           );
           if (message.type === "session")
             socket.send(JSON.stringify({ type: "start" }));
+          if (message.type === "room" && message.room.phase === "loading")
+            socket.send(
+              JSON.stringify({
+                type: "loaded",
+                loadId: message.room.loadId,
+                ok: true,
+              }),
+            );
           if (message.type === "snapshot") {
             expect(parseSnapshot(message.state)?.players).toHaveLength(12);
             expect(String(event.data).length).toBeLessThan(16000);

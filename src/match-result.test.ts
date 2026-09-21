@@ -7,7 +7,7 @@ test("results celebrate only the human team winning", (): void => {
     outcome: "loss",
     title: "DEFEAT",
     score: "1 — 3",
-    teams: "BEAVERS · OTTERS",
+    teams: "WHITE · BLACK",
   });
   expect(matchResult([1, 3], 1).title).toBe("YOU WIN!");
   expect(matchResult([1, 3], 0).outcome).toBe("loss");

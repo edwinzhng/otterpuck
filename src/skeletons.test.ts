@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import { AnimationMixer, type Object3D, SkinnedMesh, Vector3 } from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { clone } from "three/addons/utils/SkeletonUtils.js";
+import { CHARACTER_SPECIES } from "./characters";
 import { shareCharacterSkeleton } from "./skeletons";
 
 const skins = (model: Object3D): SkinnedMesh[] => {
@@ -12,7 +13,7 @@ const skins = (model: Object3D): SkinnedMesh[] => {
   return result;
 };
 test("sharing identical skeleton uploads preserves animated vertices and independent swimmers", async (): Promise<void> => {
-  for (const species of ["otter", "beaver"]) {
+  for (const species of CHARACTER_SPECIES) {
     const asset = await new GLTFLoader().parseAsync(
       await Bun.file(`public/models/characters/${species}.glb`).arrayBuffer(),
       "",

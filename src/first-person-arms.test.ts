@@ -1,6 +1,8 @@
 import { expect, test } from "bun:test";
 import { Mesh, PerspectiveCamera, Scene, SkinnedMesh, Vector3 } from "three";
 import { createAvatar } from "./avatar";
+import { CHARACTER_SPECIES } from "./characters";
+import { updateFirstPersonArms } from "./first-person-arms";
 import { createSimulation, stepSimulation } from "./simulation";
 import { STICK_GRIP } from "./stick";
 import {
@@ -63,39 +65,17 @@ test("the flat playing pose extends a continuous arm forward while keeping the p
         if (object instanceof Mesh && object !== view.stick)
           visible.push(object);
       });
-      expect(visible.length).toBeGreaterThanOrEqual(3);
+      expect(visible.length).toBe(2);
       for (const mesh of visible)
-        expect([
-          `FirstPersonArm${side}`,
-          `GripPaw${side}Mitten`,
-          `GripPaw${side}Cuff`,
-        ]).toContain(mesh.name);
-      const partial = avatar.firstPersonArms.get(side)?.at(0);
+        expect([`FirstPersonArm${side}`, `GripPaw${side}Mitten`]).toContain(
+          mesh.name,
+        );
+      const partial = avatar.firstPersonArms.get(side)?.mesh;
       const mitten = visible.find(
         (mesh): boolean => mesh.name === `GripPaw${side}Mitten`,
       );
       if (!partial || !(mitten instanceof SkinnedMesh))
         throw new Error("Missing authored first-person arm");
-      expect(partial.skeleton).toBe(mitten.skeleton);
-      const edges = new Map<string, number>();
-      const indices = partial.geometry.getIndex();
-      if (!indices) throw new Error("Missing arm faces");
-      for (const triangle of Array.from(
-        { length: indices.count / 3 },
-        (_, i): number => i,
-      )) {
-        const corners = [0, 1, 2].map((corner): number =>
-          indices.getX(triangle * 3 + corner),
-        );
-        for (const [i, a] of corners.entries()) {
-          const b = corners.at((i + 1) % 3) ?? a;
-          const key = `${Math.min(a, b)}:${Math.max(a, b)}`;
-          edges.set(key, (edges.get(key) ?? 0) + 1);
-        }
-      }
-      expect([...edges.values()].every((count): boolean => count === 2)).toBe(
-        true,
-      );
       const camera = new PerspectiveCamera(77, 1.5, 0.01, 100);
       camera.position.copy(player.position).add(CAMERA_OFFSET);
       camera.rotation.order = "YXZ";
@@ -120,6 +100,69 @@ test("the flat playing pose extends a continuous arm forward while keeping the p
       poseSwimmer(view, player, state.time, true, 1, false);
       expect(avatar.root.visible).toBe(true);
       expect(view.stick.visible).toBe(true);
+    }
+  }
+});
+
+test("every species has an off-camera arm root and a round glove at the unchanged grip", async (): Promise<void> => {
+  const proxy = await loadFirstPersonModel();
+  for (const species of CHARACTER_SPECIES) {
+    const asset = await loadCharacterModel(species);
+    for (const handedness of ["left", "right"] as const) {
+      const scene = new Scene();
+      const view = createSwimmerView(proxy.scene, 0, scene);
+      const avatar = createAvatar(asset.scene, asset.animations);
+      view.avatar = avatar;
+      scene.add(avatar.root);
+      const state = createSimulation(
+        "2-3-1",
+        "2-3-1",
+        "playground",
+        180,
+        handedness,
+      );
+      const player = state.players[0];
+      if (!player) throw new Error("Missing player");
+      const side = handedness === "right" ? "R" : "L";
+      const arm = avatar.firstPersonArms.get(side);
+      const mitten = avatar.model.getObjectByName(`GripPaw${side}Mitten`);
+      if (!arm || !(mitten instanceof SkinnedMesh))
+        throw new Error(`Missing ${species} arm`);
+      for (const pitch of [-1.2, -0.5, 0.3]) {
+        poseSwimmer(view, player, state.time, true, 1, true);
+        const before = arm.paw.getWorldPosition(new Vector3());
+        const camera = new PerspectiveCamera(100, 390 / 844, 0.045, 100);
+        camera.position.copy(player.position).add(CAMERA_OFFSET);
+        camera.rotation.order = "YXZ";
+        camera.rotation.set(pitch, player.yaw, 0);
+        updateFirstPersonArms(avatar.firstPersonArms, camera);
+        expect(arm.paw.getWorldPosition(new Vector3()).distanceTo(before)).toBe(
+          0,
+        );
+        const positions = arm.mesh.geometry.getAttribute("position");
+        for (let i = 0; i < 32; i++) {
+          const root = arm.mesh.localToWorld(
+            new Vector3().fromBufferAttribute(positions, i),
+          );
+          expect(camera.worldToLocal(root).z).toBeGreaterThan(0.1);
+          const wrist = arm.mesh.localToWorld(
+            new Vector3().fromBufferAttribute(
+              positions,
+              positions.count - 32 + i,
+            ),
+          );
+          const center = arm.paw.localToWorld(arm.grip.clone());
+          expect(wrist.distanceTo(center)).toBeCloseTo(0.033, 5);
+        }
+        expect(arm.mesh.geometry.getIndex()?.count).toBeLessThan(2500);
+      }
+      const vertices = mitten.geometry.getAttribute("position");
+      const center = mitten.geometry.boundingBox?.getCenter(new Vector3());
+      if (!center) throw new Error("Missing glove bounds");
+      for (let i = 0; i < vertices.count; i++)
+        expect(
+          new Vector3().fromBufferAttribute(vertices, i).distanceTo(center),
+        ).toBeCloseTo(0.04, 3);
     }
   }
 });

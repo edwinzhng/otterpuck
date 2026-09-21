@@ -9,6 +9,11 @@ import {
   RGBAFormat,
 } from "three";
 import { sampleCharacterRamp } from "./character-look";
+import {
+  characterSurfaceFragment,
+  characterSurfaceVertex,
+} from "./character-surface";
+import type { CharacterSpecies } from "./characters";
 
 const rampSize = 128;
 const gradient = new DataTexture(
@@ -31,6 +36,7 @@ gradient.needsUpdate = true;
 export const applyCharacterStyle = (
   model: Object3D,
   look: "soft" | "standard" = "soft",
+  species: CharacterSpecies = "otter",
 ): Material[] => {
   const converted = new Map<Material, Material>();
   const convert = (source: Material): Material => {
@@ -54,7 +60,35 @@ export const applyCharacterStyle = (
       transparent: source.transparent,
       opacity: source.opacity,
     });
+    const coat = /^(Fur|Paw fur|Ear inner)$/.test(source.name);
+    const satin = /^(Cap|Team|Team seam|Mitten|Beak|Ivory)$/.test(source.name);
     material.onBeforeCompile = (shader): void => {
+      if (coat) {
+        shader.vertexShader =
+          `${characterSurfaceVertex}\n${shader.vertexShader}`.replace(
+            "#include <begin_vertex>",
+            "#include <begin_vertex>\nvCoatPosition = position; vCoatNormal = normal;",
+          );
+        shader.fragmentShader =
+          `${characterSurfaceFragment(species)}\n${shader.fragmentShader}`
+            .replace(
+              "#include <color_fragment>",
+              `#include <color_fragment>
+float detailFade = 1. - smoothstep(.001, .003, length(fwidth(vCoatPosition)));
+float relief = coatRelief(vCoatPosition);
+float wash = .5 + .5 * sin(vCoatPosition.y * 19. + sin(vCoatPosition.x * 23.));
+diffuseColor.rgb *= .98 + wash * .04 + (relief - .5) * .07 * detailFade;`,
+            )
+            .replace(
+              "#include <normal_fragment_maps>",
+              `#include <normal_fragment_maps>
+vec3 surfaceX = dFdx(-vViewPosition), surfaceY = dFdy(-vViewPosition);
+vec3 crossX = cross(surfaceY, normal), crossY = cross(normal, surfaceX);
+float determinant = dot(surfaceX, crossX);
+vec3 reliefGradient = sign(determinant) * (dFdx(relief) * crossX + dFdy(relief) * crossY);
+normal = normalize(max(abs(determinant), 1e-10) * normal - reliefGradient * .00008 * detailFade);`,
+            );
+      }
       shader.fragmentShader = shader.fragmentShader
         .replace(
           "#include <gradientmap_pars_fragment>",
@@ -67,12 +101,23 @@ vec3 getGradientIrradiance(vec3 surfaceNormal, vec3 lightDirection) {
         .replace(
           "#include <opaque_fragment>",
           `float softContour = smoothstep(0.0, 0.85, max(0.0, dot(normal, normalize(vViewPosition))));
-outgoingLight *= mix(vec3(.76,.81,.87), vec3(1.0), softContour);
+outgoingLight *= mix(vec3(.84,.88,.94), vec3(1.0), softContour);
+${coat ? "outgoingLight += diffuseColor.rgb * pow(1. - max(0., dot(normal, normalize(vViewPosition))), 3.) * .10;" : ""}
+${
+  satin
+    ? `
+#if NUM_DIR_LIGHTS > 0
+vec3 sheenHalf = normalize(directionalLights[0].direction + normalize(vViewPosition));
+outgoingLight += vec3(1.,.97,.90) * pow(max(0., dot(normal, sheenHalf)), 24.) * .14;
+#endif
+`
+    : ""
+}
 #include <opaque_fragment>`,
         );
     };
     material.customProgramCacheKey = (): string =>
-      "otterpuck-soft-color-ramp-2";
+      `otterpuck-soft-surface-4:${coat ? species : "plain"}:${satin}`;
     material.name = source.name;
     material.userData = { ...source.userData };
     converted.set(source, material);

@@ -12,7 +12,10 @@ export const renderPlayerLabels = (
   state: Simulation,
   camera: PerspectiveCamera,
   alpha: number,
+  pixelRatio: number,
 ): void => {
+  const width = ui.canvas.width / pixelRatio;
+  const height = ui.canvas.height / pixelRatio;
   const showPositions = teamSize(state.formations[0]) !== 2;
   const direction =
     state.restartTime > 0 || state.finished
@@ -24,8 +27,8 @@ export const renderPlayerLabels = (
             alpha,
           ),
           camera,
-          ui.canvas.clientWidth,
-          ui.canvas.clientHeight,
+          width,
+          height,
         );
   ui.elements.puckIndicator.classList.toggle("hidden", !direction);
   if (direction) {
@@ -46,8 +49,7 @@ export const renderPlayerLabels = (
     const position = playerPosition(state, player);
     if (label.textContent !== position.name) label.textContent = position.name;
     label.title = position.name;
-    label.classList.toggle("beaver", player.team === 1);
-    label.style.left = `${(point.x + 1) * 50}%`;
-    label.style.top = `${(1 - point.y) * 50}%`;
+    label.classList.toggle("team-white", player.team === 1);
+    label.style.transform = `translate(${((point.x + 1) * width) / 2}px, ${((1 - point.y) * height) / 2}px) translate(-50%, -50%)`;
   }
 };

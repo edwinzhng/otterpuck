@@ -20,6 +20,7 @@ import type { Region } from "./regions";
 import { localView, packSnapshot, parseSnapshot } from "./snapshot";
 export type Session = {
   start: () => void;
+  loaded: (loadId: number, ok: boolean) => void;
   settings: (
     change: Omit<Extract<ClientMessage, { type: "settings" }>, "type">,
   ) => void;
@@ -264,7 +265,7 @@ export const connectRoom = (
             match = createNetworkMatch(createRoomSimulation(room));
             hostAdvancedAt = performance.now();
           }
-          match?.roster(room.members);
+          match?.roster(room.members, room.teamSpecies);
           if (match && self === room.hostId) publishHost();
           if (
             room.phase === "playing" &&
@@ -287,7 +288,7 @@ export const connectRoom = (
           const state = parseSnapshot(message.state);
           if (state) {
             match = createNetworkMatch(state);
-            match.roster(room.members);
+            match.roster(room.members, room.teamSpecies);
             hostAdvancedAt = performance.now();
             publishHost();
           }
@@ -377,6 +378,7 @@ export const connectRoom = (
   connect();
   return {
     start: (): void => send({ type: "start" }),
+    loaded: (loadId, ok): void => send({ type: "loaded", loadId, ok }),
     settings: (change): void => {
       if (!room || room.hostId !== self || room.phase !== "waiting") return;
       send({ type: "settings", ...change });

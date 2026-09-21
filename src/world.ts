@@ -9,11 +9,12 @@ import {
   ExtrudeGeometry,
   Float32BufferAttribute,
   FogExp2,
+  Frustum,
   Group,
   InstancedMesh,
   Line,
   LineBasicMaterial,
-  type Material,
+  Matrix4,
   Mesh,
   MeshBasicMaterial,
   MeshStandardMaterial,
@@ -27,6 +28,9 @@ import {
   Scene,
   type ShaderMaterial,
   Shape,
+  type Skeleton,
+  SkinnedMesh,
+  Sphere,
   SRGBColorSpace,
   Vector3,
   WebGLRenderer,
@@ -42,12 +46,19 @@ import {
 import { assetUrl } from "./asset-url";
 import { type Avatar, createAvatar, poseAvatar } from "./avatar";
 import { type BubbleField, createBubbles, updateBubbles } from "./bubbles";
-import { applyCharacterStyle } from "./character-style";
+import {
+  colorCharacterEquipment,
+  createCharacterModel,
+  disposeCharacterMaterials,
+  loadCharacter,
+} from "./character-assets";
 import {
   applyCharacterVisorReflection,
   createCharacterVisorReflection,
 } from "./character-visor";
+import type { CharacterSpecies } from "./characters";
 import { atPlayingDepth } from "./depth";
+import { updateFirstPersonArms } from "./first-person-arms";
 import { createSwimMotion, type SwimMotion, updateSwimMotion } from "./motion";
 import { createShadowTexture, updateShadows } from "./shadows";
 import { shareCharacterSkeleton } from "./skeletons";
@@ -77,6 +88,10 @@ type SwimmerView = {
   stick: Mesh;
   motion: SwimMotion;
   avatar?: Avatar;
+  appearance?: string;
+  pendingAppearance?: string;
+  appearanceTask?: Promise<void>;
+  appearanceRetryAt?: number;
 };
 export type World = {
   renderer: WebGLRenderer;
@@ -100,6 +115,7 @@ export type World = {
   glance: number;
   reviewCamera?: CameraRig["reviewCamera"];
   visorReflection?: ReturnType<typeof createCharacterVisorReflection>;
+  reviewCharacter?: CharacterSpecies;
 };
 
 const material = (
@@ -272,6 +288,12 @@ export const setWorldArena = async (
     disposeArena(arena);
     return false;
   }
+  // Compile only the incoming arena; live swimmer materials may change meanwhile.
+  await world.renderer.compileAsync(arena.root, world.camera, world.scene);
+  if (request !== world.arenaRequest || !shouldApply()) {
+    disposeArena(arena);
+    return false;
+  }
   if (beforeApply) await beforeApply();
   if (request !== world.arenaRequest || !shouldApply()) {
     disposeArena(arena);
@@ -307,7 +329,6 @@ export const setWorldArena = async (
   captureWater(world.water, world.renderer, world.scene);
   for (const [index, object] of hidden.entries())
     object.visible = visibility.at(index) ?? true;
-  await world.renderer.compileAsync(world.scene, world.camera);
   return request === world.arenaRequest;
 };
 
@@ -336,33 +357,10 @@ export const createSwimmerView = (
     }
     if (object instanceof Mesh) {
       meshes.push(object);
-      const materials = Array.isArray(object.material)
-        ? object.material
-        : [object.material];
-      const mapped = materials.map((original: Material): Material => {
-        if (!(original instanceof MeshStandardMaterial)) return original;
-        const name = original.name.replace(/\.\d{3}$/, "");
-        if (name === "Team" || name === "Cap") {
-          const changed = original.clone();
-          changed.color.set(
-            name === "Team"
-              ? index < 6
-                ? 0x1674c9
-                : 0xc52b42
-              : index < 6
-                ? 0x1674c9
-                : 0xc52b42,
-          );
-          return changed;
-        }
-        return original;
-      });
-      object.material = Array.isArray(object.material)
-        ? mapped
-        : (mapped.at(0) ?? object.material);
       if (object.name === "Stick") object.visible = false;
     }
   });
+  colorCharacterEquipment(model, index < 6 ? 0 : 1);
   root.add(model);
   scene.add(root);
   root.updateMatrixWorld(true);
@@ -417,30 +415,111 @@ export const createSwimmerView = (
     motion: createSwimMotion(model, clips),
   };
 };
-export const loadSwimmers = async (world: World): Promise<void> => {
+export const loadSwimmers = async (
+  world: World,
+  reviewCharacter?: CharacterSpecies,
+): Promise<void> => {
   const loader = new GLTFLoader();
-  const [gltf, otter, beaver] = await Promise.all([
-    loader.loadAsync(assetUrl("/models/otter-paws.glb")),
-    loader.loadAsync(assetUrl("/models/characters/otter.glb")),
-    loader.loadAsync(assetUrl("/models/characters/beaver.glb")),
-  ]);
-  applyCharacterStyle(otter.scene);
-  applyCharacterStyle(beaver.scene);
+  const gltf = await loader.loadAsync(assetUrl("/models/otter-paws.glb"));
+  world.reviewCharacter = reviewCharacter;
   world.visorReflection = createCharacterVisorReflection(world.renderer);
-  applyCharacterVisorReflection(otter.scene, world.visorReflection.texture);
-  applyCharacterVisorReflection(beaver.scene, world.visorReflection.texture);
   world.swimmers = Array.from(
     { length: 12 },
     (_: unknown, index: number): SwimmerView => {
       const view = createSwimmerView(gltf.scene, index, world.scene);
-      const asset = index < 6 ? otter : beaver;
-      view.avatar = createAvatar(asset.scene, asset.animations);
-      world.scene.add(view.avatar.root);
       return view;
     },
   );
-  world.loaded = true;
   await world.renderer.compileAsync(world.scene, world.camera);
+  world.loaded = true;
+};
+
+const prepareSwimmer = (
+  world: World,
+  view: SwimmerView,
+  player: Player,
+): Promise<void> => {
+  const species =
+    player.team === 0 && world.reviewCharacter
+      ? world.reviewCharacter
+      : player.species;
+  const team = player.team;
+  const appearance = `${species}:${team}`;
+  if (view.appearance === appearance) {
+    view.pendingAppearance = appearance;
+    view.appearanceTask = undefined;
+    return Promise.resolve();
+  }
+  if (view.pendingAppearance === appearance && view.appearanceTask)
+    return view.appearanceTask;
+  view.pendingAppearance = appearance;
+  const task = loadCharacter(species)
+    .then((asset): void => {
+      if (!world.loaded || view.pendingAppearance !== appearance) return;
+      const model = createCharacterModel(asset.scene, species, team);
+      if (world.visorReflection)
+        applyCharacterVisorReflection(model, world.visorReflection.texture);
+      if (view.avatar) {
+        disposeSwimmerAvatar(view.avatar);
+      }
+      view.avatar = createAvatar(model, asset.animations);
+      view.avatar.root.visible = false;
+      world.scene.add(view.avatar.root);
+      disposeCharacterMaterials(view.model);
+      colorCharacterEquipment(view.model, team, species);
+      if (view.stick.material instanceof MeshStandardMaterial)
+        view.stick.material.color.set(team === 0 ? 0x17242c : 0xe8e9d5);
+      view.appearance = appearance;
+    })
+    .catch((error: unknown): never => {
+      if (view.pendingAppearance === appearance) {
+        view.pendingAppearance = undefined;
+        view.appearanceTask = undefined;
+        view.appearanceRetryAt = performance.now() + 3000;
+      }
+      throw error;
+    });
+  view.appearanceTask = task;
+  return task;
+};
+
+const disposeSwimmerAvatar = (avatar: Avatar): void => {
+  for (const arm of avatar.firstPersonArms.values())
+    arm.mesh.geometry.dispose();
+  avatar.root.removeFromParent();
+  avatar.motion.mixer.stopAllAction();
+  avatar.motion.mixer.uncacheRoot(avatar.model);
+  const skeletons = new Set<Skeleton>();
+  avatar.model.traverse((object): void => {
+    if (object instanceof SkinnedMesh) skeletons.add(object.skeleton);
+  });
+  for (const skeleton of skeletons) skeleton.dispose();
+  disposeCharacterMaterials(avatar.model);
+};
+
+export const prepareSwimmers = async (
+  world: World,
+  players: readonly Player[],
+): Promise<void> => {
+  await Promise.all(
+    players.map((player): Promise<void> => {
+      const view = world.swimmers.at(player.id);
+      return view ? prepareSwimmer(world, view, player) : Promise.resolve();
+    }),
+  );
+  const roots = world.swimmers.flatMap((view) =>
+    view.avatar ? [view.avatar.root] : [],
+  );
+  const visibility = roots.map((root) => root.visible);
+  for (const root of roots) root.visible = true;
+  let compiled: Promise<Object3D>;
+  try {
+    compiled = world.renderer.compileAsync(world.scene, world.camera);
+  } finally {
+    for (const [index, root] of roots.entries())
+      root.visible = visibility[index] ?? false;
+  }
+  await compiled;
 };
 
 const positionHeldStick = (
@@ -623,6 +702,27 @@ const updateShaderTime = (
     if (shader.uniforms.uTime) shader.uniforms.uTime.value = time;
 };
 
+const swimmerFrustum = new Frustum();
+const viewProjection = new Matrix4();
+const swimmerBounds = new Sphere(new Vector3(), 1.5);
+
+export const swimmerInView = (
+  camera: PerspectiveCamera,
+  player: Player,
+  alpha: number,
+): boolean => {
+  swimmerBounds.center.lerpVectors(player.previous, player.position, alpha);
+  // Include the animated tail, reach and stick, not just the player collider.
+  return swimmerFrustum
+    .setFromProjectionMatrix(
+      viewProjection.multiplyMatrices(
+        camera.projectionMatrix,
+        camera.matrixWorldInverse,
+      ),
+    )
+    .intersectsSphere(swimmerBounds);
+};
+
 export const renderWorld = (
   world: World,
   state: Simulation,
@@ -637,6 +737,13 @@ export const renderWorld = (
   if (world.arena) world.arena.time.value = time;
   updateShaderTime(world.shaders, time);
   if (world.arena) updateShaderTime(world.arena.shaders, time);
+  world.puck.position.lerpVectors(
+    state.puck.previous,
+    state.puck.position,
+    alpha,
+  );
+  updateWorldCamera(world, state, dt, active, pitch, alpha, liftHead, glance);
+  world.camera.updateMatrixWorld();
   for (const [index, view] of world.swimmers.entries()) {
     const player = state.players.find(
       (candidate): boolean => candidate.id === index,
@@ -644,24 +751,38 @@ export const renderWorld = (
     view.root.visible = Boolean(player);
     view.stick.visible = Boolean(player);
     if (view.avatar) view.avatar.root.visible = Boolean(player);
-    if (player)
-      poseSwimmer(
-        view,
-        player,
-        time,
-        active,
-        alpha,
+    if (player) {
+      const firstPerson =
         active &&
-          player.id === state.players.at(0)?.id &&
-          (world.reviewCamera?.firstPerson ?? true) &&
-          !(state.mode === "playground" && state.playground.camera === "side"),
-      );
+        player.id === state.players[0]?.id &&
+        (world.reviewCamera?.firstPerson ?? true) &&
+        !(state.mode === "playground" && state.playground.camera === "side");
+      if (
+        view.avatar &&
+        !firstPerson &&
+        !swimmerInView(world.camera, player, alpha)
+      ) {
+        view.root.visible =
+          view.stick.visible =
+          view.avatar.root.visible =
+            false;
+        continue;
+      }
+      const species =
+        player.team === 0 && world.reviewCharacter
+          ? world.reviewCharacter
+          : player.species;
+      const appearance = `${species}:${player.team}`;
+      if (
+        active &&
+        world.loaded &&
+        view.pendingAppearance !== appearance &&
+        performance.now() >= (view.appearanceRetryAt ?? 0)
+      )
+        void prepareSwimmer(world, view, player).catch(console.warn);
+      poseSwimmer(view, player, time, active, alpha, firstPerson);
+    }
   }
-  world.puck.position.lerpVectors(
-    state.puck.previous,
-    state.puck.position,
-    alpha,
-  );
   world.puck.quaternion.slerpQuaternions(
     state.puck.previousOrientation,
     state.puck.orientation,
@@ -675,7 +796,9 @@ export const renderWorld = (
     positions.needsUpdate = true;
     world.trail.geometry.setDrawRange(0, state.playground.trace.length);
   }
-  updateWorldCamera(world, state, dt, active, pitch, alpha, liftHead, glance);
+  for (const swimmer of world.swimmers)
+    if (swimmer.avatar?.root.visible)
+      updateFirstPersonArms(swimmer.avatar.firstPersonArms, world.camera);
   updateShadows(world.shadows, state);
   updateBubbles(world.bubbles, state.players, dt, time);
   const heightUniform = world.bubbles.points.material.uniforms.uHeight;
@@ -693,6 +816,9 @@ export const renderWorld = (
 };
 
 export const disposeWorld = (world: World): void => {
+  world.loaded = false;
+  for (const view of world.swimmers)
+    if (view.avatar) disposeSwimmerAvatar(view.avatar);
   world.arenaRequest += 1;
   if (world.arena) {
     world.scene.remove(world.arena.root);

@@ -24,6 +24,7 @@ export const createUI = (): UI => {
     mode: "match",
     duration: DEFAULT_MATCH_DURATION,
     species: "otter",
+    team: 0,
     position: 0,
     difficulty: "medium",
     swimTurn: DEFAULT_SWIM_TURN,

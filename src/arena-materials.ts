@@ -1,4 +1,57 @@
-import type { MeshToonMaterial, Texture } from "three";
+import {
+  DoubleSide,
+  MeshStandardMaterial,
+  type MeshToonMaterial,
+  type Texture,
+} from "three";
+
+export const createCascadeMaterial = (
+  source: MeshStandardMaterial,
+  time: { value: number },
+): MeshStandardMaterial => {
+  const foam = /Waterfall (white ribbons|foam)/.test(source.name);
+  const material = new MeshStandardMaterial({
+    name: source.name,
+    color: source.color,
+    vertexColors: source.vertexColors,
+    transparent: true,
+    opacity: foam ? 0.85 : 0.88,
+    roughness: foam ? 0.4 : 0.16,
+    metalness: 0.05,
+    side: DoubleSide,
+    depthWrite: false,
+    envMapIntensity: 0.8,
+  });
+  material.onBeforeCompile = (shader): void => {
+    shader.uniforms.uCascadeTime = time;
+    shader.vertexShader =
+      `varying vec3 vCascade;\n${shader.vertexShader}`.replace(
+        "#include <begin_vertex>",
+        "#include <begin_vertex>\nvCascade = (modelMatrix * vec4(transformed, 1.)).xyz;",
+      );
+    shader.fragmentShader =
+      `uniform float uCascadeTime; varying vec3 vCascade;\n${shader.fragmentShader}`
+        .replace(
+          "#include <color_fragment>",
+          `#include <color_fragment>
+        float falling = vCascade.y * 1.7 + uCascadeTime * 6.;
+        float streams = sin(vCascade.x * 31. + sin(vCascade.x * 7.) * 3. + sin(falling) * .16) * .5 + .5;
+        float ripple = sin(falling + sin(vCascade.x * 4.) * .3) * .5 + .5;
+        float foam = smoothstep(.82, .99, streams) * (.35 + .65 * ripple);
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.86,.98,1.), foam * .42);
+        diffuseColor.a *= .85 + .15 * ripple;
+      `,
+        )
+        .replace(
+          "#include <normal_fragment_maps>",
+          `#include <normal_fragment_maps>
+        normal = normalize(normal + vec3(sin(vCascade.x * 16. + falling) * .09, cos(falling * 1.7) * .06, 0.));
+      `,
+        );
+  };
+  material.customProgramCacheKey = (): string => "cascade-flow-1";
+  return material;
+};
 
 export const finishArenaMaterial = (
   material: MeshToonMaterial,
@@ -7,15 +60,16 @@ export const finishArenaMaterial = (
   rockTexture?: Texture,
 ): void => {
   const name = material.name;
-  const kind = /Palm green|Sunlit foliage/.test(name)
-    ? "leaf"
-    : /Island stone/.test(name)
-      ? "rock"
-      : /Palm bark/.test(name)
-        ? "bark"
-        : /limestone|Canvas|ceramic/.test(name)
-          ? "stone"
-          : "plain";
+  const kind =
+    /Palm green|Sunlit foliage|pine needles|Canopy .*green|Rock moss/.test(name)
+      ? "leaf"
+      : /Island stone/.test(name)
+        ? "rock"
+        : /Palm bark/.test(name)
+          ? "bark"
+          : /limestone|Canvas|ceramic/.test(name)
+            ? "stone"
+            : "plain";
   const color =
     kind === "leaf"
       ? `
@@ -30,7 +84,7 @@ export const finishArenaMaterial = (
       + texture2D(uRockTexture, vPaintPosition.xz * .085).rgb * blend.y
       + texture2D(uRockTexture, vPaintPosition.xy * .085).rgb * blend.z;
     float value = dot(painted, vec3(.2126,.7152,.0722));
-    diffuseColor.rgb *= .58 + value * 1.5;
+    diffuseColor.rgb *= .96 + value * .08;
   `
         : kind === "bark"
           ? `
@@ -80,5 +134,5 @@ export const finishArenaMaterial = (
         );
   };
   material.customProgramCacheKey = (): string =>
-    `arena-soft-paint-3:${kind}:${wind}`;
+    `arena-soft-paint-5:${kind}:${wind}`;
 };

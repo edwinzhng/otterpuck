@@ -1,4 +1,11 @@
-import { assetUrl } from "./asset-url";
+import { ARENA_IDS, ARENA_LABELS, isArenaId } from "./arena-catalog";
+import {
+  bindCharacterRoster,
+  characterChoiceMarkup,
+  characterRosterMarkup,
+  showCharacterRoster,
+  updateCharacterChoice,
+} from "./character-roster";
 import {
   BOT_DIFFICULTY_OPTIONS,
   botDifficultyChoice,
@@ -61,14 +68,18 @@ export const lobbyMarkup = (): string => `
       <footer class="home-credit">Made with <a href="https://calgaryuwh.com/" target="_blank" rel="noopener noreferrer" aria-label="Calgary Crocs"><span aria-hidden="true">🐊</span></a> by <a href="https://edwinzhang.com" target="_blank" rel="noopener noreferrer">Edwin Zhang</a></footer>
     </section>
     <section class="lobby-screen map-screen" data-screen="map" aria-label="Map" hidden>
-      <h1>Map</h1><div class="map-cards">
-        ${cardButton(`<img data-src="${assetUrl("/art/arenas/tropical-map.webp")}" decoding="async" alt="Full Tropical Cove pool"/><strong>Tropical Cove</strong>`, "map-card tropical-card", 'data-arena="tropical"')}
-        ${cardButton(`<img data-src="${assetUrl("/art/arenas/city-map.webp")}" decoding="async" alt="Full Neon Rooftop pool"/><strong>Neon Rooftop</strong>`, "map-card city-card", 'data-arena="city"')}
+      <h1>Choose your map</h1><div class="map-cards">
+        ${ARENA_IDS.map((id): string => cardButton(`<img data-arena-preview="${id}" alt="Angled view of ${ARENA_LABELS[id]}" hidden/><strong>${ARENA_LABELS[id]}</strong>`, `map-card ${id}-card`, `data-arena="${id}"`)).join("")}
       </div>
     </section>
+    <section class="lobby-screen character-screen" data-screen="character" aria-label="Character" hidden>
+      <h1>Choose your character</h1>
+      ${characterRosterMarkup()}
+    </section>
     <section class="lobby-screen setup-screen" data-screen="setup" data-mode="match" aria-label="Game setup" hidden>
-      <div class="selected-map"><img id="selected-map-image" data-src="${assetUrl("/art/arenas/tropical-map.webp")}" decoding="async" alt="Selected pool"/>${cardButton('Tropical Cove <span aria-hidden="true">↩</span>', "", 'id="change-map"')}</div>
+      <div class="selected-map"><img id="selected-map-image" data-arena-preview="tropical" alt="Selected pool" hidden/>${cardButton('Tropical Cove <span aria-hidden="true">↩</span>', "", 'id="change-map"')}</div>
       <div class="setup-panel"><h1 id="selected-mode">Quick match</h1>
+        ${button("change-character", characterChoiceMarkup("otter"), "secondary")}
         <section class="setup-section game-setup" data-match-only><h2>Setup</h2>
           <fieldset><legend>Match size</legend><div class="segmented setup-segmented">${TEAM_SIZES.map(
             (size): string =>
@@ -89,7 +100,7 @@ export const lobbyMarkup = (): string => `
           ${field("difficulty", "Bot skill", BOT_DIFFICULTY_OPTIONS)}
         </section>
         <section class="setup-section team-setup"><h2>Team</h2>
-          <fieldset class="team-choice" aria-label="Team"><div class="segmented">${segmentedButton("Otters", true, 'data-species="otter"', "otters")}${segmentedButton("Beavers", false, 'data-species="beaver"', "beavers")}</div></fieldset>
+          <fieldset class="team-choice" aria-label="Team"><div class="segmented">${segmentedButton("Black", true, 'data-team="0"', "team-black")}${segmentedButton("White", false, 'data-team="1"', "team-white")}</div></fieldset>
           <div class="team-match-settings" data-match-only>
             ${field(
               "formation",
@@ -113,29 +124,39 @@ export const lobbyMarkup = (): string => `
       </div>
     </section>
     <p id="load-status" class="load-status" role="status">Loading…</p>
-    <select id="arena" aria-label="Arena" hidden><option value="tropical">Tropical Cove</option><option value="city">Neon Rooftop</option></select>
+    <select id="arena" aria-label="Arena" hidden>${ARENA_IDS.map((id): string => `<option value="${id}">${ARENA_LABELS[id]}</option>`).join("")}</select>
   </div>`;
 
 export const bindLobby = (ui: UI): void => {
   const back = document.querySelector<HTMLButtonElement>("#lobby-back");
-  const state = { screen: "mode" };
+  const state = { screen: "mode", characterBack: "map" };
+  const roster = document.querySelector<HTMLElement>(".character-screen");
   const show = (screen: string): void => {
     state.screen = screen;
     for (const element of document.querySelectorAll<HTMLElement>(
       "[data-screen]",
     ))
       element.hidden = element.dataset.screen !== screen;
-    for (const image of document.querySelectorAll<HTMLImageElement>(
-      `[data-screen="${screen}"] img[data-src]`,
-    )) {
-      image.src = image.dataset.src ?? "";
-      delete image.dataset.src;
-    }
+    if (screen === "map" || screen === "setup")
+      void import("./arena-previews")
+        .then(({ showArenaPreviews }): Promise<void> => showArenaPreviews())
+        .catch((error: unknown): void => {
+          console.warn("Map previews could not load", error);
+        });
     if (back) back.hidden = screen === "mode";
+    if (screen === "character" && roster)
+      showCharacterRoster(roster, ui.species);
   };
-  back?.addEventListener("click", (): void =>
-    show(state.screen === "setup" ? "map" : "mode"),
-  );
+  back?.addEventListener("click", (): void => {
+    if (state.screen === "setup") state.characterBack = "map";
+    show(
+      state.screen === "setup"
+        ? "character"
+        : state.screen === "character"
+          ? state.characterBack
+          : "mode",
+    );
+  });
   window.addEventListener("keydown", (event: KeyboardEvent): void => {
     if (
       event.key !== "Escape" ||
@@ -157,6 +178,20 @@ export const bindLobby = (ui: UI): void => {
   document
     .querySelector("#change-map")
     ?.addEventListener("click", (): void => show("map"));
+  document
+    .querySelector("#change-character")
+    ?.addEventListener("click", (): void => {
+      state.characterBack = "setup";
+      show("character");
+    });
+  if (roster)
+    bindCharacterRoster(roster, (species): void => {
+      ui.species = species;
+      const label = document.querySelector("#change-character");
+      if (label) updateCharacterChoice(label, species);
+      state.characterBack = "map";
+      show("setup");
+    });
   const formation = document.querySelector<HTMLSelectElement>("#formation");
   const position = document.querySelector<HTMLSelectElement>("#position");
   const selectSegment = (
@@ -265,30 +300,39 @@ export const bindLobby = (ui: UI): void => {
     "[data-arena]",
   ))
     choice.addEventListener("click", (): void => {
-      ui.arena.value = choice.dataset.arena === "city" ? "city" : "tropical";
+      const id = choice.dataset.arena;
+      if (!isArenaId(id)) return;
+      ui.arena.value = id;
       const image = document.querySelector<HTMLImageElement>(
         "#selected-map-image",
       );
-      if (image) image.src = assetUrl(`/art/arenas/${ui.arena.value}-map.webp`);
+      if (image) {
+        if (image.dataset.arenaPreview !== id) {
+          image.removeAttribute("src");
+          image.hidden = true;
+        }
+        image.dataset.arenaPreview = id;
+      }
       const label = document.querySelector("#change-map");
       if (label) {
         const icon = document.createElement("span");
         icon.ariaHidden = "true";
         icon.textContent = "↩";
-        label.replaceChildren(
-          ui.arena.value === "city" ? "Neon Rooftop" : "Tropical Cove",
-          icon,
-        );
+        label.replaceChildren(ARENA_LABELS[id], icon);
       }
       ui.arena.dispatchEvent(new Event("change"));
-      show("setup");
+      state.characterBack = "map";
+      show("character");
     });
   for (const choice of document.querySelectorAll<HTMLButtonElement>(
-    "[data-species]",
+    ".team-choice [data-team]",
   ))
     choice.addEventListener("click", (): void => {
-      ui.species = choice.dataset.species === "beaver" ? "beaver" : "otter";
-      selectSegment("[data-species]", (other): boolean => other === choice);
+      ui.team = choice.dataset.team === "1" ? 1 : 0;
+      selectSegment(
+        ".team-choice [data-team]",
+        (other): boolean => other === choice,
+      );
     });
   const difficulty = document.querySelector<HTMLSelectElement>("#difficulty");
   if (difficulty) difficulty.value = ui.difficulty;

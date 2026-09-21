@@ -15,6 +15,7 @@ import {
   teamPuckCarrier,
   yieldToPuckChaser,
 } from "./bots";
+import type { CharacterSpecies } from "./characters";
 import { avoidBodies, resolveBodies } from "./collisions";
 import { wallLane } from "./formation-layout";
 import { planTeam } from "./formations";
@@ -22,6 +23,7 @@ import { teamSize } from "./positions";
 import { advancePuck, puckFloorHeight } from "./puck-physics";
 import { RULESETS, type Rules } from "./rules";
 import { announce, announceTo } from "./simulation-events";
+import { airRate, staminaRate } from "./vitals";
 
 export {
   goalSurfaceHeight,
@@ -105,6 +107,7 @@ const makePlayer = (
   handedness: Handedness = "right",
   human = id === 0,
   formation: Formation = "2-3-1",
+  species: CharacterSpecies = playerTeam(id) === 0 ? "otter" : "beaver",
 ): Player => {
   const team = playerTeam(id);
   const slot = id % TEAM_STRIDE;
@@ -116,6 +119,7 @@ const makePlayer = (
   return {
     id,
     team,
+    species,
     slot,
     human,
     handedness,
@@ -207,7 +211,7 @@ export const createSimulation = (
   },
   ruleset: Ruleset = selection.ruleset ?? "alternative",
 ): Simulation => {
-  const humanTeam = selection.species === "beaver" ? 1 : 0;
+  const humanTeam = selection.team ?? 0;
   const size = teamSize(formation);
   const humanId =
     humanTeam * TEAM_STRIDE +
@@ -242,6 +246,7 @@ export const createSimulation = (
           id === humanId ? handedness : "right",
           id === humanId,
           playerTeam(id) === humanTeam ? formation : opposition,
+          playerTeam(id) === humanTeam ? selection.species : undefined,
         ),
     ),
     puck: {
@@ -467,28 +472,12 @@ const approachSwimVelocity = (
 
 const rulesFor = (state: Simulation): Rules => RULESETS[state.ruleset];
 
-const staminaFraction = (player: Player): number =>
-  player.stamina / MAX_STAMINA;
-
 const canSprint = (rules: Rules, player: Player): boolean =>
   !rules.sprintGate || player.stamina > (player.sprint ? 0 : rules.sprintFloor);
 
 const updateStamina = (rules: Rules, player: Player, dt: number): void => {
-  const atSurface = player.position.y >= SURFACE_HEIGHT - 0.045;
-  const effort =
-    (player.sprint ? rules.sprintDrain : rules.idleDrain) +
-    rules.kickDrain * Math.min(1, player.kick);
-  const spent = atSurface
-    ? player.sprint
-      ? effort * rules.surfaceSprint
-      : 0
-    : effort;
-  const regained = player.sprint
-    ? 0
-    : (atSurface ? rules.surfaceRecovery : rules.recovery) *
-      (player.emergency ? rules.emergencyRecovery : 1);
   player.stamina = clamp(
-    player.stamina + (regained - spent) * dt,
+    player.stamina + staminaRate(rules, player) * dt,
     0,
     MAX_STAMINA,
   );
@@ -1064,40 +1053,15 @@ const updateAI = (state: Simulation, player: Player, dt: number): void => {
 };
 
 const updateAir = (state: Simulation, player: Player, dt: number): void => {
-  const rules = rulesFor(state);
   const atSurface = player.position.y >= SURFACE_HEIGHT - 0.045;
+  player.air = clamp(player.air + airRate(state, player) * dt, 0, 100);
   if (atSurface) {
-    player.air = clamp(
-      player.air +
-        (dt * (rules.airBase + rules.airStamina * staminaFraction(player))) /
-          rules.airSupply,
-      0,
-      100,
-    );
     if (player.mode !== "diving") player.mode = "recovering";
     if (player.emergency && player.air >= 80) {
       player.emergency = false;
       if (player.human) announceTo(player, "Ready", 2);
     }
   } else {
-    const engaged =
-      player.handling ||
-      player.curl !== 0 ||
-      player.shotTime > 0 ||
-      player.cooldown > 0 ||
-      state.puck.controlOwner === player.id ||
-      (state.puck.lastTouch === player.id &&
-        state.time - state.puck.touchTime < 1.2);
-    const air = rules.airDrain;
-    const drain = engaged
-      ? air.engaged + Math.abs(player.curl) * air.curl
-      : air.idle + Math.min(1, player.kick) * air.kick;
-    player.air = Math.max(
-      0,
-      player.air -
-        (dt * (drain + (1 - staminaFraction(player)) * rules.spentAirDrain)) /
-          (0.75 * rules.airSupply),
-    );
     if (player.air <= 0 && !player.emergency) {
       player.emergency = true;
       player.mode = "ascending";
@@ -1594,6 +1558,7 @@ const resetPositions = (state: Simulation): void => {
       player.handedness,
       player.human,
       state.formations[player.team],
+      player.species,
     );
     Object.assign(player, initial);
     updateStick(player, 1 / 120);

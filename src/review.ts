@@ -1,4 +1,6 @@
 import { Vector3 } from "three";
+import { ARENA_IDS, ARENA_LABELS, isArenaId } from "./arena-catalog";
+import { CHARACTER_SPECIES, type CharacterSpecies } from "./characters";
 import {
   createSimulation,
   resetPracticePuck,
@@ -9,6 +11,7 @@ import {
   createWorld,
   disposeWorld,
   loadSwimmers,
+  prepareSwimmers,
   renderWorld,
   resizeWorld,
   setWorldArena,
@@ -17,9 +20,9 @@ import {
 export const bootReview = async (): Promise<void> => {
   document.body.innerHTML = `<canvas id="pool" aria-label="Otterpuck gameplay movement review"></canvas>
     <div class="review-toolbar"><a href="/">OTTERPUCK</a>
-    <label>Arena <select id="review-arena"><option value="tropical">Tropical Cove</option><option value="city">Neon Rooftop</option></select></label><label>Movement <select id="movement"><option>Swim</option><option>Sprint</option><option>Floor swim</option><option>Floor sprint</option><option>Floor bank left</option><option>Floor bank right</option><option>Swim up</option><option>Dive down</option><option>Bank left</option><option>Bank right</option><option>Glide</option><option>Brake</option><option>Reach</option><option>Puck</option><option>Goal</option><option>Curl</option><option>Reverse curl</option><option>Swerve left</option><option>Swerve right</option></select></label>
-    <label>Species <select id="review-species"><option value="otter">Otter</option><option value="beaver">Beaver</option></select></label>
-    <label>Camera <select id="camera"><option>Side</option><option>Three quarter</option><option>Toward</option><option>Away</option><option>Above</option><option>Below</option><option>Gameplay</option><option>Surface</option><option>Arena</option><option>Trough</option><option>End wall</option><option>Opposite wall</option></select></label>
+    <label>Arena <select id="review-arena">${ARENA_IDS.map((id): string => `<option value="${id}">${ARENA_LABELS[id]}</option>`).join("")}</select></label><label>Movement <select id="movement"><option>Swim</option><option>Sprint</option><option>Floor swim</option><option>Floor sprint</option><option>Floor bank left</option><option>Floor bank right</option><option>Swim up</option><option>Dive down</option><option>Bank left</option><option>Bank right</option><option>Glide</option><option>Brake</option><option>Reach</option><option>Puck</option><option>Goal</option><option>Curl</option><option>Reverse curl</option><option>Swerve left</option><option>Swerve right</option></select></label>
+    <label>Species <select id="review-species">${CHARACTER_SPECIES.map((id): string => `<option value="${id}">${id[0]?.toUpperCase()}${id.slice(1)}</option>`).join("")}</select></label>
+    <label>Camera <select id="camera"><option>Side</option><option>Three quarter</option><option>Toward</option><option>Away</option><option>Above</option><option>Below</option><option>Gameplay</option><option>Surface</option><option>Arena</option><option>Reference</option><option>Trough</option><option>End wall</option><option>Opposite wall</option></select></label>
     <button id="freeze">Pause motion</button><button id="reset">Restart movement</button><button id="capture">Capture frame</button><a id="frame-download" hidden>Save PNG</a><output id="review-status">Loading the game assets…</output></div>`;
   const canvas = document.querySelector("canvas");
   const movement = document.querySelector("#movement");
@@ -37,6 +40,11 @@ export const bootReview = async (): Promise<void> => {
   )
     throw new Error("Movement review controls missing");
   const world = createWorld(canvas);
+  const requestedCharacter = new URL(location.href).searchParams.get(
+    "character",
+  );
+  if (CHARACTER_SPECIES.some((id): boolean => id === requestedCharacter))
+    species.value = requestedCharacter ?? "otter";
   const floorMoves = [
     "Puck",
     "Goal",
@@ -89,7 +97,11 @@ export const bootReview = async (): Promise<void> => {
     if (floorMoves.includes(movement.value)) camera.value = "Gameplay";
   };
   movement.addEventListener("change", reset);
-  species.addEventListener("change", reset);
+  species.addEventListener("change", (): void => {
+    const url = new URL(location.href);
+    url.searchParams.set("character", species.value);
+    location.assign(url);
+  });
   document.querySelector("#reset")?.addEventListener("click", reset);
   document.querySelector("#capture")?.addEventListener("click", (): void => {
     review.capture = true;
@@ -102,15 +114,19 @@ export const bootReview = async (): Promise<void> => {
   window.addEventListener("pagehide", (): void => disposeWorld(world));
   reset();
   await setWorldArena(world, "tropical");
-  await loadSwimmers(world);
+  await loadSwimmers(
+    world,
+    species.value === "otter" || species.value === "beaver"
+      ? undefined
+      : (species.value as CharacterSpecies),
+  );
+  await prepareSwimmers(world, review.state.players);
   document
     .querySelector("#review-arena")
     ?.addEventListener("change", (event): void => {
       if (!(event.target instanceof HTMLSelectElement)) return;
-      setWorldArena(
-        world,
-        event.target.value === "city" ? "city" : "tropical",
-      ).catch(console.error);
+      if (isArenaId(event.target.value))
+        setWorldArena(world, event.target.value).catch(console.error);
     });
   const offsets = new Map<string, Vector3>([
     ["Side", new Vector3(1.55, 0.32, 0)],
@@ -198,6 +214,10 @@ export const bootReview = async (): Promise<void> => {
     if (camera.value === "Arena") {
       position.set(25, 24, 33);
       target.set(0, 2, -3);
+    }
+    if (camera.value === "Reference") {
+      position.set(0, 7, 23);
+      target.set(0, 5, -28);
     }
     if (camera.value === "Trough") {
       const side = player.team === 0 ? -1 : 1;

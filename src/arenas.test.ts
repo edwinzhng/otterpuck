@@ -1,12 +1,16 @@
 import { expect, test } from "bun:test";
 import { Mesh, Raycaster, Vector3 } from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { ARENA_IDS } from "./arena-catalog";
 
-for (const name of ["tropical", "city"]) {
+for (const name of ARENA_IDS) {
   test(`${name} GLB leaves the regulation pool clear, keeps the trough low, and batches scenery`, async (): Promise<void> => {
     const data = await Bun.file(
       new URL(`../public/models/arenas/${name}.glb`, import.meta.url),
     ).arrayBuffer();
+    expect(data.byteLength).toBeLessThan(
+      name === "city" ? 6_300_000 : 3_400_000,
+    );
     const gltf = await new GLTFLoader().parseAsync(data, "");
     gltf.scene.updateMatrixWorld(true);
     const meshes: Mesh[] = [];
@@ -23,6 +27,8 @@ for (const name of ["tropical", "city"]) {
     );
     expect(meshes.length).toBeLessThan(30);
     expect(triangles).toBeLessThan(100_000);
+    for (const mesh of meshes)
+      expect(mesh.geometry.getAttribute("uv")).toBeUndefined();
     const materials = new Set(
       meshes.flatMap((mesh): string[] =>
         (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).map(

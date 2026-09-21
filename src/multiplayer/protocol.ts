@@ -1,6 +1,10 @@
 import { z } from "zod";
+import { ARENA_IDS } from "../arena-catalog";
+import { CHARACTER_SPECIES } from "../characters";
 import { SWIM_TURNS } from "../swim-turn";
-export const PROTOCOL = 5;
+export const PROTOCOL = 10;
+const speciesSchema = z.enum(CHARACTER_SPECIES);
+const teamSpeciesSchema = z.tuple([speciesSchema, speciesSchema]);
 export const teamSizeSchema = z.union([
   z.literal(2),
   z.literal(3),
@@ -68,7 +72,14 @@ export const clientMessageSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("leave") }),
   z.object({ type: z.literal("start") }),
   z.object({
+    type: z.literal("loaded"),
+    loadId: z.number().int().nonnegative(),
+    ok: z.boolean(),
+  }),
+  z.object({
     type: z.literal("settings"),
+    teamSpecies: teamSpeciesSchema.optional(),
+    arena: z.enum(ARENA_IDS).optional(),
     teamSize: teamSizeSchema.optional(),
     swimTurn: swimTurnSchema.optional(),
     difficulty: botDifficultySchema.optional(),
@@ -94,6 +105,7 @@ export const clientMessageSchema = z.discriminatedUnion("type", [
 ]);
 export type ClientMessage = z.infer<typeof clientMessageSchema>;
 export const memberSchema = z.object({
+  species: speciesSchema,
   id: z.string().uuid(),
   name: z.string().max(24),
   playerId: z.number().int().min(0).max(11),
@@ -101,12 +113,15 @@ export const memberSchema = z.object({
   handedness: z.enum(["left", "right"]).optional(),
 });
 export const roomSchema = z.object({
+  arena: z.enum(ARENA_IDS),
   code: z.string(),
   region: z.string(),
   mode: z.enum(["online", "lan"]),
-  phase: z.enum(["waiting", "playing"]),
+  phase: z.enum(["waiting", "loading", "playing"]),
+  loadId: z.number().int().nonnegative(),
   hostId: z.string().uuid(),
   teamSize: teamSizeSchema,
+  teamSpecies: teamSpeciesSchema,
   swimTurn: swimTurnSchema,
   difficulty: botDifficultySchema,
   members: z.array(memberSchema).max(12),

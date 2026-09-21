@@ -240,6 +240,7 @@ test("only the host changes room settings and every guest receives them", (): vo
     teamSize: 2,
     swimTurn: 1.5,
     difficulty: "elite",
+    arena: "desert",
   });
   expect(
     guest.messages.some(
@@ -253,29 +254,34 @@ test("only the host changes room settings and every guest receives them", (): vo
   expect(unchanged.room.teamSize).toBe(6);
   expect(unchanged.room.swimTurn).not.toBe(1.5);
   expect(unchanged.room.difficulty).toBe("medium");
+  expect(unchanged.room.arena).toBe("tropical");
   rooms.message(host, {
     type: "settings",
     teamSize: 3,
     swimTurn: 1.5,
     difficulty: "elite",
+    arena: "forest",
   });
   const synchronized = guest.messages.filter((m) => m.type === "room").at(-1);
   if (synchronized?.type !== "room") throw new Error("No room");
   expect(synchronized.room.teamSize).toBe(3);
   expect(synchronized.room.swimTurn).toBe(1.5);
   expect(synchronized.room.difficulty).toBe("elite");
+  expect(synchronized.room.arena).toBe("forest");
   rooms.message(host, { type: "start" });
   rooms.message(host, {
     type: "settings",
     teamSize: 6,
     swimTurn: 2,
     difficulty: "easy",
+    arena: "alpine",
   });
   const latest = host.messages.filter((m) => m.type === "room").at(-1);
   if (latest?.type !== "room") throw new Error("No room");
   expect(latest.room.teamSize).toBe(3);
   expect(latest.room.swimTurn).toBe(1.5);
   expect(latest.room.difficulty).toBe("elite");
+  expect(latest.room.arena).toBe("forest");
 });
 
 test("an online room plays the match size the host chose", (): void => {
@@ -284,6 +290,7 @@ test("an online room plays the match size the host chose", (): void => {
   rooms.message(host, { type: "create", protocol: PROTOCOL, mode: "online" });
   rooms.message(host, { type: "settings", teamSize: 3 });
   rooms.message(host, { type: "start" });
+  rooms.message(host, { type: "loaded", loadId: 1, ok: true });
   for (let step = 0; step < 20; step++) rooms.tick(1 / 20);
   const snapshot = host.messages
     .filter((m): boolean => m.type === "snapshot")
@@ -305,6 +312,7 @@ test("a room's swim turn and bot difficulty settings reach the match simulation"
   expect(room.room.swimTurn).toBe(1.5);
   expect(room.room.difficulty).toBe("elite");
   rooms.message(host, { type: "start" });
+  rooms.message(host, { type: "loaded", loadId: 1, ok: true });
   for (let step = 0; step < 20; step++) rooms.tick(1 / 20);
   const snapshot = host.messages
     .filter((m): boolean => m.type === "snapshot")

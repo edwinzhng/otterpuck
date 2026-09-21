@@ -43,6 +43,7 @@ export const createAudio = (): PoolAudio => {
     url: string;
     volume: number;
     fadeTimer?: number;
+    preloadTimer?: number;
   };
   const track = (url: string, volume: number): MusicTrack => {
     const gain = context.createGain();
@@ -114,6 +115,9 @@ export const createAudio = (): PoolAudio => {
       });
   }
   const stopTrack = (music: MusicTrack): void => {
+    if (music.preloadTimer !== undefined)
+      window.clearTimeout(music.preloadTimer);
+    music.preloadTimer = undefined;
     if (music.fadeTimer !== undefined) window.clearTimeout(music.fadeTimer);
     music.fadeTimer = undefined;
     const source = music.source;
@@ -174,6 +178,17 @@ export const createAudio = (): PoolAudio => {
       }
     };
     source.start(0, music.offset);
+    const playlist =
+      name === "menu" || name === "menuAlt" ? menuTracks : gameTracks;
+    const next = playlist.find((candidate): boolean => candidate !== name);
+    if (next)
+      music.preloadTimer = window.setTimeout(
+        (): void => {
+          music.preloadTimer = undefined;
+          if (!sound.disposed) loadTrack(musicTracks[next]);
+        },
+        Math.max(0, music.buffer.duration - music.offset - 20) * 1000,
+      );
   };
   const syncPlayback = (fadeSeconds = 1): void => {
     if (sound.disposed) return;
@@ -189,9 +204,9 @@ export const createAudio = (): PoolAudio => {
     const now = context.currentTime;
     const selected = selectedMusic();
     for (const [name, music] of Object.entries(musicTracks)) {
-      loadTrack(music);
       const active = name === selected;
       if (active) {
+        loadTrack(music);
         if (music.fadeTimer !== undefined) window.clearTimeout(music.fadeTimer);
         music.fadeTimer = undefined;
         startTrack(name as MusicName, music);
@@ -274,6 +289,7 @@ export const createAudio = (): PoolAudio => {
       sound.musicScene = "off";
       if (playing) gameTrack = 0;
       if (playing) {
+        if (sound.music) loadTrack(musicTracks.game);
         const now = context.currentTime;
         for (const music of Object.values(musicTracks)) {
           music.gain.gain.cancelScheduledValues(now);
