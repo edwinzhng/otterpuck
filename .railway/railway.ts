@@ -18,7 +18,7 @@ export default defineRailway(() => {
           ".railway/**",
         ],
       },
-      start: "bun run services/server.ts",
+      start: "bun server.js",
       healthcheck: "/health",
       healthcheckTimeout: 30,
       replicas: { [region]: 1 },
