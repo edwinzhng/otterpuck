@@ -32,10 +32,16 @@ export const uiShell = (): string => `
       ["1.7", "Sharp"],
       ["2", "Extra sharp"],
       ["0.85", "Battery saver"],
-    ])}${touchSettingsMarkup()}${["music", "effects"].map((kind): string => `<label class="volume-setting">${kind === "music" ? "Music" : "Effects"}<output id="${kind}-volume-value"></output><input id="${kind}-volume" type="range" min="0" max="100" step="1" aria-label="${kind === "music" ? "Music" : "Effects"} volume"/></label>`).join("")}<div class="settings-row">${button("sound", "Sound on", "secondary", 'aria-pressed="true"')}${button("music", "Music on", "secondary", 'aria-pressed="true"')}<label><input id="performance-toggle" type="checkbox"/> Frame rate</label></div>`,
+    ])}${touchSettingsMarkup()}${["music", "effects"].map((kind): string => `<label class="volume-setting">${kind === "music" ? "Music" : "Effects"}<output id="${kind}-volume-value"></output><input id="${kind}-volume" type="range" min="0" max="100" step="1" aria-label="${kind === "music" ? "Music" : "Effects"} volume"/></label>`).join("")}<div class="settings-row">${button("sound", "Sound on", "secondary", 'aria-pressed="true"')}${button("music", "Music on", "secondary", 'aria-pressed="true"')}</div><label class="toggle-setting" for="performance-toggle"><span><strong>Frame rate</strong><small>Show performance details</small></span><input id="performance-toggle" type="checkbox" role="switch"/><i aria-hidden="true"></i></label><div class="settings-footer">${button("show-credits", "Credits", "quiet")}</div>`,
     "close-settings",
   )}
   ${dialog("controls-dialog", "Controls", controlsMarkup(), "close-controls")}
+  ${dialog(
+    "credits-dialog",
+    "Credits",
+    `<div class="credits-card"><strong>Otterpuck</strong><span>Created by Edwin Zhang</span><div class="credits-rule"></div><small>Development</small><a href="https://github.com/PusztaiMateLX" target="_blank" rel="noreferrer">Máté Pusztai</a><p>Thank you for helping make the pool more fun.</p></div>`,
+    "close-credits",
+  )}
   <section id="hud" class="hud hidden" aria-label="Game information">
     <div class="hud-top"><div class="hud-actions">${button("touch-fullscreen", "⛶", "icon", 'aria-label="Enter fullscreen"')}${button("pause-button", "Ⅱ", "icon", 'aria-label="Pause"')}<span class="desktop-shortcuts">${keycap("Esc")} Pause · ${keycap("Ctrl F")} Fullscreen</span></div>
       <div id="fps" class="performance panel"></div>

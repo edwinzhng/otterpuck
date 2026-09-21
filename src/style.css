@@ -662,11 +662,123 @@ legend {
   margin: 20px 0;
 }
 .settings-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  font-size: 13px;
+}
+.toggle-setting {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 18px;
+  min-height: 62px;
+  margin-top: 16px;
+  padding: 10px 14px 10px 17px;
+  border: 2px solid white;
+  border-radius: 14px;
+  background: #dfeef5;
+  box-shadow: 0 4px 0 var(--edge);
+  cursor: pointer;
+}
+.toggle-setting > span {
+  display: grid;
+  gap: 2px;
+}
+.toggle-setting small {
+  color: #5c8397;
+  font-size: 11px;
+}
+.toggle-setting input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.toggle-setting > i {
+  position: relative;
+  flex: 0 0 auto;
+  width: 48px;
+  height: 28px;
+  border: 2px solid #a8cfdd;
+  border-radius: 99px;
+  background: #c7dde7;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.toggle-setting > i::after {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 2px 0 #89b6c8;
+  content: "";
+  transition: transform 0.15s;
+}
+.toggle-setting input:checked + i {
+  border-color: #1788c4;
+  background: var(--blue);
+}
+.toggle-setting input:checked + i::after {
+  transform: translateX(20px);
+}
+.toggle-setting:has(input:focus-visible) {
+  outline: 3px solid var(--yellow);
+  outline-offset: 5px;
+}
+.toggle-setting:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--edge);
+}
+.settings-footer {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--edge);
+}
+.settings-footer .button {
+  width: 100%;
+}
+.credits-card {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 8px 12px 12px;
+  text-align: center;
+}
+.credits-card > strong {
+  font-size: 34px;
+  letter-spacing: -1.5px;
+}
+.credits-card > span,
+.credits-card > p {
+  color: #5c8397;
+}
+.credits-card > small {
+  color: #5c8397;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.credits-card > a {
+  color: var(--blue);
+  font-size: 22px;
+  font-weight: 900;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+.credits-card > p {
+  margin-top: 8px;
   font-size: 13px;
+}
+.credits-rule {
+  width: 54px;
+  height: 3px;
+  margin: 13px 0 8px;
+  border-radius: 99px;
+  background: var(--yellow);
 }
 .controls-grid {
   display: grid;

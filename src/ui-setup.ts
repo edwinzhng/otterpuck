@@ -96,10 +96,14 @@ export const createUI = (): UI => {
     const cancel = new Event("cancel", { cancelable: true });
     if (dialog.dispatchEvent(cancel)) dialog.close();
   });
-  for (const name of ["controls", "settings"]) {
+  for (const name of ["controls", "settings", "credits"]) {
     getElement(`#show-${name}`, HTMLButtonElement).addEventListener(
       "click",
-      (): void => getElement(`#${name}-dialog`, HTMLDialogElement).showModal(),
+      (): void => {
+        if (name === "credits")
+          getElement("#settings-dialog", HTMLDialogElement).close();
+        getElement(`#${name}-dialog`, HTMLDialogElement).showModal();
+      },
     );
     getElement(`#close-${name}`, HTMLButtonElement).addEventListener(
       "click",

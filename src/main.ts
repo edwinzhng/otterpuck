@@ -149,7 +149,7 @@ const boot = async (): Promise<void> => {
     target: EventTarget | null,
   ): Element | undefined => {
     if (!(target instanceof Element)) return;
-    const control = target.closest("button, [role='option']");
+    const control = target.closest("button, [role='option'], .toggle-setting");
     if (
       !control ||
       control.matches(":disabled, .touch-button, .select-field-trigger") ||
@@ -183,7 +183,10 @@ const boot = async (): Promise<void> => {
     "click",
     (): void => getElement("#settings-dialog", HTMLDialogElement).showModal(),
   );
-  const enter = async (fresh: boolean): Promise<void> => {
+  const enter = async (
+    fresh: boolean,
+    coverStart = fresh && ui.mode === "match",
+  ): Promise<void> => {
     if (!world.loaded) {
       ui.status.textContent = "Loading players…";
       ui.start.disabled = true;
@@ -205,7 +208,7 @@ const boot = async (): Promise<void> => {
       audio.context.resume().catch(console.error);
       audio.setPlaying(true);
     }
-    await coverGameStart();
+    if (coverStart) await coverGameStart();
     await requestMouseCapture();
     input.setActive(true);
     if (fresh) {
@@ -546,7 +549,7 @@ const boot = async (): Promise<void> => {
       const begin = async (): Promise<void> => {
         if (world.arena?.id !== "tropical")
           await setWorldArena(world, "tropical");
-        await enter(false);
+        await enter(false, true);
       };
       void begin().catch(console.error);
     },
