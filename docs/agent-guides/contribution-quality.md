@@ -44,3 +44,13 @@ Read the change as one system:
 - Use before-and-after evidence for visible changes.
 - Measure performance and traffic claims with the relevant runtime path.
 - Mark incomplete verification explicitly. Do not infer that an unchecked path works.
+
+## Repository hygiene
+
+- Keep only files that support the product, its deployment, or a repeatable authoring workflow.
+- Put editable sources in `art/` and optimized runtime assets in `public/`. Do not keep an uncompressed runtime duplicate unless an authoring tool reads it.
+- Record the creator, source, license, and runtime filename for every audio or visual asset.
+- Before deleting a file, check imports, package scripts, build steps, deployment files, tests, and documentation. Update the full workflow in the same change.
+- Remove temporary renders, audit output, screenshots, local configuration, migration notes, and historical handoff documents after their useful result is captured.
+- Keep guidance concise and durable. Document a rule or workflow, not the history of an individual cleanup.
+- Before a public release, check tracked files and Git history for credentials, private data, unclear asset rights, and obsolete large artifacts.

@@ -2,6 +2,7 @@
   "name": "otterpuck",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "bun run server.ts",

@@ -31,9 +31,9 @@ green=material('Palm green',(.06,.35,.11) if not city else (.035,.18,.13))
 lime=material('Sunlit foliage',(.22,.48,.12) if not city else (.10,.32,.21))
 rock=material('Island stone',(.30,.40,.29))
 if not city:
-    rock_image=bpy.data.images.load(${JSON.stringify(join(directory, "../../public/art/arenas/island-rock-painted.png"))});rock_image.pack()
+    rock_image=bpy.data.images.load(${JSON.stringify(join(directory, "../../public/art/arenas/island-rock-painted.webp"))});rock_image.pack()
     rock_reference=rock.node_tree.nodes.new('ShaderNodeTexImage');rock_reference.image=rock_image;rock_reference.label='Runtime triplanar paint; world scale .085'
-    rock['paint_texture']='island-rock-painted.png';rock['paint_scale']=.085
+    rock['paint_texture']='island-rock-painted.webp';rock['paint_scale']=.085
 ocean=material('Distant ocean',(.075,.51,.65),.38)
 cloud=material('Cloud',(.95,.98,1))
 def mesh(name,verts,faces,mat):

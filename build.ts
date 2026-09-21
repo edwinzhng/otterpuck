@@ -21,17 +21,6 @@ const build = await Bun.build({
 if (!build.success) throw new Error(build.logs.map(String).join("\n"));
 await mkdir("dist/models", { recursive: true });
 await cp("public", "dist", { recursive: true });
-for (const path of [
-  "dist/art/arenas/city-panorama.png",
-  "dist/art/arenas/city-panorama-painted.png",
-  "dist/art/arenas/island-rock-painted.png",
-  "dist/art/arenas/tropical-panorama.png",
-  "dist/art/arenas/tropical-panorama-painted.png",
-  "dist/art/learn/curl-toon-v1.png",
-  "dist/art/learn/dummy-toon-v1.png",
-  "dist/art/learn/shot-toon-v1.png",
-])
-  await rm(path, { force: true });
 const regions = regionsSchema.parse(
   await Bun.file("public/multiplayer.json").json(),
 );

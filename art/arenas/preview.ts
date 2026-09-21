@@ -15,7 +15,7 @@ scene.render.threads_mode='FIXED';scene.render.threads=2
 scene.render.resolution_x=1100;scene.render.resolution_y=700;scene.render.resolution_percentage=100
 scene.render.image_settings.file_format='PNG'
 scene.world.use_nodes=True;nodes=scene.world.node_tree.nodes;links=scene.world.node_tree.links
-texture=nodes.new('ShaderNodeTexEnvironment');texture.image=bpy.data.images.load(${JSON.stringify(join(import.meta.dir, `../../public/art/arenas/${arena}-panorama.png`))})
+texture=nodes.new('ShaderNodeTexEnvironment');texture.image=bpy.data.images.load(${JSON.stringify(join(import.meta.dir, `../../public/art/arenas/${arena}-panorama-painted.webp`))})
 links.new(texture.outputs['Color'],nodes['Background'].inputs['Color']);nodes['Background'].inputs['Strength'].default_value=.55 if city else .8
 def light(name,kind,position,energy,color,size=10):
     data=bpy.data.lights.new(name,kind);data.energy=energy;data.color=color

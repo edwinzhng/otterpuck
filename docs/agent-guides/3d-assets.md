@@ -10,7 +10,7 @@ Keep every shipped GLB reproducible from an editable Blender source. Current cha
 - Keep the stick, hand, goal, pool, and puck geometry aligned with gameplay constants. Visual edits must not change physics.
 - Prefer a small continuous mesh and reusable materials. Remove hidden geometry, unused materials, duplicate textures, and orphan data.
 - Keep animation clips in place. Use the existing rig and action names. Check banks, vertical swimming, braking, curls, grabs, and first-person arm reach.
-- Keep source textures only when Blender or an export step uses them. Ship compressed runtime formats.
+- Keep source textures only when Blender or an export step uses them. Prefer authoring tools that read the same compressed texture shipped at runtime; otherwise keep the editable source under `art/`, not `public/`.
 
 ## Export
 

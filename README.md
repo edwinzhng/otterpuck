@@ -4,6 +4,8 @@ A stylized first-person underwater-hockey game with otters and beavers, built wi
 
 Play a six-versus-six match with AI teammates and opponents, or explore the pool and practice puck skills in Free Swim. Choose Tropical Cove or Neon Rooftop, your species, formation, position and bot difficulty. The game supports mouse/keyboard and landscape touchscreen controls.
 
+Licensed under the [MIT License](LICENSE).
+
 ## Run locally
 
 Install [Bun](https://bun.sh), then:
