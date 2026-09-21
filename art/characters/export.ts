@@ -1,11 +1,11 @@
 import { join } from "node:path";
+import { CHARACTER_SPECIES } from "../../src/characters";
 import { blenderExecutable } from "../blender";
 
-const requested = Bun.argv.includes("--beaver")
-  ? ["beaver"]
-  : Bun.argv.includes("--otter")
-    ? ["otter"]
-    : ["otter", "beaver"];
+const selected = CHARACTER_SPECIES.find((species): boolean =>
+  Bun.argv.includes(`--${species}`),
+);
+const requested = selected ? [selected] : CHARACTER_SPECIES;
 for (const species of requested) {
   const source = join(import.meta.dir, `${species}.blend`);
   const target = join(
@@ -20,7 +20,7 @@ collection=next(c for c in scene.collection.children if 'Character' in c.name)
 for obj in scene.objects:obj.name=re.sub(r'\.\d{3}$','',obj.name)
 for material in bpy.data.materials:material.name=re.sub(r'\.\d{3}$','',material.name)
 for action in bpy.data.actions:action.name=re.sub(r'\.\d{3}$','',action.name)
-rig=next(o for o in collection.objects if o.type=='ARMATURE')
+rig=next(o for o in collection.all_objects if o.type=='ARMATURE')
 rig.animation_data.action=None
 for b in rig.pose.bones:b.rotation_quaternion=(1,0,0,0)
 scene.frame_set(0)
@@ -31,15 +31,16 @@ for material in bpy.data.materials:
         nodes=material.node_tree.nodes;links=material.node_tree.links
         links.new(nodes['Principled BSDF'].outputs[0],nodes['Material Output'].inputs['Surface'])
 bpy.ops.object.select_all(action='DESELECT')
-for obj in collection.objects:
+for obj in list(collection.all_objects):
     obj.hide_set(False);obj.hide_render=False
-body=[o for o in collection.objects if o.type=='MESH' and not o.name.startswith('GripPaw')]
+bpy.context.view_layer.update()
+body=[o for o in collection.all_objects if o.type=='MESH' and not o.name.startswith('GripPaw')]
 for obj in body:obj.select_set(True)
 bpy.context.view_layer.objects.active=body[0]
 bpy.ops.object.join()
 bpy.context.object.name='CharacterBody'
 bpy.ops.object.select_all(action='DESELECT')
-for obj in collection.objects:obj.select_set(True)
+for obj in collection.all_objects:obj.select_set(True)
 bpy.context.view_layer.objects.active=rig
 bpy.ops.export_scene.gltf(filepath=${JSON.stringify(target)},export_format='GLB',use_selection=True,use_active_scene=True,export_animations=True,export_animation_mode='ACTIONS',export_force_sampling=True,export_frame_step=2,export_yup=True,export_extras=True)
 print(json.dumps({'export':${JSON.stringify(target)},'bones':len(rig.data.bones),'clips':[a.name for a in bpy.data.actions if a.users>0]}))

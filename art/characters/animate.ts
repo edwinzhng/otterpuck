@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { CHARACTER_SPECIES } from "../../src/characters";
 import { blenderExecutable } from "../blender";
 import { geometryPython } from "./geometry";
 import { rigPython } from "./rig";
@@ -6,7 +7,7 @@ import { rigPython } from "./rig";
 const animationDefinition = rigPython.slice(
   rigPython.indexOf("def animate():"),
 );
-for (const species of ["otter", "beaver"]) {
+for (const species of CHARACTER_SPECIES) {
   const path = join(import.meta.dir, `${species}.blend`);
   const code = `${geometryPython}
 scene=next(s for s in bpy.data.scenes if s.name.startswith('OTTERPUCK'))

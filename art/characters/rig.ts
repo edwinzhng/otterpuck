@@ -23,7 +23,10 @@ for side,suffix in [(-1,'L'),(1,'R')]:
     bone('finTip.'+suffix,(side*.105,-.423,.006),(side*.105,-.548,.006),'foot.'+suffix)
     bone('tuft.'+suffix,(side*.13,.24,-.04),(side*.16,.21,-.06),'head')
 tail_heights=[.030,.053,.066,.071,.073,.074] if beaver else [.038,.042,.042,.042,.042,.042]
-for i in range(5):bone('tail%02d'%(i+1),(0,-.215-i*.042,tail_heights[i]),(0,-.257-i*.042,tail_heights[i+1]),'pelvis' if i==0 else 'tail%02d'%i)
+if raccoon:tail_heights=[.03,.075,.12,.145,.156,.156]
+if crocodile:tail_heights=[.03,.07,.10,.12,.13,.13]
+tail_step=.067 if crocodile else .062 if raccoon else .042
+for i in range(5):bone('tail%02d'%(i+1),(0,-.215-i*tail_step,tail_heights[i]),(0,-.215-(i+1)*tail_step,tail_heights[i+1]),'pelvis' if i==0 else 'tail%02d'%i)
 bpy.ops.object.mode_set(mode='OBJECT')
 rig.show_in_front=True
 rig['species']=species
@@ -73,6 +76,9 @@ def animate():
                     pitch+=(1 if name=='SwimUp' else -1)*[.28,.39,.53,.65,.70,.72][index]
                 if name=='Dive':
                     pitch-=[.94,1.02,1.10,1.15,1.17,1.18][index]*smooth(delays[index],delays[index]+.53,t)
+                if rig.get('species')=='walrus' and n=='head' and name in ['SwimDown','Dive']:
+                    # Keep the long tusks ahead of the fixed gameplay grip during a dive.
+                    pitch+=.30
                 if is_bank:
                     direction=1 if name=='BankLeft' else -1
                     bend=pulse(t,delays[index],.66)

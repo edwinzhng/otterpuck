@@ -5,7 +5,9 @@ def cartoon_y(y):
     return y*.76 if y>=-.325 else -.247+(y+.325)*.80
 
 def cartoon_position(p,head=False,tail=False):
-    if head:return Vector((p.x*.83,.222+(p.y-.302)*1.04,.019+(p.z-.018)*1.06))
+    if head:
+        scale=.87 if dolphin else 1
+        return Vector((p.x*.79*scale,.222+(p.y-.302)*.78*scale,.019+(p.z-.018)*1.06*scale))
     if tail:return Vector((p.x*.88,-.1634+(p.y+.215)*(.88 if beaver else .75),p.z*.88))
     return Vector((p.x*.80,cartoon_y(p.y),p.z*.74))
 

@@ -1,12 +1,15 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
+import { CHARACTER_SPECIES } from "../../src/characters";
 import { blenderExecutable } from "../blender";
 
 const sequence = Bun.argv.includes("--sequence");
 const sequenceDirectory = join(import.meta.dir, "motion-review");
 if (sequence) await mkdir(sequenceDirectory, { recursive: true });
 
-const species = Bun.argv.includes("--beaver") ? "beaver" : "otter";
+const species =
+  CHARACTER_SPECIES.find((id): boolean => Bun.argv.includes(`--${id}`)) ??
+  "otter";
 const pair = Bun.argv.includes("--pair");
 const pose = Bun.argv.includes("--standing") || pair ? "standing" : "swimming";
 const standing = pose === "standing" ? "True" : "False";
@@ -28,12 +31,17 @@ const cameraView =
   ["side", "rear", "front", "above", "below"].find((view): boolean =>
     Bun.argv.includes(`--${view}`),
   ) ?? "three-quarter";
-const output = join(
-  import.meta.dir,
-  pair
-    ? "characters-lineup.png"
-    : `${species}-${motion ?? pose}-${cameraView}${sampleFrame === undefined ? "" : `-frame-${sampleFrame}`}.png`,
-);
+const source =
+  Bun.argv.find((value): boolean => value.startsWith("--source="))?.slice(9) ??
+  join(import.meta.dir, `${species}.blend`);
+const output =
+  Bun.argv.find((value): boolean => value.startsWith("--output="))?.slice(9) ??
+  join(
+    import.meta.dir,
+    pair
+      ? "characters-lineup.png"
+      : `${species}-${motion ?? pose}-${cameraView}${sampleFrame === undefined ? "" : `-frame-${sampleFrame}`}.png`,
+  );
 const code = `
 import bpy, math
 from mathutils import Vector,Matrix,Quaternion
@@ -58,6 +66,14 @@ if standing:
     for side,suffix in [(-1,'L'),(1,'R')]:
         shoulder=rig.data.bones['arm.'+suffix].head_local.copy()
         elbow=Vector((side*.149,.010,-.046));end=Vector((side*.146,-.065,-.080))
+        if rig.get('species') in ['raccoon','crocodile','penguin','walrus']:
+            end=shoulder+Vector((side*.020,-.105,-.075))
+            direction=(end-shoulder).normalized()
+            distance=(end-shoulder).length
+            a=rig.data.bones['arm.'+suffix].length;b=rig.data.bones['forearm.'+suffix].length
+            along=(a*a-b*b+distance*distance)/(2*distance)
+            pole=Vector((side,0,0));pole=(pole-direction*pole.dot(direction)).normalized()
+            elbow=shoulder+direction*along+pole*math.sqrt(max(0,a*a-along*along))
         for name,a,b in [('arm.'+suffix,shoulder,elbow),('forearm.'+suffix,elbow,end)]:
             bone=rig.pose.bones[name]
             bone.matrix=Matrix.Translation(a) @ Vector((0,1,0)).rotation_difference((b-a).normalized()).to_matrix().to_4x4()
@@ -118,7 +134,7 @@ const task = Bun.spawn(
     "2",
     "--python-exit-code",
     "1",
-    join(import.meta.dir, `${species}.blend`),
+    source,
     "--python-expr",
     code,
   ],

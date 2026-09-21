@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { CHARACTER_SPECIES } from "../../src/characters";
 import { blenderExecutable } from "../blender";
 
 const root = join(import.meta.dir, "../..");
@@ -11,12 +12,8 @@ const run = async (arguments_: string[]): Promise<void> => {
   });
   if ((await task.exited) !== 0) throw new Error("Blender asset build failed");
 };
-for (const species of ["otter", "beaver"]) {
-  await run([
-    process.execPath,
-    "art/characters/create.ts",
-    ...(species === "beaver" ? ["--beaver"] : []),
-  ]);
+for (const species of CHARACTER_SPECIES) {
+  await run([process.execPath, "art/characters/create.ts", `--${species}`]);
   await run([
     blender,
     "--background",

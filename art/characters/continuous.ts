@@ -12,7 +12,8 @@ for name,parent,base,tip,radius in fur_points:
     b=armature.edit_bones.get(name) or armature.edit_bones.new(name)
     b.head=base;b.tail=tip;b.parent=armature.edit_bones[parent]
 bpy.ops.object.mode_set(mode='OBJECT')
-surfaces=[o for o in collection.objects if o.type=='MESH' and (o.get('asset_part') in ['Body','Head','Muzzle','Tail','HindLegL','HindLegR','GripPawLArm','GripPawRArm','GripPawL','GripPawR','GripPawLWrist','GripPawRWrist'] or o.name.startswith('SilhouetteFur'))]
+# The head overlaps the resting arms. A shared remesh would weld cheeks to wrists.
+surfaces=[o for o in collection.objects if o.type=='MESH' and (o.get('asset_part') in ['Body','Tail','HindLegL','HindLegR','GripPawLArm','GripPawRArm','GripPawL','GripPawR','GripPawLWrist','GripPawRWrist'] or o.name.startswith('SilhouetteFur'))]
 source_vertices=[];source_triangles=[];source_weights=[];source_colors=[]
 for obj in surfaces:
     offset=len(source_vertices)
@@ -50,13 +51,7 @@ for vertex in body.data.vertices:
     if weight>0:haunch_blend.add([vertex.index],weight,'REPLACE')
 relax=body.modifiers.new('Rounded haunch transitions','SMOOTH');relax.factor=.52;relax.iterations=5;relax.vertex_group=haunch_blend.name
 bpy.ops.object.modifier_apply(modifier=relax.name)
-muzzle_blend=body.vertex_groups.new(name='MuzzleRootBlend')
-for vertex in body.data.vertices:
-    p=vertex.co;weight=(1-smooth(.045,.072,abs(p.x)))*(1-smooth(.030,.060,abs(p.z+.009)))*(1-smooth(.037,.063,abs(p.y-.335)))
-    if weight>0:muzzle_blend.add([vertex.index],weight,'REPLACE')
-relax=body.modifiers.new('Sculpted muzzle transition','SMOOTH');relax.factor=.7;relax.iterations=7;relax.vertex_group=muzzle_blend.name
-bpy.ops.object.modifier_apply(modifier=relax.name)
-reduce=body.modifiers.new('Game surface density','DECIMATE');reduce.ratio=.72
+reduce=body.modifiers.new('Game surface density','DECIMATE');reduce.ratio=.48 if walrus else .60 if compact else .72
 bpy.ops.object.modifier_apply(modifier=reduce.name)
 for poly in body.data.polygons:poly.use_smooth=True
 for layer in list(body.data.color_attributes):body.data.color_attributes.remove(layer)
@@ -105,26 +100,6 @@ for iteration in range(8):
 body.vertex_groups.clear()
 for index,weights in enumerate(transferred):
     p=body.data.vertices[index].co
-    shoulder_region=smooth(.010,.040,p.y)*(1-smooth(.165,.195,p.y))*(1-smooth(.060,.090,p.z))
-    if shoulder_region>0:
-        suffix='L' if p.x<0 else 'R'
-        shoulder_mix=smooth(.045,.075,abs(p.x))*smooth(.018,.078,p.y)
-        arm_mix=smooth(.068,.126,abs(p.x))
-        elbow_mix=smooth(.105,.150,p.y)
-        target={name:value*(1-shoulder_mix) for name,value in chain(p.y,[(-.152,'pelvis'),(-.0684,'spine'),(.0114,'spineMid'),(.0874,'chest'),(.152,'neck')])}
-        target['shoulder.'+suffix]=shoulder_mix*(1-arm_mix)
-        target['arm.'+suffix]=shoulder_mix*arm_mix*(1-elbow_mix)
-        target['forearm.'+suffix]=shoulder_mix*arm_mix*elbow_mix
-        head_distance=(p.x/.130)**2+((p.y-.222)/.129)**2+((p.z-.019)/.112)**2
-        head_mix=smooth(.095,.165,p.y)*smooth(-.090,-.010,p.z)*(1-smooth(.86,1.35,head_distance))
-        target={name:value*(1-head_mix) for name,value in target.items()}
-        target['head']=head_mix
-        blended={name:value*(1-shoulder_region) for name,value in weights.items()}
-        for name,value in target.items():blended[name]=blended.get(name,0)+value*shoulder_region
-        weights=blended
-        chest_marking=shoulder_region*(1-smooth(.095,.135,abs(p.x)))*(1-smooth(.105,.135,p.y))
-        torso_color=belly_color(Vector((p.x/.80,p.y/.76,p.z/.74)))
-        transferred_colors[index]=blend(transferred_colors[index],torso_color,chest_marking)
     strongest=sorted(weights.items(),key=lambda item:item[1],reverse=True)[:4]
     total=sum(value for name,value in strongest)
     for name,value in strongest:
@@ -134,6 +109,6 @@ for index,weights in enumerate(transferred):
 attribute=body.data.color_attributes.new(name='Coat',type='FLOAT_COLOR',domain='POINT')
 for index,rgb in enumerate(transferred_colors):attribute.data[index].color=(*rgb,1)
 modifier=body.modifiers.new('Continuous deforming skin','ARMATURE');modifier.object=rig
-body['surface']='Connected torso, head, shoulders, legs, hips, tail and silhouette tufts'
+body['surface']='Connected torso, shoulders, legs, hips, tail and silhouette tufts'
 body['fur_amplitude_m']=.0015
 `;
