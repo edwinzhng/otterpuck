@@ -36,6 +36,7 @@ import {
   canGrabPuck,
   canKnockdown,
   isPuckContested,
+  KNOCKDOWN_COOLDOWN,
   KNOCKDOWN_DURATION,
   KNOCKDOWN_HIT_TIME,
   puckInGrabReach,
@@ -733,13 +734,14 @@ const updateHuman = (
     player.grab = undefined;
     player.cradle = undefined;
     player.knockdownTime = KNOCKDOWN_DURATION;
-    player.knockdownCooldown = 0.55;
+    player.knockdownCooldown = KNOCKDOWN_COOLDOWN;
     player.knockdownAttempted = false;
     player.knockdownTarget.copy(state.puck.position);
     if (state.puck.controlOwner === player.id) releaseControl(state);
   } else if (controls.knockdown && canGrabPuck(state, player, controls.pitch)) {
     player.grab = { elapsed: 0, target: state.puck.position.clone() };
     player.knockdownCooldown = 0.45;
+    player.knockdownAttempted = false;
   }
   player.handling =
     player.dummy !== 0 ||
@@ -1022,6 +1024,7 @@ const updateAI = (state: Simulation, player: Player, dt: number): void => {
     .sub(player.position)
     .applyAxisAngle(new Vector3(0, 1, 0), -player.yaw);
   const nearby =
+    state.puck.position.y <= 0.12 &&
     !teamPuckCarrier(state, player.team) &&
     (state.mode !== "match" || state.puckChasers[player.team] === player.id) &&
     relative.z < -0.3 &&
@@ -1029,7 +1032,7 @@ const updateAI = (state: Simulation, player: Player, dt: number): void => {
     Math.abs(relative.x) < 0.9;
   const targetOffset = new Vector3(
     nearby ? clamp(relative.x, -0.42, 0.42) : handSide(player) * 0.13,
-    nearby ? clamp(state.puck.position.y - PUCK_HEIGHT, 0, 0.7) : 0,
+    nearby ? clamp(state.puck.position.y - PUCK_HEIGHT, 0, 0.1) : 0,
     nearby ? clamp(relative.z + 0.065, -0.68, -0.36) : -STICK_REACH,
   );
   if (state.puck.controlOwner === player.id) {

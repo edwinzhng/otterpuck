@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import { PerspectiveCamera, Vector3 } from "three";
 import {
   canKnockdown,
+  KNOCKDOWN_COOLDOWN,
   KNOCKDOWN_DURATION,
   KNOCKDOWN_HIT_TIME,
   pollMovement,
@@ -206,13 +207,47 @@ test("a knockdown needs a new press, respects cooldown, and misses if the puck l
   expect(state.puck.velocity.y).toBeLessThan(-2);
   expect(state.puck.lastTouch).toBe(0);
   expect(canKnockdown(state, player)).toBe(false);
-  advance(state, 0.55);
+  advance(state, KNOCKDOWN_COOLDOWN);
   state.puck.position.copy(player.position).add(new Vector3(0, 0.2, -1.05));
   state.puck.velocity.set(15, 0, 0);
   state.puck.lastTouch = undefined;
   stepSimulation(state, { ...freshControls(), knockdown: true }, STEP);
   advance(state, 0.12);
   expect(state.puck.lastTouch).toBeUndefined();
+});
+
+test("another player cannot restart a knockdown within one second", (): void => {
+  const { state, player } = setup();
+  const other = createSimulation().players[1];
+  if (!other) throw new Error("Missing opponent");
+  other.position.copy(player.position);
+  other.yaw = player.yaw;
+  other.wallReady = false;
+  state.players.push(other);
+  state.puck.position.copy(player.position).add(new Vector3(0, 0.2, -1));
+  player.knockdownTime = KNOCKDOWN_DURATION;
+  player.knockdownCooldown = KNOCKDOWN_COOLDOWN;
+  expect(canKnockdown(state, other)).toBe(false);
+  player.knockdownTime = 0;
+  player.knockdownAttempted = true;
+  player.knockdownCooldown = 0.001;
+  expect(canKnockdown(state, other)).toBe(false);
+  player.knockdownCooldown = 0;
+  expect(canKnockdown(state, other)).toBe(true);
+});
+
+test("bots do not raise their sticks to follow an airborne puck", (): void => {
+  const state = createSimulation();
+  state.faceoff = undefined;
+  const bot = state.players.find((player) => !player.human);
+  if (!bot) throw new Error("Missing bot");
+  state.puckChasers[bot.team] = bot.id;
+  state.decisionTime = 10;
+  state.puck.position.copy(bot.position).add(new Vector3(0, 0.5, -0.6));
+  bot.yaw = 0;
+  bot.stickOffset.y = 0;
+  stepSimulation(state, freshControls(), STEP);
+  expect(bot.stickOffset.y).toBe(0);
 });
 
 test("the lab's incoming feed gives a usable knockdown prompt window", (): void => {

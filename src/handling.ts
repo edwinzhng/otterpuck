@@ -17,6 +17,7 @@ import {
 
 export const KNOCKDOWN_DURATION = 0.48;
 export const KNOCKDOWN_HIT_TIME = 0.12;
+export const KNOCKDOWN_COOLDOWN = 1;
 
 export const puckInKnockdownBox = (
   state: Simulation,
@@ -44,6 +45,11 @@ export const canKnockdown = (state: Simulation, player: Player): boolean =>
   player.shotTime <= 0 &&
   player.knockdownTime <= 0 &&
   player.knockdownCooldown <= 0 &&
+  !state.players.some(
+    (other) =>
+      other.knockdownCooldown > 0 &&
+      (other.knockdownTime > 0 || other.knockdownAttempted),
+  ) &&
   puckInKnockdownBox(state, player);
 
 export const puckInGrabReach = (
