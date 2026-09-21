@@ -21,11 +21,23 @@ for obj in list(scene.objects):
                 broad=noise.noise(p*.13);fine=noise.noise(p*.3)
             rgb=tuple(source.diffuse_color[:3]);wash=.94+broad*.12+fine*.035
             if 'SculptedIslandPeak' in obj.name or 'IslandShoreBoulder' in obj.name:
-                moss=max(0,min(1,(n.z-.39)*2.5+broad*.48))
-                dry=(.48,.43,.31);lush=(.065,.32,.10)
+                moss=max(0,min(1,(12+broad*2-p.z)/6))
+                moss=max(moss,max(0,min(.75,(n.z-.65)*2))*(1-max(0,min(1,(p.z-13)/5))))
+                sun=max(0,min(1,.5-n.x*.8-n.y*.25))
+                dry=mix_color((.08,.24,.44),(.98,.55,.23),sun)
+                lush=mix_color((.045,.26,.14),(.32,.56,.055),sun)
                 rgb=mix_color(dry,lush,moss)
+                if 'SculptedIslandPeak' in obj.name:
+                    shadow=max(0,min(1,(p.x+3)/8))
+                    dry=mix_color(mix_color((.76,.34,.12),(.98,.53,.23),sun),(.065,.18,.39),shadow*.92)
+                    patches=noise.noise(Vector((p.x*.19,p.y*.16,2.6)))
+                    moss=max(0,min(1,(10.8+patches*4.2-p.z)/5.0))
+                    moss=max(moss,max(0,min(.65,(n.z-.56)*2.4))*(1-max(0,min(1,(p.z-11)/7))))
+                    lush=mix_color((.035,.22,.14),(.27,.48,.075),sun)
+                    lush=mix_color(lush,(.025,.19,.11),max(0,min(.5,(patches-.12)*1.8)))
+                    rgb=mix_color(dry,lush,moss)
                 if p.z<1.65:rgb=mix_color(rgb,(.70,.66,.43),.68)
-                wash+=.025*math.sin(p.z*.7+broad*3)
+                wash=.98+broad*.045+fine*.015
             elif source.name in ['Palm green','Sunlit foliage']:
                 rgb=mix_color(tuple(source.diffuse_color[:3]),(.32,.53,.14),max(0,n.z)*.24)
                 wash+=.045*math.sin(p.x*4+p.y*3)

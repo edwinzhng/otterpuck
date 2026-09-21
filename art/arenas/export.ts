@@ -1,7 +1,12 @@
 import { join } from "node:path";
+import { ARENA_IDS } from "../../src/arena-catalog";
 import { blenderExecutable } from "../blender";
 
-for (const arena of ["tropical", "city"]) {
+for (const arena of ARENA_IDS.filter(
+  (id) =>
+    !Bun.argv.some((arg) => arg.startsWith("--arena=")) ||
+    Bun.argv.includes(`--arena=${id}`),
+)) {
   const source = join(import.meta.dir, `${arena}.blend`);
   const destination = join(
     import.meta.dir,
@@ -32,7 +37,7 @@ for key,batch in batches.items():
 bpy.ops.object.select_all(action='DESELECT')
 for obj in scene.objects:
     if obj.type=='MESH':obj.select_set(True)
-bpy.ops.export_scene.gltf(filepath=${JSON.stringify(destination)},export_format='GLB',use_selection=True,use_active_scene=True,export_yup=True,export_animations=False,export_extras=True)
+bpy.ops.export_scene.gltf(filepath=${JSON.stringify(destination)},export_format='GLB',use_selection=True,use_active_scene=True,export_yup=True,export_animations=False,export_extras=True,export_texcoords=False)
 print(json.dumps({'glb':${JSON.stringify(destination)},'vertices':sum(len(o.data.vertices) for o in scene.objects if o.type=='MESH'),'batches':len(batches)}))
 `;
   const task = Bun.spawn(

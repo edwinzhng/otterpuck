@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { ARENA_IDS } from "../../src/arena-catalog";
 import {
   GOAL_FACES,
   GOAL_PROFILE,
@@ -6,7 +7,11 @@ import {
 } from "../../src/goal-profile";
 import { blenderExecutable } from "../blender";
 
-for (const arena of ["tropical", "city"]) {
+for (const arena of ARENA_IDS.filter(
+  (id) =>
+    !Bun.argv.some((arg) => arg.startsWith("--arena=")) ||
+    Bun.argv.includes(`--arena=${id}`),
+)) {
   const source = join(import.meta.dir, `${arena}.blend`);
   const code = `
 import bpy

@@ -1,6 +1,7 @@
+import { ARENA_IDS } from "../../src/arena-catalog";
+
 for (const args of [
-  ["create.ts"],
-  ["create.ts", "--city"],
+  ...ARENA_IDS.map((id) => ["create.ts", `--arena=${id}`]),
   ["goals.ts"],
   ["export.ts"],
 ]) {

@@ -1,9 +1,14 @@
 import { join } from "node:path";
+import { ARENA_IDS } from "../../src/arena-catalog";
 import { blenderExecutable } from "../blender";
 
 const output = join(import.meta.dir, "previews");
 await Bun.$`mkdir -p ${output}`;
-for (const arena of ["tropical", "city"]) {
+for (const arena of ARENA_IDS.filter(
+  (id) =>
+    !Bun.argv.some((arg) => arg.startsWith("--arena=")) ||
+    Bun.argv.includes(`--arena=${id}`),
+)) {
   const code = `
 import bpy, math
 from mathutils import Vector

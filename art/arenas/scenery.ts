@@ -9,6 +9,24 @@ warm=light_material('Warm lamp',(.95,.47,.18),.75)
 frame=material('Terrace metal',(.10,.20,.24) if not city else (.035,.065,.13),.65,.12)
 planter_mat=material('Planter ceramic',(.72,.43,.27) if not city else (.14,.21,.31))
 cushion=material('Aqua cushions',(.14,.55,.59) if not city else (.22,.21,.40))
+flower=material('Coral flowers',(.94,.28,.24))
+def shade_lounge(side,y):
+    x=side*11.0
+    for dx in [-1.35,1.35]:
+        for dy in [-1.8,1.8]:box('PavilionPost',(x+dx,y+dy,3.91),(.13,.13,2.94),wood,.025)
+        box('PavilionSideBeam',(x+dx,y,5.38),(.16,3.76,.20),wood,.025)
+    for dy in [-1.8,1.8]:box('PavilionEndBeam',(x,y+dy,5.38),(2.86,.16,.20),wood,.025)
+    roof=mesh('PavilionCanvas',[(x-1.65,y-2.05,5.35),(x+1.65,y-2.05,5.35),(x+1.65,y+2.05,5.35),(x-1.65,y+2.05,5.35),(x,y,5.72)],[(0,1,4),(1,2,4),(2,3,4),(3,0,4)],white)
+    solid=roof.modifiers.new('Canvas hem','SOLIDIFY');solid.thickness=.06
+    box('PavilionSofaBase',(x+side*.55,y,2.69),(1.0,2.8,.50),wood,.10)
+    box('PavilionSeat',(x+side*.42,y,3.02),(1.0,2.6,.22),white,.10)
+    box('PavilionBack',(x+side*.89,y,3.35),(.24,2.8,.76),cushion,.10)
+    for dy in [-1.25,1.25]:box('PavilionArm',(x+side*.42,y+dy,3.26),(1.04,.22,.56),white,.09)
+    for dy in [-.72,.72]:
+        pillow=box('PavilionPillow',(x+side*.62,y+dy,3.37),(.25,.57,.51),cushion,.12);pillow.rotation_euler.y=-side*.15
+    box('PavilionCoffeeTable',(x-side*.62,y,2.88),(.72,1.35,.12),wood,.05)
+    for dy in [-.47,.47]:box('CoffeeTableLeg',(x-side*.62,y+dy,2.66),(.50,.09,.38),frame,.02)
+for side in [-1,1]:shade_lounge(side,3.0 if side<0 else -1.0)
 marking=material('Pool marking',(.78,.94,.94))
 def ring(name,center,radius,start,end):
     count=max(24,round(abs(end-start)*radius*10));verts=[]
@@ -21,23 +39,20 @@ mesh('FaceoffDot',[(0,0,.008)]+[(.07*math.sin(i/24*math.tau),.07*math.cos(i/24*m
 for side in [-1,1]:
     for radius in [3,5]:ring('GoalSemicircle'+str(radius),(0,side*12.5),radius,math.pi/2 if side>0 else -math.pi/2,math.pi*1.5 if side>0 else math.pi/2)
     for y in [-10,-5,0,5,10]:box('DrainCover',(side*8.0,y,2.447),(.15,1.1,.012),frame,.005)
-    for y in [-11,0,11]:
-        box('PathLamp',(side*12.2,y,2.76),(.18,.18,.58),frame,.035)
-        box('PathLampLens',(side*12.2,y,3.055),(.19,.19,.045),warm if city else white,.02)
     for y in [-8.8,-5.8,7.3,10.3]:
         base=Vector((side*10.25,y,0));parts=[]
         parts.append(box('LoungeFrame',base+Vector((0,0,2.74)),(.78,1.95,.14),wood,.05))
         parts.append(box('LoungeCushion',base+Vector((0,-.15,2.85)),(.70,1.42,.14),white,.055))
-        back=box('LoungeBack',base+Vector((0,.63,3.06)),(.70,.76,.14),cushion,.055);back.rotation_euler.x=.50;parts.append(back)
+        back=box('LoungeBack',base+Vector((0,.63,3.13)),(.70,.82,.20),white,.075);back.rotation_euler.x=.50;parts.append(back)
         for x in [-.26,.26]:
             for foot_y in [-.65,.65]:parts.append(box('LoungeLeg',base+Vector((x,foot_y,2.58)),(.10,.12,.27),frame,.02))
-        angle=side*math.pi/2
+        angle=-side*math.pi/2
         for obj in parts:
             p=obj.location-base;obj.location=base+Vector((p.x*math.cos(angle)-p.y*math.sin(angle),p.x*math.sin(angle)+p.y*math.cos(angle),p.z));obj.rotation_euler.z+=angle
     for y in [-7.3,8.8]:
         box('SideTable',(side*11.25,y,2.85),(.55,.55,.10),white,.055)
         box('TableStem',(side*11.25,y,2.65),(.12,.12,.40),frame,.025)
-for x,y in [(-11.4,-1.8),(11.5,-.8),(-10.7,16),(10.7,16),(-10.7,-16.2),(10.7,-16.2)]:
+for x,y in [(-11.4,-2.0),(11.5,4.5),(-8.5,16.4),(8.5,16.4),(-6.0,-15.4),(6.0,-15.4)]:
     box('Planter',(x,y,2.69),(1.8,1.25,.50),planter_mat,.14)
     box('PlanterSoil',(x,y,2.941),(1.62,1.08,.018),wood,.065)
     for j in range(7):
@@ -51,10 +66,24 @@ for x,y in [(-11.4,-1.8),(11.5,-.8),(-10.7,16),(10.7,16),(-10.7,-16.2),(10.7,-16
                 q=i*3+k;faces.append((q,q+1,q+4,q+3))
         leaf=mesh('BroadTropicalLeaf',verts,faces,green if j%2 else lime);leaf['wind_weight']=.02
         for polygon in leaf.data.polygons:polygon.use_smooth=True
+    for j in range(3):
+        px=x+(j-1)*.40;py=y+.20*math.sin(j*2);pz=3.30+.10*(j%2)
+        for petal in range(5):
+            a=petal/5*math.tau
+            ellipsoid('PlanterFlower',(px+.095*math.cos(a),py+.095*math.sin(a),pz),(.10,.08,.055),flower,8,4)
 if city:
     facades=[material('City facade '+str(i),rgb) for i,rgb in enumerate([(.075,.12,.23),(.12,.18,.30),(.17,.22,.35),(.10,.15,.25)])]
     glazing=material('City glazing',(.055,.17,.30),.36,.12)
     soft_cyan=light_material('City blue windows',(.10,.40,.63),.34)
+    for side in [-1,1]:
+        cable_verts=[]
+        for i in range(33):
+            t=i/32;y=-15+30*t;z=7.55-1.6*math.sin(t*math.pi)
+            cable_verts.extend([(side*12.4-.018,y,z),(side*12.4+.018,y,z)])
+        mesh('TerraceLightCable',cable_verts,[(i*2,i*2+1,i*2+3,i*2+2) for i in range(32)],frame)
+        for y in [-15,15]:box('TerraceLightPole',(side*12.4,y,5.025),(.09,.09,5.15),frame,.025)
+        for i in range(13):
+            t=i/12;ellipsoid('TerraceStringBulb',(side*12.4,-15+30*t,7.43-1.6*math.sin(t*math.pi)),(.08,.08,.11),warm,8,4)
     for side in [-1,1]:
         box('RooftopSideFascia',(side*12.9,0,1.63),(.22,35.2,1.6),frame,.055)
         box('RooftopEndFascia',(0,side*17.55,1.63),(25.8,.22,1.6),frame,.055)
@@ -66,8 +95,8 @@ if city:
         for x in [-12.6,-8.4,-4.2,0,4.2,8.4,12.6]:box('EndGuardPost',(x,side*17.4,3.0),(.065,.065,1.1),frame,.018)
         box('EndGuardTop',(0,side*17.4,3.55),(25.5,.065,.065),frame,.025)
         box('EndGuardBase',(0,side*17.4,2.73),(25.5,.05,.05),frame,.02)
-    for i in range(18):
-        a=i/18*math.tau+.05*math.sin(i*3.1);distance=52+(i%4)*10;h=39+((i*17)%26);w=4+(i%4)*1.7;x=math.sin(a)*distance;y=math.cos(a)*distance;bottom=-29
+    for i in range(16):
+        a=i/16*math.tau+.05*math.sin(i*3.1);distance=72+(i%4)*12;h=36+((i*17)%19);w=5+(i%4)*1.7;x=math.sin(a)*distance;y=math.cos(a)*distance;bottom=-29
         obj=box('SkylineTower',(x,y,bottom+h/2),(w,w*.76,h),facades[i%4],.30);obj.rotation_euler.z=-a
         obj=box('TowerCrown',(x,y,bottom+h+.45),(w*.91,w*.68,.9),facades[(i+1)%4],.20);obj.rotation_euler.z=-a
         if i%3==0:
@@ -126,11 +155,13 @@ else:
         mesh('OceanPlane',[(x0,y0,1.25),(x1,y0,1.25),(x1,y1,1.25),(x0,y1,1.25)],[(0,1,2,3)],ocean)
     from mathutils import noise
     ridges=[
-        [(-27,53,1),(-18,57,4.5),(-12,62,7),(-7,65,15.5),(-4,68,18),(1,71,12),(9,77,11),(18,81,6),(28,88,1)],
-        [(-7,65,15.5),(-4,61,10),(1,55,5.3),(7,47,1.2)],
-        [(-12,62,7),(-17,55,5.2),(-19,48,1.2)],
-        [(1,71,12),(9,65,8.5),(16,61,4.2),(28,58,1.2)],
-        [(9,77,11),(3,82,7.5),(-7,89,1.2)],
+        [(-32,64,1),(-22,67,5),(-15,70,10),(-9,74,23),(-6,75,24),(-2,76,23.7),(1,76,22),(7,78,13),(16,83,9),(34,90,1)],
+        [(-9,74,22),(-12,65,14),(-15,57,7),(-25,49,1.2)],
+        [(-5,75,24),(-5,65,15),(-8,56,7),(-14,46,1.2)],
+        [(-2,76,20),(1,66,11),(4,57,5),(7,47,1.2)],
+        [(2,76,23),(7,69,13),(14,61,6),(28,54,1.2)],
+        [(7,78,15),(17,73,9),(27,67,4),(36,64,1.2)],
+        [(-15,70,10),(-24,63,6),(-32,56,1.2)],
     ]
     segments=[(Vector(a),Vector(b)) for ridge in ridges for a,b in zip(ridge,ridge[1:])]
     def ridge_height(x,y):
@@ -138,26 +169,35 @@ else:
         for a,b in segments:
             dx=b.x-a.x;dy=b.y-a.y;t=max(0,min(1,((x-a.x)*dx+(y-a.y)*dy)/(dx*dx+dy*dy)))
             distance=math.hypot(x-a.x-dx*t,y-a.y-dy*t)
-            heights.append(a.z+(b.z-a.z)*t-distance**.88*1.60)
+            heights.append(a.z+(b.z-a.z)*t-max(0,distance-.12)*1.16)
         return max(heights)
-    verts=[];faces=[];nx=112;ny=100
+    verts=[];faces=[];nx=104;ny=92
     for row in range(ny+1):
-        y=39+row/ny*56
+        y=40+row/ny*62
         for column in range(nx+1):
-            x=-35+column/nx*72;p=Vector((x*.12,y*.12,1.7))
+            x=-42+column/nx*86;p=Vector((x*.12,y*.12,1.7))
             broad=noise.noise(p);detail=noise.noise(p*2.7)
-            envelope=max(0,1-((x+1)/37)**2-((y-68)/30)**2)
-            low=1+3.1*envelope+broad*.65
-            z=max(low,ridge_height(x+broad*.7,y+detail*.35)+broad*.45+detail*.08)
+            envelope=max(0,1-((x+1)/43)**2-((y-72)/33)**2)
+            low=.6+1.5*envelope+broad*.25
+            z=max(low,ridge_height(x+broad*.35,y+detail*.20)+broad*.25+detail*.05)
+            shoulder=16.4-max(0,abs(x-12)-1.8)*1.55-max(0,abs(y-79)-1.2)*1.15
+            outer_shoulder=10.2-max(0,abs(x-23)-1.4)*1.35-abs(y-79)*.92
+            foothills=max(5.4-abs(x+23)*.62-abs(y-60)*.82,4.1-abs(x+30)*.85-abs(y-67)*.58,6.2-abs(x-19)*.72-abs(y-61)*.82)
+            z=max(z,shoulder,outer_shoulder,foothills)
+            front=max(0,min(1,(74-y)/9))*max(0,min(1,(y-49)/8))
+            gullies=max(0,1-abs(x-(-8+(y-61)*.28))/1.8)+max(0,1-abs(x-(3+(y-61)*.16))/2.4)
+            z=max(low,z-front*gullies*1.55)
+            z=min(z,22.8+.10*x+.18*broad)
             coast=min(1,envelope*6)
             z=z*coast+.15*(1-coast)
-            verts.append((x,y,z))
+            summit=max(0,min(1,(z-8)/14))
+            verts.append(((x+3)*(1-summit*.45)-3,y,z))
     for row in range(ny):
         for column in range(nx):
             q=row*(nx+1)+column;faces.extend([(q,q+1,q+nx+2),(q,q+nx+2,q+nx+1)])
     terrain=mesh('SculptedIslandPeakRidge',verts,faces,rock)
     for polygon in terrain.data.polygons:polygon.use_smooth=True
-    soften=terrain.modifiers.new('Broad weathered ridges','SMOOTH');soften.factor=.5;soften.iterations=3
+    soften=terrain.modifiers.new('Broad weathered ridges','SMOOTH');soften.factor=.18;soften.iterations=1
     for i,(x,y,h,lean) in enumerate([(-16,12,6,.5),(16,12,6,-.7),(-16,-7,6.8,.6),(16,2,6.3,-.5)]):palm(x,y,h,lean,i+10)
     for side in [-1,1]:
         for cluster,y in enumerate([-13,-11.9,-10.7,-2,-.9,.4,11.7,13,14.2,19.2]):
