@@ -11,15 +11,6 @@
 body:not(.touch-mode) .touch-help {
   display: none !important;
 }
-.touch-sensitivity output {
-  float: right;
-  color: #2875a0;
-}
-.touch-sensitivity input {
-  width: 100%;
-  min-height: 44px;
-  accent-color: #1687bd;
-}
 .touch-mode {
   --hud-top: max(10px, env(safe-area-inset-top));
   --hud-left: max(16px, env(safe-area-inset-left));

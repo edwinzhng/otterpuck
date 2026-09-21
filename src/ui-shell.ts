@@ -39,7 +39,7 @@ export const uiShell = (): string => `
   ${dialog(
     "credits-dialog",
     "Credits",
-    `<div class="credits-card"><strong>Otterpuck</strong><span>Created by Edwin Zhang</span><div class="credits-rule"></div><small>Development</small><a href="https://github.com/PusztaiMateLX" target="_blank" rel="noreferrer">Máté Pusztai</a><p>Thank you for helping make the pool more fun.</p></div>`,
+    `<div class="credits-card"><p>Created by <a href="https://edwinzhang.com" target="_blank" rel="noreferrer">Edwin Zhang</a></p><p>Developer <a href="https://github.com/PusztaiMateLX" target="_blank" rel="noreferrer">Máté Pusztai</a></p><small>Thank you for helping make the pool more fun.</small></div>`,
     "close-credits",
   )}
   <section id="hud" class="hud hidden" aria-label="Game information">

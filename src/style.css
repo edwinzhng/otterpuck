@@ -735,8 +735,6 @@ legend {
 }
 .settings-footer {
   margin-top: 22px;
-  padding-top: 18px;
-  border-top: 1px solid var(--edge);
 }
 .settings-footer .button {
   width: 100%;
@@ -744,41 +742,25 @@ legend {
 .credits-card {
   display: grid;
   justify-items: center;
-  gap: 8px;
-  padding: 8px 12px 12px;
+  gap: 10px;
+  padding: 10px 12px 4px;
   text-align: center;
 }
-.credits-card > strong {
-  font-size: 34px;
-  letter-spacing: -1.5px;
-}
-.credits-card > span,
 .credits-card > p {
-  color: #5c8397;
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+.credits-card a {
+  color: var(--blue);
+  font: inherit;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
 }
 .credits-card > small {
+  margin-top: 10px;
   color: #5c8397;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-.credits-card > a {
-  color: var(--blue);
-  font-size: 22px;
-  font-weight: 900;
-  text-decoration-thickness: 2px;
-  text-underline-offset: 4px;
-}
-.credits-card > p {
-  margin-top: 8px;
   font-size: 13px;
-}
-.credits-rule {
-  width: 54px;
-  height: 3px;
-  margin: 13px 0 8px;
-  border-radius: 99px;
-  background: var(--yellow);
 }
 .controls-grid {
   display: grid;

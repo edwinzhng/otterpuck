@@ -53,7 +53,7 @@ export const touchSettingsMarkup = (): string => `
     ["touch", "Touch"],
     ["keyboard", "Mouse & keyboard"],
   ])}
-  <label class="field touch-sensitivity" for="touch-sensitivity"><span>Touch sensitivity <output id="touch-sensitivity-value">1×</output></span><input id="touch-sensitivity" type="range" min="0.5" max="2" step="0.1" value="1"/></label>`;
+  <label class="volume-setting touch-sensitivity" for="touch-sensitivity"><span>Touch sensitivity</span><output id="touch-sensitivity-value">1×</output><input id="touch-sensitivity" type="range" min="0.5" max="2" step="0.1" value="1"/></label>`;
 
 export const touchHelpMarkup = (): string =>
   `<div class="controls-grid touch-help">${TOUCH_CONTROL_HELP.map(
