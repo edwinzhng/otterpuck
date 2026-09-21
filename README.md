@@ -107,6 +107,12 @@ The scripts use the standard Blender application on macOS and `blender` on other
 
 Current otter and beaver sources include the corrected vertical dolphin and bank/flutter kicks. Runtime animation adapts to movement while physics remains authoritative. The stick is separate, and the goal is a floor-mounted metal trough without a net. Follow the [3D asset guide](docs/agent-guides/3d-assets.md) for authoring and review.
 
+All eight characters use the shared equipment and animation rig. Inspect them at `/?review&character=<species>`; species is independent of multiplayer team. Each editable source is `art/characters/<species>.blend`, exported with `bun art/characters/export.ts --<species>` to `public/models/characters/<species>.glb`. These models are authored for Otterpuck from Edwin's supplied character references and covered by the project license. Wearables come from `art/characters/wearable-equipment.ts`; each self-contained GLB includes its fitted equipment without a separate download. Dolphin omits wearable foot fins and uses its natural tail flukes.
+
+Glacier Base and Container Terminal are authored in `art/arenas/glacier-terminal.ts`. Their `public/art/arenas/{glacier,terminal}-panorama-painted.webp` backdrops were generated for Otterpuck with OpenAI image generation: a stylized arctic aurora over distant ice, and a stylized sunset over a distant harbor, respectively. They contain no third-party images and are covered by the project license.
+
+The arena catalog includes Tropical Cove, Neon Rooftop, Alpine Lodge, Forest Hot Springs, Rainforest Ruins, and Desert Oasis. All share the regulation pool and support offline play and host-selected multiplayer. Rebuild one arena with `bun art/arenas/create.ts --arena=<id>`, then run `goals.ts` and `export.ts` with the same flag. Map cards render the current model; there are no separately maintained thumbnails.
+
 ## Checks
 
 ```sh
@@ -122,7 +128,9 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) before submitting a change.
 
 ## Credits
 
-The multiplayer swords icon is from [Lucide](public/licenses/lucide.txt). Music and splash recordings are credited with their sources and licenses in [audio credits](public/audio/CREDITS.md). No blanket license is granted for the game's code or authored assets by this repository.
+The multiplayer swords icon is from [Lucide](public/licenses/lucide.txt). Music and splash recordings are credited with their sources and licenses in [audio credits](public/audio/CREDITS.md). Otterpuck is distributed under the [MIT License](LICENSE); third-party assets retain their stated licenses.
+
+Alpine, forest, ruins, and desert scenery is authored for Otterpuck from Edwin's concept sheet under the project license. Their `public/art/arenas/<id>-panorama-painted.webp` skies were generated with OpenAI's image-generation tool and compressed to 1774 × 887. The prompts requested seamless cartoon equirectangular backgrounds: snowy alpine peaks, dawn pine mountains, emerald rainforest hills, and sunset desert mesas, respectively, with no buildings, characters, text, or visible sun disk. Editable 3D sources remain in `art/arenas/`.
 
 ## Multiplayer
 
