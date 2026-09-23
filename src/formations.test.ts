@@ -241,6 +241,9 @@ test("3-3 relief preserves the weak back and a covered defender's planned ascent
 
 test("no replacement is invented and low air overrides a pending handoff safely", (): void => {
   const state = settledTeam("2-3-1", 0);
+  // The air reserve is measured before the step. The coach may lower it during
+  // the step, so it is held off to test the handoff rule on its own.
+  state.coached = [false, false];
   const wing = findRole(state, 0, "LW");
   const center = findRole(state, 0, "C");
   wing.air = 42;
@@ -254,7 +257,7 @@ test("no replacement is invented and low air overrides a pending handoff safely"
   center.position.copy(wing.target).add(new Vector3(0.5, 1, 0));
   planTeam(state, 0);
   expect(state.airRotations[0].at(0)?.phase).toBe("handoff");
-  wing.air = safeAirReserve(wing) - 0.1;
+  wing.air = safeAirReserve(state, wing) - 0.1;
   stepSimulation(state, freshControls(), STEP);
   expect(String(wing.mode)).toBe("ascending");
   expect(wing.air).toBeGreaterThan(10);

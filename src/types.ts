@@ -148,8 +148,42 @@ export type Controls = {
   charging: boolean;
   charge: number;
 };
+
+// Chaser costs are compared as distances in meters. Each weight adds or removes
+// meters of apparent distance, so 1.0 is worth one meter of swimming.
+export type PursuitWeights = {
+  forwardBehindPuck: number;
+  forwardAheadOfPuck: number;
+  acrossCourt: number;
+  keeper: number;
+  pressureDuty: number;
+  followingAttack: number;
+  depth: number;
+  humanNear: number;
+  coveringRotation: number;
+  outgoingRotation: number;
+  hysteresis: number;
+};
+
+// Team wide tactics the coach sets. The neutral value reproduces the game as
+// it plays with no coach, so an uncoached match is unaffected.
+export type TeamTactics = {
+  // Multiplies the air each bot holds back before it cycles to the surface.
+  // Below 1 spends air to keep a player in the contest for longer.
+  airBudget: number;
+};
+
+export const NEUTRAL_TACTICS: TeamTactics = { airBudget: 1 };
+
 export type Simulation = {
   difficulty: BotDifficulty;
+  // Each team carries its own chaser weights so tuning runs can play head to
+  // head. The coach rewrites `pursuit` from `pursuitBase` on every decision
+  // tick, so the base must survive untouched.
+  pursuit: [PursuitWeights, PursuitWeights];
+  pursuitBase: [PursuitWeights, PursuitWeights];
+  coached: [boolean, boolean];
+  tactics: [TeamTactics, TeamTactics];
   ruleset: Ruleset;
   swimTurn: number;
   physics: { drag: number; lift: number };

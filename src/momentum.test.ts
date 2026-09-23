@@ -2,7 +2,12 @@ import { expect, test } from "bun:test";
 import { Vector3 } from "three";
 import { pollMovement } from "./handling";
 import { RULESETS } from "./rules";
-import { createSimulation, stepSimulation, updateStick } from "./simulation";
+import {
+  CARRY_TURN_SPEED,
+  createSimulation,
+  stepSimulation,
+  updateStick,
+} from "./simulation";
 import {
   bladePoint,
   puckSeat,
@@ -98,8 +103,10 @@ test("side input turns the swimmer, releasing it holds the new course, and oppos
     player.velocity.clone().normalize().dot(forwardVector(heading)),
   ).toBeCloseTo(1, 8);
   advance(state, 0.2, { ...freshControls(), forward: 1, lateral: -1 });
-  expect(player.yaw).toBeGreaterThan(heading + 0.3);
-  advance(state, 1.1, { ...freshControls(), forward: 1, lateral: -1 });
+  // Carrying caps the carve, so 0.2 s of side input turns exactly that far.
+  expect(player.yaw - heading).toBeCloseTo(0.2 * CARRY_TURN_SPEED, 6);
+  // The capped carry turn needs longer than a free swimmer to come around.
+  advance(state, 1.3, { ...freshControls(), forward: 1, lateral: -1 });
   expect(player.velocity.x).toBeLessThan(-0.7);
   expect(player.velocity.z).toBeLessThan(-0.7);
 });

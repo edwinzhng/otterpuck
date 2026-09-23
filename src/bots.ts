@@ -6,6 +6,7 @@ import {
   type BotDifficulty,
   clamp,
   type Player,
+  type PursuitWeights,
   type Simulation,
   type Team,
 } from "./types";
@@ -55,6 +56,24 @@ export const botProfiles = {
   }
 >;
 
+export const pursuitWeights = {
+  forwardBehindPuck: 0.242,
+  forwardAheadOfPuck: 1.333,
+  acrossCourt: 2.872,
+  keeper: 1.324,
+  pressureDuty: -0.222,
+  followingAttack: -0.624,
+  depth: 1.059,
+  // Bot trials carry no human player, so `bun run tune` cannot measure this
+  // weight. Change it from play, not from a tuning run.
+  humanNear: -0.357,
+  coveringRotation: 4.14,
+  outgoingRotation: 7.588,
+  // Hysteresis keeps the current chaser until a rival is clearly closer. It
+  // stops two players from swapping the chase every decision tick.
+  hysteresis: 0.338,
+} as const satisfies PursuitWeights;
+
 export const defendingZone = (state: Simulation, player: Player): boolean => {
   if (state.faceoff?.phase === "strike") return true;
   const code =
@@ -63,12 +82,26 @@ export const defendingZone = (state: Simulation, player: Player): boolean => {
   return state.puck.position.z * attackDirection(player.team) <= exit;
 };
 
-export const safeAirReserve = (player: Player): number =>
-  12 + Math.max(0, 2.31 - player.position.y) * 3;
+// How many of a team may be off the floor at once for a top up. A player at or
+// below its safe reserve still surfaces, so this never risks a drowning.
+export const surfacingQuota = (size: number): number =>
+  Math.max(1, Math.round(size / 3));
+
+export const teammatesAway = (state: Simulation, player: Player): number =>
+  state.players.filter(
+    (other): boolean =>
+      other.team === player.team &&
+      other.id !== player.id &&
+      (other.mode === "ascending" || other.mode === "recovering"),
+  ).length;
+
+export const safeAirReserve = (state: Simulation, player: Player): number =>
+  (12 + Math.max(0, 2.31 - player.position.y) * 3) *
+  state.tactics[player.team].airBudget;
 
 export const followingAttack = (state: Simulation, player: Player): boolean =>
   !player.emergency &&
-  player.air > safeAirReserve(player) + 8 &&
+  player.air > safeAirReserve(state, player) + 8 &&
   player.position.y < 0.8 &&
   (state.puck.controlOwner === player.id ||
     state.puck.shotOwner === player.id ||
@@ -111,8 +144,9 @@ export const coordinatePuckPursuit = (state: Simulation, team: Team): void => {
       player.wantDown &&
       player.mode !== "ascending" &&
       player.mode !== "recovering" &&
-      player.air > safeAirReserve(player),
+      player.air > safeAirReserve(state, player),
   );
+  const weights = state.pursuit[team];
   const cost = (player: Player): number => {
     const horizontal = Math.hypot(
       player.position.x - state.puck.position.x,
@@ -139,23 +173,27 @@ export const coordinatePuckPursuit = (state: Simulation, team: Team): void => {
         (state.formations[team] !== "3-3" || side === -strong));
     const roleCost = closeContact
       ? 0
-      : (code.includes("F") ? (behindPuck ? 0.4 : 1.3) : 0) +
-        (acrossCourt ? 2.2 : 0) +
-        (keeper ? 2.3 : 0) +
-        (player.duty === "pressure" ? -0.35 : 0);
+      : (code.includes("F")
+          ? behindPuck
+            ? weights.forwardBehindPuck
+            : weights.forwardAheadOfPuck
+          : 0) +
+        (acrossCourt ? weights.acrossCourt : 0) +
+        (keeper ? weights.keeper : 0) +
+        (player.duty === "pressure" ? weights.pressureDuty : 0);
     return (
-      horizontal -
-      (followingAttack(state, player) ? 1.5 : 0) +
-      Math.max(0, player.position.y - 0.4) * 1.5 -
-      (player.human && horizontal < 1 ? 0.4 : 0) +
+      horizontal +
+      (followingAttack(state, player) ? weights.followingAttack : 0) +
+      Math.max(0, player.position.y - 0.4) * weights.depth +
+      (player.human && horizontal < 1 ? weights.humanNear : 0) +
       roleCost +
       (covering &&
       (rotation.phase === "handoff" ||
         player.target.distanceTo(state.puck.position) > 1.5)
-        ? 5
+        ? weights.coveringRotation
         : 0) +
       (rotation?.outgoing === player.id && rotation.phase !== "handoff"
-        ? 20
+        ? weights.outgoingRotation
         : 0)
     );
   };
@@ -168,7 +206,7 @@ export const coordinatePuckPursuit = (state: Simulation, team: Team): void => {
     (player): boolean => player.id === state.puckChasers[team],
   );
   state.puckChasers[team] =
-    previous && best && cost(previous) <= cost(best) + 0.55
+    previous && best && cost(previous) <= cost(best) + weights.hysteresis
       ? previous.id
       : best?.id;
 };
@@ -283,7 +321,7 @@ export const shouldSprintToPuck = (
   if (
     player.mode === "ascending" ||
     player.mode === "recovering" ||
-    player.air < safeAirReserve(player) + 10
+    player.air < safeAirReserve(state, player) + 10
   )
     return false;
   if (state.faceoff?.phase === "strike") return true;

@@ -1,5 +1,9 @@
 import { expect, test } from "bun:test";
-import { createSimulation, stepSimulation } from "./simulation";
+import {
+  CURL_TURN_SPEED,
+  createSimulation,
+  stepSimulation,
+} from "./simulation";
 import { puckSeat } from "./stick";
 import { freshControls, STEP } from "./types";
 
@@ -15,7 +19,9 @@ test("curl and dummy frames retain the preceding orientation for camera interpol
       stepSimulation(state, { ...freshControls(), ...action }, STEP);
       expect(player.previousYaw).toBe(yaw);
       expect(player.previousBodyPitch).toBe(pitch);
-      expect(Math.abs(player.yaw - yaw)).toBeLessThan(0.03);
+      expect(Math.abs(player.yaw - yaw)).toBeLessThanOrEqual(
+        CURL_TURN_SPEED * STEP,
+      );
     }
   }
 });

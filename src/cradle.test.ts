@@ -1,6 +1,10 @@
 import { expect, test } from "bun:test";
 import { Vector3 } from "three";
-import { createSimulation, stepSimulation } from "./simulation";
+import {
+  CURL_TURN_SPEED,
+  createSimulation,
+  stepSimulation,
+} from "./simulation";
 import {
   bladeMirror,
   bladePoint,
@@ -100,7 +104,7 @@ test("changing curl direction eases through the reversal and release settles pro
     const initial = player.curlTurnSpeed;
     stepSimulation(state, { ...freshControls(), curl: -1 }, STEP);
     expect(player.curlTurnSpeed).toBeGreaterThan(0);
-    expect(initial - player.curlTurnSpeed).toBeLessThan(0.9 * 1.3);
+    expect(initial - player.curlTurnSpeed).toBeLessThan(CURL_TURN_SPEED * 0.5);
     advance(state, 12, { ...freshControls(), curl: -1 });
     expect(player.curlTurnSpeed).toBeLessThan(-1.7);
     const yawAtRelease = player.yaw;

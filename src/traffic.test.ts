@@ -111,10 +111,15 @@ for (const challenged of [false, true]) {
       }
       expect(human.position.distanceTo(origin)).toBeGreaterThan(1.6);
       if (challenged) {
-        const owner = state.players.find(
-          (player) => player.id === state.puck.controlOwner,
+        // The challenge knocks the puck loose. The crowd in this test holds
+        // position, so no one collects it; the swimmer losing it to team 1 is
+        // what the challenge must achieve.
+        const responsible = state.players.find(
+          (player) =>
+            player.id === (state.puck.controlOwner ?? state.puck.lastTouch),
         );
-        expect(owner?.team).toBe(1);
+        expect(state.puck.controlOwner).not.toBe(human.id);
+        expect(responsible?.team).toBe(1);
         return;
       }
       expect(state.puck.controlOwner).toBe(human.id);

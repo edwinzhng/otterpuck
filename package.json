@@ -13,6 +13,8 @@
     "check:conventions": "bun run scripts/check-conventions.ts",
     "test": "bun test",
     "benchmark": "bun run scripts/benchmark.ts",
+    "arena": "bun run scripts/arena.ts",
+    "tune": "bun run scripts/tune.ts",
     "assets:characters": "bun art/characters/export.ts",
     "assets:arenas": "bun art/arenas/export.ts",
     "rooms": "bun run services/server.ts"

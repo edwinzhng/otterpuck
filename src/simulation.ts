@@ -9,13 +9,17 @@ import {
   coordinatePuckPursuit,
   defendingZone,
   followingAttack,
+  pursuitWeights,
   safeAirReserve,
   shouldSprintToPuck,
   steerThroughTraffic,
+  surfacingQuota,
+  teammatesAway,
   teamPuckCarrier,
   yieldToPuckChaser,
 } from "./bots";
 import type { CharacterSpecies } from "./characters";
+import { coachTeam } from "./coach";
 import { avoidBodies, resolveBodies } from "./collisions";
 import { wallLane } from "./formation-layout";
 import { planTeam } from "./formations";
@@ -83,6 +87,7 @@ import {
   handSide,
   MAX_STAMINA,
   type MatchSelection,
+  NEUTRAL_TACTICS,
   type Player,
   POOL,
   PUCK_HEIGHT,
@@ -228,6 +233,10 @@ export const createSimulation = (
       : [humanId];
   const state: Simulation = {
     difficulty: selection.difficulty,
+    pursuit: [{ ...pursuitWeights }, { ...pursuitWeights }],
+    pursuitBase: [{ ...pursuitWeights }, { ...pursuitWeights }],
+    coached: [true, true],
+    tactics: [{ ...NEUTRAL_TACTICS }, { ...NEUTRAL_TACTICS }],
     ruleset,
     swimTurn: selection.swimTurn ?? 1,
     physics: { drag: 1, lift: 1 },
@@ -484,8 +493,23 @@ const updateStamina = (rules: Rules, player: Player, dt: number): void => {
   );
 };
 
-const CURL_TURN_SPEED = 2.795;
+// Air a player keeps above its reserve when the surfacing quota is full. The
+// ascent itself costs air, so waiting down to the bare reserve risks a drown.
+const HELD_AIR_MARGIN = 6;
+// Heading error a bot ignores, in radians. Tuned with `bun run arena`.
+const HEADING_DEADBAND = 0.1;
+// Curl rate in radians per second. A full curl takes 2*PI/CURL_TURN_SPEED
+// seconds, so 4.189 gives a 1.5 second curl.
+export const CURL_TURN_SPEED = 4.189;
+// Turn limit while the player carries the puck. Turn radius is swim speed
+// divided by this rate, so a lower value forces a wider arc around the puck.
+export const CARRY_TURN_SPEED = 1.5;
+// Base turn limit for swimming without the puck. The player setting scales it.
+const SWIM_TURN_SPEED = 2.795;
 const FREE_SWIM_TURN_SPEED = 3.6;
+// Turn limit at the surface, where the puck is not played. It allows 1.5 full
+// turns per second, fast enough to reorient before the next dive.
+export const SURFACE_TURN_SPEED = 1.5 * 2 * Math.PI;
 const TURN_RELEASE_RESPONSE = 18;
 const HARD_TURN_RATE = 2.6;
 const HARD_TURN_FORWARD_RATE = 4.1;
@@ -625,11 +649,15 @@ const updateHumanMovement = (
         bodyTurnRate(locomotion) * dt +
         player.curlTurnSpeed * bladeMirror(player) * dt;
   // Normal swimming uses the room turn rate. Curling keeps its own limit.
+  // A swimmer at the surface turns faster, because the limit exists to stop a
+  // pivot around the puck and the puck is not played up here.
   const turnLimit =
     curl === 0
-      ? carrying
-        ? CURL_TURN_SPEED * state.swimTurn
-        : Math.max(FREE_SWIM_TURN_SPEED, CURL_TURN_SPEED * state.swimTurn)
+      ? underwater
+        ? carrying
+          ? CARRY_TURN_SPEED * state.swimTurn
+          : Math.max(FREE_SWIM_TURN_SPEED, SWIM_TURN_SPEED * state.swimTurn)
+        : SURFACE_TURN_SPEED
       : CURL_TURN_SPEED;
   player.yaw += !rules.autoCurl
     ? steer
@@ -909,7 +937,7 @@ const updateAI = (state: Simulation, player: Player, dt: number): void => {
   const profile = botProfiles[state.difficulty];
   const defending = defendingZone(state, player);
   const followThrough = followingAttack(state, player);
-  const reserve = safeAirReserve(player);
+  const reserve = safeAirReserve(state, player);
   const airRotation = state.airRotations[player.team].find(
     (active): boolean =>
       active.incoming === player.id || active.outgoing === player.id,
@@ -924,6 +952,16 @@ const updateAI = (state: Simulation, player: Player, dt: number): void => {
   )
     player.mode = "diving";
   const nearSurface = player.position.y > SURFACE_HEIGHT - 0.065;
+  // An early top up waits until the team has room for it. Surfacing at or below
+  // the safe reserve ignores the quota, so nobody is held down while short.
+  const roomToSurface =
+    teammatesAway(state, player) <
+    surfacingQuota(teamSize(state.formations[player.team]));
+  // Without room the player still surfaces at its safe reserve. The quota only
+  // withholds the early top up, never the breath the player actually needs.
+  const topUp = roomToSurface
+    ? Math.max(reserve, player.duty === "pressure" ? 30 : 38)
+    : reserve + HELD_AIR_MARGIN;
   if (
     player.mode === "playing" &&
     !followThrough &&
@@ -933,10 +971,8 @@ const updateAI = (state: Simulation, player: Player, dt: number): void => {
         ? reserve
         : defending
           ? reserve
-          : player.duty === "pressure"
-            ? 30
-            : 38) ||
-      (!defending && !player.wantDown && player.air < 80))
+          : topUp) ||
+      (!defending && !player.wantDown && roomToSurface && player.air < 80))
   )
     player.mode = "ascending";
   if (nearSurface && player.mode === "ascending") player.mode = "recovering";
@@ -985,17 +1021,24 @@ const updateAI = (state: Simulation, player: Player, dt: number): void => {
   avoidBodies(player, state.players, desired);
   const desiredSpeed = desired.length();
   const arriving = distance < 0.07 && desiredSpeed < 0.2;
+  // Direction to a nearby target swings wildly as a bot drifts. A swimmer
+  // holding station keeps its heading instead of steering at that noise, but
+  // still closes the last of the distance.
+  const holdingHeading = distance < 0.35 && desiredSpeed < 0.35;
   const targetYaw = player.grab
     ? player.yaw
-    : !arriving && desiredSpeed > 0.05
+    : !holdingHeading && desiredSpeed > 0.05
       ? directionYaw(desired.x, desired.z)
       : (player.aimYaw ?? player.yaw);
   const turnSpeed = profile.turnSpeed * (closePursuit ? 1.85 : 1.2);
-  player.yaw += clamp(
-    safeGoalTurn(player, desired, targetYaw),
-    -turnSpeed * dt,
-    turnSpeed * dt,
-  );
+  // A bot holding station sees its target direction jitter, which reads as a
+  // constant left and right twitch. Small heading errors are ignored so the
+  // swimmer holds a line instead of chasing that noise.
+  const headingError = safeGoalTurn(player, desired, targetYaw);
+  player.yaw +=
+    Math.abs(headingError) < HEADING_DEADBAND
+      ? 0
+      : clamp(headingError, -turnSpeed * dt, turnSpeed * dt);
   const forward = forwardVector(player.yaw);
   const alignment =
     desiredSpeed > 0.001 ? Math.max(0, desired.dot(forward) / desiredSpeed) : 0;
@@ -1790,6 +1833,8 @@ export const stepSimulation = (
   if (state.decisionTime <= 0 && state.mode === "match") {
     if (state.faceoff?.phase === "strike") planStrike(state);
     else {
+      coachTeam(state, 0);
+      coachTeam(state, 1);
       planTeam(state, 0);
       planTeam(state, 1);
       coordinatePuckPursuit(state, 0);

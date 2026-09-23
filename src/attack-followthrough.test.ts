@@ -61,7 +61,7 @@ test("attack commitment keeps a recent shooter down but respects the air reserve
   state.puck.touchTime = state.time;
   player.air = 50;
   expect(followingAttack(state, player)).toBe(true);
-  player.air = safeAirReserve(player);
+  player.air = safeAirReserve(state, player);
   expect(followingAttack(state, player)).toBe(false);
   player.air = 50;
   state.time += 4;

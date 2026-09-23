@@ -104,7 +104,7 @@ test("defenders hold their zone despite spare coverage and still surface before 
   expect(defendingZone(state, player)).toBe(true);
   expect(player.mode).toBe("playing");
   expect(player.wantDown).toBe(true);
-  player.air = safeAirReserve(player) - 1;
+  player.air = safeAirReserve(state, player) - 1;
   stepSimulation(state, freshControls(), STEP);
   expect(String(player.mode)).toBe("ascending");
   expect(player.air).toBeGreaterThan(10);

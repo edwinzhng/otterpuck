@@ -85,7 +85,7 @@ const applyRotation = (
     !outgoing ||
     !incoming ||
     incoming.emergency ||
-    incoming.air <= safeAirReserve(incoming) + 5 ||
+    incoming.air <= safeAirReserve(state, incoming) + 5 ||
     state.time - rotation.started > 24
   ) {
     finishRotation(state, team, rotation);
@@ -108,7 +108,7 @@ const applyRotation = (
     outgoing.wantDown = true;
     if (
       covered ||
-      outgoing.air <= safeAirReserve(outgoing) ||
+      outgoing.air <= safeAirReserve(state, outgoing) ||
       outgoing.mode === "ascending" ||
       outgoing.mode === "recovering"
     ) {
@@ -180,7 +180,7 @@ const planRotation = (
       const code = playerPosition(state, outgoing).code;
       const defending = defendingZone(state, outgoing);
       const threshold = defending
-        ? safeAirReserve(outgoing) + 14
+        ? safeAirReserve(state, outgoing) + 14
         : code.includes("F")
           ? 62
           : code.includes("B")

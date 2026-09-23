@@ -120,9 +120,15 @@ bun run check
 bun test
 bun run build
 bun run benchmark
+bun run arena
+bun run tune
 ```
 
 CPU simulation and input benchmarks do not measure GPU or phone performance; verify interactive changes in a browser and on target devices.
+
+`bun run arena` plays 72 bot-against-bot matches across the six-player formations, all four difficulties, and two start offsets, then reports possession, shots, puck crowding, defensive cover, surfacing, and chaser reassignments. Use it to compare bot behaviour before and after a change to `botProfiles`, `pursuitWeights` in `src/bots.ts`, or the coach in `src/coach.ts`. The simulation holds no randomness, so a setup replays identically; the start offset is the only source of spread. Both teams always run the same weights, so the score is symmetric noise and only the behaviour metrics carry meaning. `coachGoalDiffPerMatch` comes from a second pass where only one side runs the coach, and it must stay positive. The review list reports thresholds for inspection in the running game, not failures. Matches run on one worker per CPU core.
+
+`bun run tune [rounds]` searches for better `pursuitWeights` values. Each team carries its own weights, so a candidate plays the current values head to head over every formation pairing and difficulty. Every setup is played from both sides because team 0 and team 1 do not start from mirrored positions. A candidate is kept only when its goal difference clears one standard error and the team stays inside the crowding and cover limits. The final table is then re-tested on start offsets the search never saw, and only that holdout result indicates a real gain. The command prints a table to review and never edits `src/bots.ts`. Confirm any change in the running game before you keep it.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) before submitting a change.
 

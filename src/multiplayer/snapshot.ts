@@ -1,8 +1,10 @@
 import { Quaternion, Vector3 } from "three";
 import { z } from "zod";
+import { pursuitWeights } from "../bots";
 import { CHARACTER_SPECIES } from "../characters";
+import { coachTeam } from "../coach";
 import { teamSize } from "../positions";
-import type { Simulation } from "../types";
+import { NEUTRAL_TACTICS, type Simulation } from "../types";
 
 const n = z.number().finite();
 const vector = z
@@ -195,9 +197,21 @@ const rosterSchema = snapshotSchema.refine((state): boolean =>
 );
 export const parseSnapshot = (value: unknown): Simulation | undefined => {
   const result = rosterSchema.safeParse(unpackSnapshot(value));
-  return result.success
-    ? { ...result.data, faceoff: result.data.faceoff }
-    : undefined;
+  if (!result.success) return undefined;
+  const state: Simulation = {
+    ...result.data,
+    faceoff: result.data.faceoff,
+    pursuit: [{ ...pursuitWeights }, { ...pursuitWeights }],
+    pursuitBase: [{ ...pursuitWeights }, { ...pursuitWeights }],
+    coached: [true, true],
+    tactics: [{ ...NEUTRAL_TACTICS }, { ...NEUTRAL_TACTICS }],
+  };
+  // Weights and tactics are derived, not sent. The coach reads only fields the
+  // snapshot carries, so re-running it here rebuilds what the host holds and
+  // keeps the wire format unchanged.
+  coachTeam(state, 0);
+  coachTeam(state, 1);
+  return state;
 };
 export const localView = (state: Simulation, playerId: number): Simulation => {
   state.players.sort(

@@ -1,5 +1,11 @@
 import { expect, test } from "bun:test";
-import { createSimulation, stepSimulation, updateStick } from "./simulation";
+import {
+  CARRY_TURN_SPEED,
+  createSimulation,
+  SURFACE_TURN_SPEED,
+  stepSimulation,
+  updateStick,
+} from "./simulation";
 import { puckSeat } from "./stick";
 import {
   type Controls,
@@ -9,6 +15,7 @@ import {
   PUCK_HEIGHT,
   type Simulation,
   STEP,
+  SURFACE_HEIGHT,
 } from "./types";
 
 const GENTLE = 0.008;
@@ -47,12 +54,14 @@ const swimming = (): Controls => ({ ...freshControls(), forward: 1 });
 const horizontalSpeed = (player: Player): number =>
   Math.hypot(player.velocity.x, player.velocity.z);
 
-test("a gentle turn while carrying keeps the normal turn rate", (): void => {
+test("carrying the puck caps even a gentle turn at the carry rate", (): void => {
   const { state, player } = setup(true);
   const origin = player.yaw;
   drive(state, 60, swimming(), GENTLE);
   expect(player.curl).toBe(0);
-  expect(player.yaw - origin).toBeCloseTo(60 * GENTLE * 1.3 * 1.45, 6);
+  // A gentle pointer turn asks for 1.81 rad/s. Carrying the puck holds every
+  // turn to CARRY_TURN_SPEED so the swimmer cannot pivot around the puck.
+  expect(player.yaw - origin).toBeCloseTo(60 * STEP * CARRY_TURN_SPEED, 6);
 });
 
 test("mouse steering uses the same stick motion as A and D", (): void => {
@@ -265,7 +274,9 @@ test("free swimming turns faster than swimming with the puck", (): void => {
   drive(curling.state, 240, { ...freshControls(), curl: 1 });
   const curlTurn = Math.abs(curling.player.yaw - curlOrigin);
   expect(freeTurn).toBeGreaterThan(carryingTurn);
-  expect(carryingTurn / curlTurn).toBeCloseTo(1, 1);
+  // The curl is the fast turn and carrying the puck is the slow one. They no
+  // longer share a rate, so the curl must out-turn the carry.
+  expect(curlTurn).toBeGreaterThan(carryingTurn);
 });
 
 test("a sustained turn finishes one automatic dummy before it can rearm", (): void => {
@@ -300,4 +311,13 @@ test("the mouse loses most of its authority while curling", (): void => {
     60 * GENTLE * 1.3 * 1.45 * 0.3,
     6,
   );
+});
+
+test("a swimmer at the surface turns no faster than 1.5 turns per second", (): void => {
+  const { state, player } = setup(false);
+  player.position.y = SURFACE_HEIGHT;
+  player.previous.copy(player.position);
+  const origin = player.yaw;
+  stepSimulation(state, { ...freshControls(), yawDelta: 10 }, STEP);
+  expect(player.yaw - origin).toBeCloseTo(SURFACE_TURN_SPEED * STEP, 6);
 });
