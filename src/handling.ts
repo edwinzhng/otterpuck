@@ -1,4 +1,5 @@
 import { Vector3 } from "three";
+import { shieldScale, tackleScale } from "./player-profile";
 import { RULESETS } from "./rules";
 import { puckProtection } from "./shielding";
 import { bladePoint } from "./stick";
@@ -161,14 +162,23 @@ const bladeChallengesPuck = (
 };
 
 // More cover reduces the challenge range. Full cover blocks the challenge.
+// The carrier's technique adds cover. The challenger's technique adds reach.
 const challengeReach = (
   state: Simulation,
   player: Player,
   other: Player,
 ): number => {
-  const covered =
-    puckProtection(state, player, other) * RULESETS[state.ruleset].shielding;
-  return covered > SEALED ? 0 : CHALLENGE_REACH * (1 - covered * MOST_SHIELDED);
+  const covered = Math.min(
+    1,
+    puckProtection(state, player, other) *
+      RULESETS[state.ruleset].shielding *
+      shieldScale(player.attributes),
+  );
+  return covered > SEALED
+    ? 0
+    : CHALLENGE_REACH *
+        (1 - covered * MOST_SHIELDED) *
+        tackleScale(other.attributes);
 };
 
 export const isPuckContested = (state: Simulation, player: Player): boolean =>

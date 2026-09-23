@@ -13,18 +13,25 @@ import {
 } from "../character-roster";
 import { getElement } from "../dom";
 import { BOT_DIFFICULTY_OPTIONS, botDifficultyChoice } from "../game-options";
+import { playerChoiceButton } from "../player-build";
 import {
   defaultFormation,
   formationChoices,
   sizeLabel,
   TEAM_SIZES,
 } from "../positions";
-import type { Controls, Handedness, Simulation } from "../types";
+import type { Attributes, Controls, Handedness, Simulation } from "../types";
 import { button, dialog, field } from "../ui-components";
 import { connectRoom, type Session } from "./client";
 import { customPlayerName } from "./names";
 import { PROTOCOL, type RoomView } from "./protocol";
 import { loadRegions, measurePing, type Region } from "./regions";
+
+export type PlayerProfile = {
+  handedness: Handedness;
+  attributes: Attributes;
+  autoCurl: boolean;
+};
 
 export const multiplayerMarkup = (): string =>
   dialog(
@@ -46,7 +53,7 @@ export const multiplayerMarkup = (): string =>
  <section id="mp-room" hidden>
  <div class="mp-room-scroll">
  <div class="mp-room-bar"><div><span class="mp-field-label">Room code</span><h3 id="mp-room-title"></h3></div><div class="mp-room-meta"><p id="mp-room-region"></p>${button("mp-copy", "Copy invite")}</div></div>
- <div class="mp-player-bar"><label class="field" for="mp-name"><span>Your name</span><input id="mp-name" maxlength="24" placeholder="Player" autocomplete="nickname"/></label>${field(
+ <div class="mp-player-bar"><label class="field" for="mp-name"><span>Your name</span><input id="mp-name" maxlength="24" placeholder="Player" autocomplete="nickname"/></label>${playerChoiceButton("mp-player")}${field(
    "mp-team-size",
    "Match size",
    TEAM_SIZES.map((size): [string, string] => [String(size), sizeLabel(size)]),
@@ -71,7 +78,7 @@ export const multiplayerMarkup = (): string =>
   );
 export const bindMultiplayer = (callbacks: {
   cancelPreparation: () => void;
-  handedness: () => Handedness;
+  profile: () => PlayerProfile;
   prepare: (room: RoomView, isCurrent: () => boolean) => Promise<void>;
   play: (state: Simulation) => void;
   state: (state: Simulation) => void;
@@ -79,7 +86,8 @@ export const bindMultiplayer = (callbacks: {
 }): {
   active: () => boolean;
   arena: () => ArenaId;
-  handedness: (value: Handedness) => void;
+  profile: (change: Partial<PlayerProfile>) => void;
+  buildLocked: () => boolean;
   input: (controls: Controls, seconds?: number) => void;
   cancelInput: () => void;
   frame: () => void;
@@ -474,7 +482,7 @@ export const bindMultiplayer = (callbacks: {
           protocol: PROTOCOL,
           code,
           name: customName,
-          handedness: callbacks.handedness(),
+          ...callbacks.profile(),
         },
         region,
         (message): void => {
@@ -580,7 +588,7 @@ export const bindMultiplayer = (callbacks: {
         type: "create",
         protocol: PROTOCOL,
         name: customName,
-        handedness: callbacks.handedness(),
+        ...callbacks.profile(),
         mode: connection,
       });
     },
@@ -753,10 +761,16 @@ export const bindMultiplayer = (callbacks: {
     .catch(() =>
       setStatus("Could not load server locations. Reload to retry."),
     );
+  const buildLocked = (): boolean =>
+    Boolean(session) && session?.room()?.phase !== "waiting";
   return {
     active: () => Boolean(session),
     arena: () => session?.room()?.arena ?? "tropical",
-    handedness: (value): void => session?.profile({ handedness: value }),
+    profile: (change): void => {
+      const { attributes, ...rest } = change;
+      session?.profile(buildLocked() ? rest : change);
+    },
+    buildLocked,
     input: (controls, seconds): void => session?.input(controls, seconds),
     cancelInput: (): void => session?.cancelInput(),
     frame: (): void => session?.frame(),

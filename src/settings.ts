@@ -1,5 +1,19 @@
 import type { PoolAudio } from "./audio";
 import { getElement } from "./dom";
+import { saveAutoCurl } from "./player-profile";
+
+export const bindAutoCurlSetting = (
+  profile: { autoCurl: boolean },
+  apply: (autoCurl: boolean) => void,
+): void => {
+  const autoCurl = getElement("#auto-curl", HTMLInputElement);
+  autoCurl.checked = profile.autoCurl;
+  autoCurl.addEventListener("change", (): void => {
+    profile.autoCurl = autoCurl.checked;
+    saveAutoCurl(profile.autoCurl);
+    apply(profile.autoCurl);
+  });
+};
 
 export const bindGraphicsSettings = (
   touch: () => boolean,

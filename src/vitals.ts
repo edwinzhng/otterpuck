@@ -1,3 +1,4 @@
+import { airDrainScale, recoveryScale } from "./player-profile";
 import { RULESETS, type Rules } from "./rules";
 import {
   MAX_STAMINA,
@@ -19,7 +20,8 @@ export const staminaRate = (rules: Rules, player: Player): number => {
   const regained = player.sprint
     ? 0
     : (atSurface ? rules.surfaceRecovery : rules.recovery) *
-      (player.emergency ? rules.emergencyRecovery : 1);
+      (player.emergency ? rules.emergencyRecovery : 1) *
+      recoveryScale(player.attributes);
   return regained - spent;
 };
 
@@ -27,7 +29,11 @@ export const airRate = (state: Simulation, player: Player): number => {
   const rules = RULESETS[state.ruleset];
   const stamina = player.stamina / MAX_STAMINA;
   if (player.position.y >= SURFACE_HEIGHT - 0.045)
-    return (rules.airBase + rules.airStamina * stamina) / rules.airSupply;
+    return (
+      ((rules.airBase + rules.airStamina * stamina) *
+        recoveryScale(player.attributes)) /
+      rules.airSupply
+    );
   const engaged =
     player.handling ||
     player.curl !== 0 ||
@@ -41,6 +47,8 @@ export const airRate = (state: Simulation, player: Player): number => {
     ? air.engaged + Math.abs(player.curl) * air.curl
     : air.idle + Math.min(1, player.kick) * air.kick;
   return (
-    -(drain + (1 - stamina) * rules.spentAirDrain) / (0.75 * rules.airSupply)
+    (-(drain + (1 - stamina) * rules.spentAirDrain) *
+      airDrainScale(player.attributes)) /
+    (0.75 * rules.airSupply)
   );
 };

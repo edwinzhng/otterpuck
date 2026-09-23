@@ -28,6 +28,9 @@ export const field = (
 ): string =>
   `<div class="field select-field" data-select-field><label id="${id}-label" for="${id}">${label}</label><select id="${id}" hidden>${options.map(([value, text]): string => `<option value="${value}">${text}</option>`).join("")}</select><button id="${id}-trigger" class="select-field-trigger" type="button" aria-labelledby="${id}-label ${id}-value" aria-haspopup="listbox" aria-controls="${id}-options" aria-expanded="false"><span id="${id}-value">${options.at(0)?.at(1) ?? ""}</span><span class="select-field-chevron" aria-hidden="true"></span></button><div id="${id}-options" class="select-field-options" role="listbox" aria-labelledby="${id}-label" hidden></div></div>`;
 
+export const toggle = (id: string, title: string, detail: string): string =>
+  `<label class="toggle-setting" for="${id}"><span><strong>${title}</strong><small>${detail}</small></span><input id="${id}" type="checkbox" role="switch"/><i aria-hidden="true"></i></label>`;
+
 export const control = (key: string, label: string): string =>
   `<div class="control">${keycap(key)}<span>${label}</span></div>`;
 

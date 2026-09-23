@@ -1,3 +1,4 @@
+import { NEUTRAL_ATTRIBUTES } from "../player-profile";
 import { defaultFormation } from "../positions";
 import {
   createSimulation,
@@ -109,6 +110,8 @@ export const createNetworkMatch = (
         const member = owner?.connected ? owner : undefined;
         if (teamSpecies) player.species = teamSpecies[player.team];
         player.human = Boolean(member);
+        player.attributes = { ...(member?.attributes ?? NEUTRAL_ATTRIBUTES) };
+        player.autoCurl = member?.autoCurl ?? false;
         if (member)
           setPlayerHandedness(initial, member.handedness ?? "right", player.id);
         if (member && !inputs.has(player.id))

@@ -1,5 +1,6 @@
 import type { SwimTurn } from "./swim-turn";
 import type {
+  Attributes,
   BotDifficulty,
   Formation,
   GameMode,
@@ -22,6 +23,8 @@ export type UI = {
   position: number;
   difficulty: BotDifficulty;
   swimTurn: SwimTurn;
+  attributes: Attributes;
+  autoCurl: boolean;
   formation: Formation;
   opposition: Formation;
   teamSize: TeamSize;

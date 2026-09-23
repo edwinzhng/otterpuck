@@ -55,14 +55,18 @@ export const createRooms = (
     teamSpecies: room.teamSpecies,
     swimTurn: room.swimTurn,
     difficulty: room.difficulty,
-    members: room.members.map(({ id, name, playerId, peer, handedness }) => ({
-      id,
-      name,
-      playerId,
-      connected: Boolean(peer),
-      handedness,
-      species: room.teamSpecies[playerId < 6 ? 0 : 1],
-    })),
+    members: room.members.map(
+      ({ id, name, playerId, peer, handedness, attributes, autoCurl }) => ({
+        id,
+        name,
+        playerId,
+        connected: Boolean(peer),
+        handedness,
+        attributes,
+        autoCurl,
+        species: room.teamSpecies[playerId < 6 ? 0 : 1],
+      }),
+    ),
   });
   const broadcast = (room: Room, message: ServerMessage): void => {
     for (const member of room.members) member.peer?.send(message);
@@ -149,10 +153,13 @@ export const createRooms = (
   const join = (
     peer: Peer,
     room: Room,
-    name: string | undefined,
-    requestedTeam?: 0 | 1,
-    handedness: "left" | "right" = "right",
+    profile: Pick<
+      Extract<ClientMessage, { type: "join" }>,
+      "name" | "team" | "handedness" | "attributes" | "autoCurl"
+    >,
   ): void => {
+    const { name, team: requestedTeam, attributes, autoCurl } = profile;
+    const handedness = profile.handedness ?? "right";
     const otters = room.members.filter((member) => member.playerId < 6).length;
     const team =
       requestedTeam ?? (otters <= room.members.length - otters ? 0 : 1);
@@ -177,6 +184,8 @@ export const createRooms = (
       defaultName,
       loaded: false,
       handedness,
+      attributes,
+      autoCurl,
       playerId,
       connected: true,
       peer: undefined,
@@ -239,7 +248,7 @@ export const createRooms = (
             );
             return;
           }
-          join(peer, room, message.name, message.team, message.handedness);
+          join(peer, room, message);
           return;
         }
         if (rooms.size >= 32) {
@@ -272,7 +281,7 @@ export const createRooms = (
           nextPlayerNumber: 1,
         };
         rooms.set(code, room);
-        join(peer, room, message.name, message.team, message.handedness);
+        join(peer, room, message);
         return;
       }
       if (!current) {
@@ -287,11 +296,13 @@ export const createRooms = (
       if (message.type === "profile") {
         if (
           room.phase !== "waiting" &&
-          (message.name !== undefined || message.playerId !== undefined)
+          (message.name !== undefined ||
+            message.playerId !== undefined ||
+            message.attributes !== undefined)
         ) {
           error(
             peer,
-            "Name, team and position are locked once the match starts.",
+            "Name, team, position and player build are locked once the match starts.",
           );
           return;
         }
@@ -314,6 +325,9 @@ export const createRooms = (
         }
         if (message.handedness !== undefined)
           member.handedness = message.handedness;
+        if (message.attributes !== undefined)
+          member.attributes = message.attributes;
+        if (message.autoCurl !== undefined) member.autoCurl = message.autoCurl;
         if (message.name !== undefined)
           member.name = customPlayerName(message.name) ?? member.defaultName;
         if (message.playerId !== undefined) member.playerId = message.playerId;

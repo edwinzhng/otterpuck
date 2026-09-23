@@ -5,6 +5,7 @@ import { CHARACTER_SPECIES } from "../characters";
 import { coachTeam } from "../coach";
 import { teamSize } from "../positions";
 import { NEUTRAL_TACTICS, type Simulation } from "../types";
+import { attributesSchema } from "./protocol";
 
 const n = z.number().finite();
 const vector = z
@@ -18,6 +19,8 @@ const playerFields = z.object({
   slot: n,
   human: z.boolean(),
   handedness: z.enum(["left", "right"]),
+  attributes: attributesSchema,
+  autoCurl: z.boolean(),
   position: vector,
   previous: vector,
   previousYaw: n,

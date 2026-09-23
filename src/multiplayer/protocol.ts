@@ -1,8 +1,14 @@
 import { z } from "zod";
 import { ARENA_IDS } from "../arena-catalog";
 import { CHARACTER_SPECIES } from "../characters";
+import {
+  ATTRIBUTE_POINTS,
+  attributePoints,
+  MAX_ATTRIBUTE,
+  MIN_ATTRIBUTE,
+} from "../player-profile";
 import { SWIM_TURNS } from "../swim-turn";
-export const PROTOCOL = 10;
+export const PROTOCOL = 11;
 const speciesSchema = z.enum(CHARACTER_SPECIES);
 const teamSpeciesSchema = z.tuple([speciesSchema, speciesSchema]);
 export const teamSizeSchema = z.union([
@@ -14,6 +20,18 @@ export const swimTurnSchema = z.union(
   SWIM_TURNS.map((turn) => z.literal(turn)),
 );
 export const botDifficultySchema = z.enum(["easy", "medium", "hard", "elite"]);
+const level = z.number().int().min(MIN_ATTRIBUTE).max(MAX_ATTRIBUTE);
+export const attributesSchema = z
+  .object({ strength: level, technique: level, fitness: level })
+  .refine(
+    (attributes): boolean => attributePoints(attributes) <= ATTRIBUTE_POINTS,
+  );
+const profileFields = {
+  name: z.string().trim().max(24).optional(),
+  handedness: z.enum(["left", "right"]).optional(),
+  attributes: attributesSchema.optional(),
+  autoCurl: z.boolean().optional(),
+};
 const axis = z.number().finite().min(-1).max(1);
 export const controlsSchema = z.object({
   forward: axis,
@@ -50,16 +68,14 @@ export const clientMessageSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("create"),
     protocol: z.literal(PROTOCOL),
-    name: z.string().trim().max(24).optional(),
-    handedness: z.enum(["left", "right"]).optional(),
+    ...profileFields,
     mode: z.enum(["online", "lan"]),
     team: z.union([z.literal(0), z.literal(1)]).optional(),
   }),
   z.object({
     type: z.literal("join"),
     protocol: z.literal(PROTOCOL),
-    name: z.string().trim().max(24).optional(),
-    handedness: z.enum(["left", "right"]).optional(),
+    ...profileFields,
     code: z.string().regex(/^[A-Z2-9]{6}$/),
     team: z.union([z.literal(0), z.literal(1)]).optional(),
   }),
@@ -86,8 +102,7 @@ export const clientMessageSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal("profile"),
-    name: z.string().trim().max(24).optional(),
-    handedness: z.enum(["left", "right"]).optional(),
+    ...profileFields,
     playerId: z.number().int().min(0).max(11).optional(),
   }),
   z.object({
@@ -111,6 +126,8 @@ export const memberSchema = z.object({
   playerId: z.number().int().min(0).max(11),
   connected: z.boolean(),
   handedness: z.enum(["left", "right"]).optional(),
+  attributes: attributesSchema.optional(),
+  autoCurl: z.boolean().optional(),
 });
 export const roomSchema = z.object({
   arena: z.enum(ARENA_IDS),

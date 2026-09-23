@@ -6,6 +6,12 @@ export type TeamSize = 2 | 3 | 6;
 export type Team = 0 | 1;
 export type Species = CharacterSpecies;
 export type BotDifficulty = "easy" | "medium" | "hard" | "elite";
+// Personal levels from 1 to 5. See player-profile.ts for their effects.
+export type Attributes = {
+  strength: number;
+  technique: number;
+  fitness: number;
+};
 export type MatchSelection = {
   team?: Team;
   species: Species;
@@ -13,6 +19,8 @@ export type MatchSelection = {
   difficulty: BotDifficulty;
   ruleset?: Ruleset;
   swimTurn?: number;
+  attributes?: Attributes;
+  autoCurl?: boolean;
 };
 export type Handedness = "right" | "left";
 export type WaterMode = "playing" | "ascending" | "recovering" | "diving";
@@ -34,6 +42,10 @@ export type Player = {
   slot: number;
   human: boolean;
   handedness: Handedness;
+  attributes: Attributes;
+  // A hard turn with the puck while swimming forward without sprint becomes
+  // a curl. Players turn this on in Settings.
+  autoCurl: boolean;
   position: Vector3;
   previous: Vector3;
   previousYaw: number;

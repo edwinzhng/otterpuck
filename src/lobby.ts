@@ -13,6 +13,7 @@ import {
   MATCH_DURATION_OPTIONS,
   matchDurationChoice,
 } from "./game-options";
+import { playerChoiceButton } from "./player-build";
 import {
   defaultFormation,
   formationChoices,
@@ -80,6 +81,7 @@ export const lobbyMarkup = (): string => `
       <div class="selected-map"><img id="selected-map-image" data-arena-preview="tropical" alt="Selected pool" hidden/>${cardButton('Tropical Cove <span aria-hidden="true">↩</span>', "", 'id="change-map"')}</div>
       <div class="setup-panel"><h1 id="selected-mode">Quick match</h1>
         ${button("change-character", characterChoiceMarkup("otter"), "secondary")}
+        ${playerChoiceButton("change-player")}
         <section class="setup-section game-setup" data-match-only><h2>Setup</h2>
           <fieldset><legend>Match size</legend><div class="segmented setup-segmented">${TEAM_SIZES.map(
             (size): string =>

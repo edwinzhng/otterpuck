@@ -14,9 +14,14 @@ import { createRoomSimulation } from "./multiplayer/match";
 import { bindMultiplayer } from "./multiplayer/ui";
 import { enableOffline } from "./offline";
 import { createFrameMeter } from "./performance";
+import { bindPlayerBuild } from "./player-build";
 import { renderPlayerLabels } from "./player-labels";
 import { sizeLabel, teamSize } from "./positions";
-import { bindGraphicsSettings, bindVolumeSettings } from "./settings";
+import {
+  bindAutoCurlSetting,
+  bindGraphicsSettings,
+  bindVolumeSettings,
+} from "./settings";
 import {
   createSimulation,
   feedPracticePuck,
@@ -26,7 +31,7 @@ import {
 } from "./simulation";
 import { createTackleTracker } from "./tackle-events";
 import { createTurnoverBanner } from "./turnover-banner";
-import { freshControls, POOL, STEP } from "./types";
+import { freshControls, type Player, POOL, STEP } from "./types";
 import { createUI, getElement, updateHudValues, updateUI } from "./ui";
 import { createSpeedLines } from "./view-effects";
 import {
@@ -224,6 +229,8 @@ const boot = async (): Promise<void> => {
           position: ui.position,
           difficulty: ui.difficulty,
           swimTurn: ui.swimTurn,
+          attributes: ui.attributes,
+          autoCurl: ui.autoCurl,
         },
       );
       input.clear();
@@ -316,7 +323,8 @@ const boot = async (): Promise<void> => {
       "change",
       (): void => {
         input.clear();
-        if (multiplayer?.active()) multiplayer.handedness(ui.handedness);
+        if (multiplayer?.active())
+          multiplayer.profile({ handedness: ui.handedness });
         else setPlayerHandedness(app.state, ui.handedness);
       },
     );
@@ -609,7 +617,11 @@ const boot = async (): Promise<void> => {
   else setTimeout(preparePreviews, 500);
   multiplayer = bindMultiplayer({
     cancelPreparation: gameTransition.cancel,
-    handedness: () => ui.handedness,
+    profile: () => ({
+      handedness: ui.handedness,
+      attributes: ui.attributes,
+      autoCurl: ui.autoCurl,
+    }),
     prepare: async (room, isCurrent): Promise<void> => {
       await gameTransition.cover();
       if (!isCurrent()) return;
@@ -659,6 +671,21 @@ const boot = async (): Promise<void> => {
     ended: (): void => {
       getElement("#return-menu", HTMLButtonElement).click();
     },
+  });
+  const applyProfile = (
+    change: Partial<Pick<Player, "attributes" | "autoCurl">>,
+  ): void => {
+    if (multiplayer?.active()) {
+      multiplayer.profile(change);
+      return;
+    }
+    const player = app.state.players.find((candidate) => candidate.human);
+    if (player) Object.assign(player, change);
+  };
+  bindAutoCurlSetting(ui, (autoCurl): void => applyProfile({ autoCurl }));
+  bindPlayerBuild(ui, (attributes): void => {
+    getElement("#build-note", HTMLElement).hidden = !multiplayer?.buildLocked();
+    applyProfile({ attributes });
   });
   if (!location.hash.includes("room=")) learning.offer();
   enableOffline();

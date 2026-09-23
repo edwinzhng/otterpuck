@@ -23,6 +23,12 @@ import { coachTeam } from "./coach";
 import { avoidBodies, resolveBodies } from "./collisions";
 import { wallLane } from "./formation-layout";
 import { planTeam } from "./formations";
+import {
+  curlSpeedScale,
+  flickScale,
+  NEUTRAL_ATTRIBUTES,
+  swimSpeedScale,
+} from "./player-profile";
 import { teamSize } from "./positions";
 import { advancePuck, puckFloorHeight } from "./puck-physics";
 import { RULESETS, type Rules } from "./rules";
@@ -129,6 +135,8 @@ const makePlayer = (
     slot,
     human,
     handedness,
+    attributes: { ...NEUTRAL_ATTRIBUTES },
+    autoCurl: false,
     position,
     previous: position.clone(),
     previousYaw: team === 0 ? 0 : Math.PI,
@@ -299,6 +307,11 @@ export const createSimulation = (
     contacts: 0,
     shots: 0,
   };
+  const human = state.players.at(0);
+  if (human) {
+    human.attributes = { ...(selection.attributes ?? NEUTRAL_ATTRIBUTES) };
+    human.autoCurl = selection.autoCurl ?? false;
+  }
   state.puck.previous.copy(state.puck.position);
   for (const player of state.players) {
     updateStick(player, 1 / 120);
@@ -513,6 +526,7 @@ export const SURFACE_TURN_SPEED = 1.5 * 2 * Math.PI;
 const TURN_RELEASE_RESPONSE = 18;
 const HARD_TURN_RATE = 2.6;
 const HARD_TURN_FORWARD_RATE = 4.1;
+const HARD_TURN_CURL_RATE = 7.5;
 const HARD_TURN_RELEASE = 1.6;
 const AUTO_DUMMY_TIMING = 1.6;
 const POINTER_TURN_GAIN = 1.45;
@@ -542,7 +556,7 @@ const sprintingForward = (
 ): boolean =>
   controls.sprint && controls.forward > 0 && canSprint(rules, player);
 
-const canHandOver = (
+const canTurnWithPuck = (
   rules: Rules,
   state: Simulation,
   player: Player,
@@ -552,8 +566,30 @@ const canHandOver = (
   state.puck.controlOwner === player.id &&
   !controls.charging &&
   !controls.dummyMode &&
-  !player.grab &&
+  !player.grab;
+
+const canHandOver = (
+  rules: Rules,
+  state: Simulation,
+  player: Player,
+  controls: Controls,
+): boolean =>
+  canTurnWithPuck(rules, state, player, controls) &&
   (controls.forward <= 0 || sprintingForward(rules, player, controls));
+
+// With auto curl on, a harder forward turn than the dummy threshold becomes a
+// curl. Sprint keeps the automatic dummy.
+const curlsOutOfTurn = (
+  rules: Rules,
+  state: Simulation,
+  player: Player,
+  controls: Controls,
+): boolean =>
+  player.autoCurl &&
+  controls.forward > 0 &&
+  !sprintingForward(rules, player, controls) &&
+  canTurnWithPuck(rules, state, player, controls) &&
+  turningHard(player, HARD_TURN_CURL_RATE);
 
 const autoTurnDirection = (
   rules: Rules,
@@ -602,14 +638,26 @@ const updateHumanMovement = (
     player.autoDummyLocked = false;
     player.autoDummyUntil = 0;
   }
-  const automatic = autoTurnDirection(rules, state, player, controls);
-  if (controls.forward > 0 && automatic !== 0 && !player.autoDummyLocked) {
+  const curling = curlsOutOfTurn(rules, state, player, controls);
+  if (curling) {
+    player.autoDummyLocked = false;
+    player.autoDummyUntil = 0;
+  }
+  const automatic = curling
+    ? Math.sign(player.turnRate) * bladeMirror(player)
+    : autoTurnDirection(rules, state, player, controls);
+  if (
+    controls.forward > 0 &&
+    !curling &&
+    automatic !== 0 &&
+    !player.autoDummyLocked
+  ) {
     player.autoDummyLocked = true;
     player.autoDummyUntil =
       state.time +
       (SWERVE_PULL_DURATION + SWERVE_EXTEND_DURATION) * AUTO_DUMMY_TIMING;
   }
-  const forwardTurn = controls.forward > 0;
+  const forwardTurn = controls.forward > 0 && !curling;
   const curl =
     controls.curl !== 0 ? controls.curl : forwardTurn ? 0 : automatic;
   const locomotion =
@@ -638,8 +686,9 @@ const updateHumanMovement = (
   );
   if (locomotion.lateral !== 0) player.lateral = locomotion.lateral;
   else player.lateral = pointerTurn;
+  const curlTurnSpeed = CURL_TURN_SPEED * curlSpeedScale(player.attributes);
   player.curlTurnSpeed +=
-    (curl * CURL_TURN_SPEED - player.curlTurnSpeed) *
+    (curl * curlTurnSpeed - player.curlTurnSpeed) *
     (1 - Math.exp(-(curl === 0 ? 34 : 24) * dt));
   if (Math.abs(player.curlTurnSpeed) < 0.01) player.curlTurnSpeed = 0;
   const steer =
@@ -658,7 +707,7 @@ const updateHumanMovement = (
           ? CARRY_TURN_SPEED * state.swimTurn
           : Math.max(FREE_SWIM_TURN_SPEED, SWIM_TURN_SPEED * state.swimTurn)
         : SURFACE_TURN_SPEED
-      : CURL_TURN_SPEED;
+      : curlTurnSpeed;
   player.yaw += !rules.autoCurl
     ? steer
     : clamp(steer, -turnLimit * dt, turnLimit * dt);
@@ -675,7 +724,8 @@ const updateHumanMovement = (
     locomotion.forward < 0
       ? 0
       : Math.max(locomotion.forward, Math.abs(locomotion.lateral));
-  const speed = player.sprint ? 2.9 : 1.55;
+  const speed =
+    (player.sprint ? 2.9 : 1.55) * swimSpeedScale(player.attributes);
   const braking = locomotion.forward < 0;
   const forwardSpeed =
     curl !== 0
@@ -1274,7 +1324,9 @@ const fireShot = (state: Simulation, player: Player): void => {
   const puck = state.puck;
   puck.velocity
     .copy(player.shotDirection)
-    .multiplyScalar(2.2 + player.shotPower * 2.8)
+    .multiplyScalar(
+      (2.2 + player.shotPower * 2.8) * flickScale(player.attributes),
+    )
     .addScaledVector(player.velocity, 0.65);
   puck.velocity.y = 0.75 + player.shotPower * 0.85;
   puck.velocity.y *= state.physics.lift * player.shotLoft;
@@ -1606,7 +1658,10 @@ const resetPositions = (state: Simulation): void => {
       state.formations[player.team],
       player.species,
     );
-    Object.assign(player, initial);
+    Object.assign(player, initial, {
+      attributes: player.attributes,
+      autoCurl: player.autoCurl,
+    });
     updateStick(player, 1 / 120);
     player.previousStick.copy(player.stick);
   }

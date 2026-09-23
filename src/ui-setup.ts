@@ -1,6 +1,7 @@
 import { getElement } from "./dom";
 import { DEFAULT_MATCH_DURATION } from "./game-options";
 import { bindLobby } from "./lobby";
+import { savedAttributes, savedAutoCurl } from "./player-profile";
 import { bindSelectFields } from "./select-fields";
 import { DEFAULT_SWIM_TURN } from "./swim-turn";
 import { uiShell } from "./ui-shell";
@@ -28,6 +29,8 @@ export const createUI = (): UI => {
     position: 0,
     difficulty: "medium",
     swimTurn: DEFAULT_SWIM_TURN,
+    attributes: savedAttributes(),
+    autoCurl: savedAutoCurl(),
     handedness:
       localStorage.getItem("otter-hockey-handedness") === "left"
         ? "left"

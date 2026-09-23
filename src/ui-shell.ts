@@ -2,12 +2,20 @@ import { DESKTOP_CONTROL_HELP } from "./control-registry";
 import { goalConfettiMarkup } from "./goal-confetti";
 import { lobbyMarkup } from "./lobby";
 import { multiplayerMarkup } from "./multiplayer/ui";
+import { playerDialogMarkup } from "./player-build";
 import {
   touchHelpMarkup,
   touchMarkup,
   touchSettingsMarkup,
 } from "./touch-markup";
-import { button, control, dialog, field, keycap } from "./ui-components";
+import {
+  button,
+  control,
+  dialog,
+  field,
+  keycap,
+  toggle,
+} from "./ui-components";
 
 const handednessField = (): string =>
   field("handedness", "Stick hand", [
@@ -23,16 +31,21 @@ export const uiShell = (): string => `
   <canvas id="pool" tabindex="0" aria-label="Otterpuck playing pool"></canvas><div class="water-vignette" aria-hidden="true"></div>
   ${lobbyMarkup()}
   ${multiplayerMarkup()}
+  ${playerDialogMarkup()}
   ${dialog(
     "settings-dialog",
     "Settings",
-    `${handednessField()}${field("quality", "Graphics", [
-      ["1.35", "Balanced"],
-      ["1", "Performance"],
-      ["1.7", "Sharp"],
-      ["2", "Extra sharp"],
-      ["0.85", "Battery saver"],
-    ])}${touchSettingsMarkup()}${["music", "effects"].map((kind): string => `<label class="volume-setting">${kind === "music" ? "Music" : "Effects"}<output id="${kind}-volume-value"></output><input id="${kind}-volume" type="range" min="0" max="100" step="1" aria-label="${kind === "music" ? "Music" : "Effects"} volume"/></label>`).join("")}<div class="settings-row">${button("sound", "Sound on", "secondary", 'aria-pressed="true"')}${button("music", "Music on", "secondary", 'aria-pressed="true"')}</div><label class="toggle-setting" for="performance-toggle"><span><strong>Frame rate</strong><small>Show performance details</small></span><input id="performance-toggle" type="checkbox" role="switch"/><i aria-hidden="true"></i></label><div class="settings-footer">${button("show-credits", "Credits", "quiet")}</div>`,
+    `${handednessField()}${toggle("auto-curl", "Auto curl", "Turn hard with the puck to curl")}${field(
+      "quality",
+      "Graphics",
+      [
+        ["1.35", "Balanced"],
+        ["1", "Performance"],
+        ["1.7", "Sharp"],
+        ["2", "Extra sharp"],
+        ["0.85", "Battery saver"],
+      ],
+    )}${touchSettingsMarkup()}${["music", "effects"].map((kind): string => `<label class="volume-setting">${kind === "music" ? "Music" : "Effects"}<output id="${kind}-volume-value"></output><input id="${kind}-volume" type="range" min="0" max="100" step="1" aria-label="${kind === "music" ? "Music" : "Effects"} volume"/></label>`).join("")}<div class="settings-row">${button("sound", "Sound on", "secondary", 'aria-pressed="true"')}${button("music", "Music on", "secondary", 'aria-pressed="true"')}</div>${toggle("performance-toggle", "Frame rate", "Show performance details")}<div class="settings-footer">${button("show-credits", "Credits", "quiet")}</div>`,
     "close-settings",
   )}
   ${dialog("controls-dialog", "Controls", controlsMarkup(), "close-controls")}
