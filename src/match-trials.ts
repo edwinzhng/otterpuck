@@ -1,3 +1,4 @@
+import { applyBotBuilds, type RoleBuilds } from "./bots";
 import { createSimulation, stepSimulation } from "./simulation";
 import {
   attackDirection,
@@ -75,6 +76,7 @@ export const runTrial = (
   setup: TrialSetup,
   pursuit?: TeamWeights,
   coached?: [boolean, boolean],
+  builds?: [RoleBuilds, RoleBuilds],
 ): TrialReport => {
   const state = createSimulation(
     setup.formation,
@@ -87,11 +89,13 @@ export const runTrial = (
   );
   // Both teams must run the bot controller for the trial to measure bot play.
   for (const player of state.players) player.human = false;
+  applyBotBuilds(state, builds);
   if (pursuit) {
     state.pursuit = [{ ...pursuit[0] }, { ...pursuit[1] }];
     state.pursuitBase = [{ ...pursuit[0] }, { ...pursuit[1] }];
   }
   if (coached) state.coached = [coached[0], coached[1]];
+  state.botNoise = randomizer(setup.seed * 7919 + 17);
   scatterStart(state, setup.seed);
 
   const controls = freshControls();
@@ -193,16 +197,18 @@ export type TrialJob = {
   setup: TrialSetup;
   pursuit?: TeamWeights;
   coached?: [boolean, boolean];
+  builds?: [RoleBuilds, RoleBuilds];
 };
 
 export const runJob = (job: TrialJob): TrialReport =>
-  runTrial(job.setup, job.pursuit, job.coached);
+  runTrial(job.setup, job.pursuit, job.coached, job.builds);
 
 // What the tested side runs. The other side runs the shipped weights with the
 // coach on, unless the variant says otherwise for both sides.
 export type DuelVariant = {
   pursuit?: { tested: PursuitWeights; other: PursuitWeights };
   coached?: { tested: boolean; other: boolean };
+  builds?: { tested: RoleBuilds; other: RoleBuilds };
 };
 
 // Team 0 and team 1 do not start from mirrored positions, so every setup is
@@ -214,7 +220,7 @@ export const duelJobs = (
 ): TrialJob[] =>
   setups.flatMap((setup): TrialJob[] =>
     ([0, 1] as const).map((side): TrialJob => {
-      const { pursuit, coached } = variant;
+      const { pursuit, coached, builds } = variant;
       return {
         setup,
         pursuit: pursuit
@@ -226,6 +232,11 @@ export const duelJobs = (
           ? side === 0
             ? [coached.tested, coached.other]
             : [coached.other, coached.tested]
+          : undefined,
+        builds: builds
+          ? side === 0
+            ? [builds.tested, builds.other]
+            : [builds.other, builds.tested]
           : undefined,
       };
     }),

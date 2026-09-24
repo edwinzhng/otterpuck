@@ -759,7 +759,17 @@ legend {
   display: grid;
   gap: 2px;
 }
-.build-row small,
+.build-intro {
+  margin: 8px 0 0;
+  color: #4c7185;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.build-row small {
+  color: #5c8397;
+  font-size: 12px;
+  line-height: 1.35;
+}
 .build-note {
   color: #5c8397;
   font-size: 11px;

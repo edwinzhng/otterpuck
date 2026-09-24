@@ -56,6 +56,9 @@ export type Player = {
   velocity: Vector3;
   yaw: number;
   aimYaw: number | undefined;
+  // A bot's next shot or pass. The bot turns to this heading, charges and
+  // releases like a player.
+  plannedShot: { yaw: number; power: number } | undefined;
   evadeSide: number;
   evadeUntil: number;
   evadeTarget: Vector3;
@@ -197,6 +200,11 @@ export type Simulation = {
   coached: [boolean, boolean];
   tactics: [TeamTactics, TeamTactics];
   ruleset: Ruleset;
+  // Bot match trials only. Bots are deterministic, so trial matches from
+  // nearby starts replay almost the same game. A seeded jitter in bot timing
+  // and targets makes each trial an independent sample. Live games leave it
+  // unset, so hosts and clients stay in step.
+  botNoise?: () => number;
   swimTurn: number;
   physics: { drag: number; lift: number };
   playground: {

@@ -1,18 +1,24 @@
 import { expect, test } from "bun:test";
+import { Vector3 } from "three";
+import { pushWeakerBodies } from "./collisions";
 import { createRoomSimulation } from "./multiplayer/match";
 import { attributesSchema } from "./multiplayer/protocol";
 import { packSnapshot, parseSnapshot } from "./multiplayer/snapshot";
 import {
-  airDrainScale,
+  airRefillScale,
+  airUseScale,
+  chargeTimeScale,
   curlSpeedScale,
   flickScale,
   NEUTRAL_ATTRIBUTES,
-  recoveryScale,
   shieldScale,
+  shotPower,
+  staminaDrainScale,
   swimSpeedScale,
   tackleScale,
   validAttributes,
 } from "./player-profile";
+import { RULESETS } from "./rules";
 import { createSimulation, stepSimulation, updateStick } from "./simulation";
 import { puckSeat } from "./stick";
 import {
@@ -24,7 +30,7 @@ import {
   type Simulation,
   STEP,
 } from "./types";
-import { airRate } from "./vitals";
+import { airRate, staminaRate } from "./vitals";
 
 const GENTLE = 0.008;
 // A pointer turn of 0.06 rad per step asks for about 13.6 rad/s.
@@ -98,8 +104,10 @@ test("auto curl ignores gentle turns and sprinting turns", (): void => {
 
 test("neutral attributes leave every quality unchanged", (): void => {
   for (const modifier of [
-    airDrainScale,
-    recoveryScale,
+    airRefillScale,
+    airUseScale,
+    staminaDrainScale,
+    chargeTimeScale,
     flickScale,
     swimSpeedScale,
     curlSpeedScale,
@@ -130,16 +138,53 @@ test("a build spends at most ten points within levels one to five", (): void => 
   ).toBe(false);
 });
 
-test("fitness keeps more air underwater and recovers it faster", (): void => {
+test("fitness uses less air, refills it faster and makes stamina last longer", (): void => {
   const fit = carrying({ strength: 2, technique: 3, fitness: 5 });
   const unfit = carrying({ strength: 5, technique: 4, fitness: 1 });
   expect(Math.abs(airRate(fit.state, fit.player))).toBeLessThan(
     Math.abs(airRate(unfit.state, unfit.player)),
   );
+  for (const { player } of [fit, unfit]) {
+    player.sprint = true;
+    player.kick = 1;
+  }
+  const rules = RULESETS.alternative;
+  expect(staminaRate(rules, fit.player)).toBeGreaterThan(
+    staminaRate(rules, unfit.player),
+  );
   for (const { player } of [fit, unfit]) player.position.y = 2.4;
   expect(airRate(fit.state, fit.player)).toBeGreaterThan(
     airRate(unfit.state, unfit.player),
   );
+});
+
+test("the stronger swimmer pushes a weaker one aside at up to a quarter sprint", (): void => {
+  const { state } = carrying();
+  const [first] = state.players;
+  if (!first) throw new Error("Otter missing");
+  const shove = (strong: number, weak: number): number => {
+    const stronger = {
+      ...first,
+      attributes: { strength: strong, technique: 3, fitness: 3 },
+      position: new Vector3(0, 0.36, 0),
+      velocity: new Vector3(),
+      yaw: Math.PI / 2,
+    };
+    const weaker = {
+      ...first,
+      id: 7,
+      attributes: { strength: weak, technique: 3, fitness: 3 },
+      position: new Vector3(0, 0.36, 0.5),
+      velocity: new Vector3(),
+      yaw: Math.PI / 2,
+    };
+    pushWeakerBodies([stronger, weaker]);
+    expect(stronger.velocity.length()).toBe(0);
+    return weaker.velocity.z;
+  };
+  expect(shove(3, 3)).toBe(0);
+  expect(shove(4, 3)).toBeCloseTo(0.25 * 2.9 * 0.25, 6);
+  expect(shove(5, 1)).toBeCloseTo(0.25 * 2.9, 6);
 });
 
 test("strength swims faster and flicks the puck harder", (): void => {
@@ -171,6 +216,17 @@ test("strength swims faster and flicks the puck harder", (): void => {
   };
   expect(flickSpeed({ strength: 5, technique: 3, fitness: 2 })).toBeGreaterThan(
     flickSpeed({ strength: 1, technique: 4, fitness: 5 }),
+  );
+});
+
+test("technique charges a full shot in half the time at level 5", (): void => {
+  const quick = { strength: 3, technique: 5, fitness: 2 };
+  expect(shotPower(quick, 0.5)).toBe(1);
+  expect(shotPower(NEUTRAL_ATTRIBUTES, 0.5)).toBe(0.5);
+  expect(shotPower({ strength: 5, technique: 1, fitness: 4 }, 0.75)).toBe(0.5);
+  expect(shotPower(quick, 0.01)).toBe(0.22);
+  expect(flickScale({ strength: 3, technique: 5, fitness: 2 })).toBeLessThan(
+    flickScale({ strength: 5, technique: 3, fitness: 2 }),
   );
 });
 

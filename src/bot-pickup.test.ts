@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { botProfiles } from "./bots";
 import { createSimulation, stepSimulation, updateStick } from "./simulation";
 import { FLOOR_HEIGHT, freshControls, PUCK_HEIGHT, STEP } from "./types";
 
@@ -37,12 +38,15 @@ test("bot retrieves a loose puck directly beneath its chest", (): void => {
   expect(state.puck.controlOwner).toBe(bot.id);
 });
 
-test("nearby puck chaser turns promptly toward a puck behind it", (): void => {
+test("nearby puck chaser turns toward a puck behind it at its full turn rate", (): void => {
   const { state, bot } = setup();
   state.puck.position.z = 1;
   bot.target.z = 1;
   stepSimulation(state, freshControls(), STEP);
-  expect(Math.abs(bot.yaw)).toBeGreaterThan(4 * STEP);
+  expect(Math.abs(bot.yaw)).toBeCloseTo(
+    botProfiles[state.difficulty].turnSpeed * STEP,
+    6,
+  );
 });
 
 test("non-chaser leaves the under-chest puck for its teammate", (): void => {

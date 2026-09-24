@@ -1,4 +1,5 @@
 import type { TouchAction } from "./control-registry";
+import { MAX_HELD } from "./player-profile";
 import { type Controls, clamp, freshControls } from "./types";
 
 export type { TouchAction } from "./control-registry";
@@ -102,7 +103,7 @@ export const createTouchController = (controls: Controls): TouchController => {
     const contact = contacts.get(id);
     if (!contact) return;
     if (contact.action === "shot" && !cancelled)
-      state.shot = clamp((now - contact.started) / 650, 0.22, 1);
+      state.shot = clamp((now - contact.started) / 650, 0.01, MAX_HELD);
     if (contact.action === "move") state.sprint = false;
     contacts.delete(id);
   };
@@ -153,7 +154,7 @@ export const createTouchController = (controls: Controls): TouchController => {
     for (const contact of contacts.values()) {
       if (contact.action !== "shot") continue;
       controls.charging = true;
-      controls.charge = clamp((now - contact.started) / 650, 0, 1);
+      controls.charge = clamp((now - contact.started) / 650, 0, MAX_HELD);
     }
     controls.shot = Math.max(controls.shot, state.shot);
     controls.knockdown ||= state.react;

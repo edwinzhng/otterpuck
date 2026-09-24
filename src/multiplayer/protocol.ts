@@ -5,6 +5,7 @@ import {
   ATTRIBUTE_POINTS,
   attributePoints,
   MAX_ATTRIBUTE,
+  MAX_HELD,
   MIN_ATTRIBUTE,
 } from "../player-profile";
 import { SWIM_TURNS } from "../swim-turn";
@@ -21,11 +22,16 @@ export const swimTurnSchema = z.union(
 );
 export const botDifficultySchema = z.enum(["easy", "medium", "hard", "elite"]);
 const level = z.number().int().min(MIN_ATTRIBUTE).max(MAX_ATTRIBUTE);
-export const attributesSchema = z
-  .object({ strength: level, technique: level, fitness: level })
-  .refine(
-    (attributes): boolean => attributePoints(attributes) <= ATTRIBUTE_POINTS,
-  );
+// Bots at higher difficulty spend more points than a player, so snapshots
+// check only the levels. Player profiles also check the point budget.
+export const attributeLevelsSchema = z.object({
+  strength: level,
+  technique: level,
+  fitness: level,
+});
+export const attributesSchema = attributeLevelsSchema.refine(
+  (attributes): boolean => attributePoints(attributes) <= ATTRIBUTE_POINTS,
+);
 const profileFields = {
   name: z.string().trim().max(24).optional(),
   handedness: z.enum(["left", "right"]).optional(),
@@ -48,9 +54,9 @@ export const controlsSchema = z.object({
   knockdown: z.boolean(),
   backhand: z.boolean(),
   dive: z.boolean(),
-  shot: z.number().min(0).max(1),
+  shot: z.number().min(0).max(MAX_HELD),
   charging: z.boolean(),
-  charge: z.number().min(0).max(1),
+  charge: z.number().min(0).max(MAX_HELD),
 });
 export const signalSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("offer"), sdp: z.string().max(16000) }),

@@ -1,4 +1,5 @@
 import { Vector3 } from "three";
+import { strengthPush } from "./player-profile";
 import {
   clamp,
   FLOOR_HEIGHT,
@@ -85,6 +86,33 @@ const contactResponse = (player: Player, normal: Vector3): Vector3 => {
   )
     response.y = 0;
   return response;
+};
+
+// The stronger of two touching swimmers shoves the weaker one aside. The
+// push sets the weaker body's outward speed and never slows it down.
+export const pushWeakerBodies = (players: Player[]): void => {
+  for (const [index, player] of players.entries()) {
+    for (const other of players.slice(index + 1)) {
+      if (player.attributes.strength === other.attributes.strength) continue;
+      if (other.position.distanceToSquared(player.position) > 1) continue;
+      const normal = bodySeparation(player, other).setY(0);
+      const distance = normal.length();
+      if (distance > bodyRadius(player) + bodyRadius(other) + 0.02) continue;
+      if (distance < 0.00001) continue;
+      normal.divideScalar(distance);
+      const playerStronger =
+        player.attributes.strength > other.attributes.strength;
+      const weaker = playerStronger ? other : player;
+      const push = playerStronger
+        ? strengthPush(player.attributes, other.attributes)
+        : strengthPush(other.attributes, player.attributes);
+      // `normal` points from `other` towards `player`.
+      const outward = playerStronger ? normal.clone().negate() : normal;
+      const current = weaker.velocity.dot(outward);
+      if (current < push)
+        weaker.velocity.addScaledVector(outward, push - current);
+    }
+  }
 };
 
 export const resolveBodies = (

@@ -1,5 +1,7 @@
 import { expect, test } from "bun:test";
 import {
+  BOT_POINTS,
+  botBuilds,
   botProfiles,
   defendingZone,
   safeAirReserve,
@@ -201,4 +203,12 @@ test("menu markup has unique IDs, complete position choices, and only mode label
     "selected-map-image",
   ])
     expect(ids).toContain(id);
+});
+
+test("every bot build spends exactly its difficulty's points", (): void => {
+  for (const [difficulty, roles] of Object.entries(botBuilds))
+    for (const build of Object.values(roles))
+      expect(build.strength + build.technique + build.fitness).toBe(
+        BOT_POINTS[difficulty as keyof typeof botBuilds],
+      );
 });

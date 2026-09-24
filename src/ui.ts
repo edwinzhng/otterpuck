@@ -4,6 +4,7 @@ import { handlingLabel, puckReaction } from "./handling";
 import type { Input } from "./input";
 import { drawMap } from "./minimap";
 import type { HudValues } from "./multiplayer/hud";
+import { chargePower } from "./player-profile";
 import { playerPosition } from "./positions";
 import type { Simulation } from "./types";
 import type { UI } from "./ui-types";
@@ -111,7 +112,7 @@ export const updateUI = (
     setText(ui.elements.fps, `${Math.round(world.frameRate)} FPS`);
   ui.elements.charge.style.setProperty(
     "--charge",
-    `${input.controls.charge * 100}%`,
+    `${chargePower(player.attributes, input.controls.charge) * 100}%`,
   );
   ui.elements.charge.classList.toggle("visible", input.controls.charging);
   input.touch.update(state);

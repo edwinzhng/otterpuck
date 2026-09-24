@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import { Vector3 } from "three";
 import { bodySeparation, resolveBodies } from "./collisions";
+import { playerPosition } from "./positions";
 import { createSimulation, stepSimulation, updateStick } from "./simulation";
 import { bladePoint, puckSeat } from "./stick";
 import {
@@ -56,9 +57,17 @@ test("every swimmer waits at their own wall until the strike signal", (): void =
   for (const player of state.players.filter(
     (candidate): boolean => !candidate.human,
   )) {
-    expect(player.sprint).toBe(true);
-    expect(Math.hypot(player.velocity.x, player.velocity.z)).toBeGreaterThan(2);
+    // Bots start at the same launch speed as a player. Only the striker
+    // sprints on from it.
+    const striker = player.slot === 0;
+    expect(player.sprint).toBe(striker);
+    expect(Math.hypot(player.velocity.x, player.velocity.z)).toBeGreaterThan(
+      striker ? 1.7 : 1.4,
+    );
     expect(Math.abs(player.position.z)).toBeLessThan(12);
+    // Forwards dive straight for the puck. The rest swim out on top.
+    const forward = playerPosition(state, player).code.includes("F");
+    expect(player.mode === "diving" || player.mode === "playing").toBe(forward);
   }
 });
 
@@ -216,7 +225,7 @@ test("an opponent's blade can break the curl hold under original rules", (): voi
   updateStick(opponent, STEP);
   opponent.previousStick.copy(opponent.stick);
   state.players.push(opponent);
-  advance(state, 0.04, { ...freshControls(), curl: 1 });
+  advance(state, STEP, { ...freshControls(), curl: 1 });
   expect(state.puck.controlOwner).toBeUndefined();
   expect(state.puck.lastTouch).toBe(6);
   expect(state.puck.velocity.length()).toBeGreaterThan(0);

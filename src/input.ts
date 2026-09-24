@@ -1,4 +1,5 @@
 import { pollMovement } from "./handling";
+import { MAX_HELD } from "./player-profile";
 import { createTouchInput, type TouchInput } from "./touch-input";
 import { type Controls, clamp, freshControls } from "./types";
 
@@ -53,7 +54,7 @@ export const createInput = (
       pollMovement(controls, keys);
       controls.charging = input.charging;
       controls.charge = input.charging
-        ? clamp((performance.now() - input.chargeStart) / 650, 0, 1)
+        ? clamp((performance.now() - input.chargeStart) / 650, 0, MAX_HELD)
         : 0;
     },
   };
@@ -136,10 +137,12 @@ export const createInput = (
     if (touch.enabled) return;
     if (event.button === 2) controls.dummyMode = false;
     if (event.button === 0 && input.charging && input.locked) {
+      // The hold fraction goes to the simulation, which applies the minimum
+      // power and the player's charge speed.
       controls.shot = clamp(
         (performance.now() - input.chargeStart) / 650,
-        0.22,
-        1,
+        0.01,
+        MAX_HELD,
       );
       input.charging = false;
     }

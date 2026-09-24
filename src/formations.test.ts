@@ -123,7 +123,8 @@ test("wall lineups and strike support mirror the teams and deploy the selected f
       else if (playerPosition(state, player).code.includes("F"))
         expect(depth).toBeGreaterThan(0.8);
       else expect(depth).toBeLessThan(0);
-      expect(player.sprint || player.human).toBe(true);
+      // Only the striker races the swimoff.
+      if (!player.human) expect(player.sprint).toBe(player.slot === 0);
     }
   }
 });
@@ -226,7 +227,7 @@ test("3-3 relief preserves the weak back and a covered defender's planned ascent
   const strong = findRole(state, 0, "RB");
   const swing = findRole(state, 0, "CB");
   const weak = findRole(state, 0, "LB");
-  strong.air = 30;
+  strong.air = 27;
   swing.position.copy(strong.formationTarget).add(new Vector3(-0.75, 0, 0));
   planTeam(state, 0);
   expect(state.airRotations[0].at(0)?.incoming).toBe(swing.id);

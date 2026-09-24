@@ -12,9 +12,11 @@ import type { Attributes } from "./types";
 import { button, dialog } from "./ui-components";
 
 const ATTRIBUTE_DETAILS = {
-  strength: "Shot power and speed",
-  technique: "Curls and puck battles",
-  fitness: "Air and recovery",
+  strength: "Swim faster, shoot further and push weaker swimmers aside.",
+  technique:
+    "Curl faster, win more puck battles and charge shots quicker. Shots go a little further.",
+  fitness:
+    "Use less air underwater and get it back faster. Stamina lasts longer.",
 } as const;
 
 export const playerChoiceMarkup = (attributes: Attributes): string =>
@@ -30,7 +32,7 @@ export const playerDialogMarkup = (): string =>
   dialog(
     "player-dialog",
     "My player",
-    `<fieldset class="player-build" aria-label="Player build"><output id="build-points" class="build-points"></output>${ATTRIBUTE_NAMES.map(
+    `<p class="build-intro">Share ${ATTRIBUTE_POINTS} points between three qualities. Level 3 plays like a standard swimmer. Each level above or below makes a small difference.</p><fieldset class="player-build" aria-label="Player build"><output id="build-points" class="build-points"></output>${ATTRIBUTE_NAMES.map(
       (name): string =>
         `<div class="build-row"><span class="build-name"><strong id="build-${name}-label">${ATTRIBUTE_LABELS[name]}</strong><small>${ATTRIBUTE_DETAILS[name]}</small></span>${button(`build-${name}-down`, "−", "icon", `aria-label="Lower ${ATTRIBUTE_LABELS[name].toLowerCase()}"`)}<output id="build-${name}" class="build-level" aria-labelledby="build-${name}-label"></output>${button(`build-${name}-up`, "+", "icon", `aria-label="Raise ${ATTRIBUTE_LABELS[name].toLowerCase()}"`)}<i class="build-pips" aria-hidden="true">${"<b></b>".repeat(MAX_ATTRIBUTE)}</i></div>`,
     ).join(

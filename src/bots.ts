@@ -2,6 +2,7 @@ import { Vector3 } from "three";
 import { positionSide, strongPositionSide } from "./formation-layout";
 import { formationPositions, playerPosition } from "./positions";
 import {
+  type Attributes,
   attackDirection,
   type BotDifficulty,
   clamp,
@@ -10,7 +11,12 @@ import {
   type Simulation,
   type Team,
 } from "./types";
+import { airEngaged, underwaterAirUse } from "./vitals";
 
+// Difficulty changes decisions and effort, never the movement rules. Bots send
+// player controls, so speeds and turns stay within the player limits.
+// `sprintSpeed` is the top speed a bot asks for, at most the player sprint.
+// `turnSpeed` is the fastest turn it asks for, in radians per second.
 export const botProfiles = {
   easy: {
     sprintSpeed: 2.15,
@@ -18,7 +24,7 @@ export const botProfiles = {
     turnSpeed: 2.1,
     anticipation: 0.1,
     decisionPeriod: 0.22,
-    response: 4,
+    aim: 0.3,
   },
   medium: {
     sprintSpeed: 2.5,
@@ -26,7 +32,7 @@ export const botProfiles = {
     turnSpeed: 2.7,
     anticipation: 0.18,
     decisionPeriod: 0.14,
-    response: 5,
+    aim: 0.18,
   },
   hard: {
     sprintSpeed: 2.75,
@@ -34,7 +40,7 @@ export const botProfiles = {
     turnSpeed: 3.3,
     anticipation: 0.26,
     decisionPeriod: 0.1,
-    response: 6,
+    aim: 0.12,
   },
   elite: {
     sprintSpeed: 2.9,
@@ -42,7 +48,7 @@ export const botProfiles = {
     turnSpeed: 3.8,
     anticipation: 0.34,
     decisionPeriod: 0.075,
-    response: 7,
+    aim: 0.1,
   },
 } as const satisfies Record<
   BotDifficulty,
@@ -52,9 +58,59 @@ export const botProfiles = {
     turnSpeed: number;
     anticipation: number;
     decisionPeriod: number;
-    response: number;
+    // Heading error a bot accepts before it shoots, in radians.
+    aim: number;
   }
 >;
+
+// Bots spend more build points at higher difficulty. A player has 10.
+export const BOT_POINTS = {
+  easy: 7,
+  medium: 9,
+  hard: 11,
+  elite: 13,
+} as const satisfies Record<BotDifficulty, number>;
+
+export type PositionRole = "forward" | "middle" | "back";
+export type RoleBuilds = Record<PositionRole, Attributes>;
+
+type Build = [strength: number, technique: number, fitness: number];
+const byRole = (forward: Build, middle: Build, back: Build): RoleBuilds => {
+  const build = ([strength, technique, fitness]: Build): Attributes => ({
+    strength,
+    technique,
+    fitness,
+  });
+  return { forward: build(forward), middle: build(middle), back: build(back) };
+};
+
+// Found with `bun run tune:builds` and confirmed head to head. Strength is
+// maxed first. Forwards then gain most from fitness, which keeps them down
+// through an attack, and backs from technique, which wins the puck back.
+export const botBuilds: Record<BotDifficulty, RoleBuilds> = {
+  easy: byRole([5, 1, 1], [5, 1, 1], [5, 1, 1]),
+  medium: byRole([5, 1, 3], [5, 2, 2], [5, 3, 1]),
+  hard: byRole([5, 1, 5], [5, 4, 2], [5, 5, 1]),
+  elite: byRole([5, 3, 5], [5, 5, 3], [5, 5, 3]),
+};
+
+export const positionRole = (code: string): PositionRole =>
+  code.includes("F") ? "forward" : code.includes("B") ? "back" : "middle";
+
+// Gives every bot the build for its difficulty and position. A team entry in
+// `builds` replaces the shipped builds, so trials can play builds head to head.
+export const applyBotBuilds = (
+  state: Simulation,
+  builds?: readonly [RoleBuilds, RoleBuilds],
+): void => {
+  for (const player of state.players) {
+    if (player.human) continue;
+    const table = builds?.[player.team] ?? botBuilds[state.difficulty];
+    player.attributes = {
+      ...table[positionRole(playerPosition(state, player).code)],
+    };
+  }
+};
 
 export const pursuitWeights = {
   forwardBehindPuck: 0.242,
@@ -82,6 +138,36 @@ export const defendingZone = (state: Simulation, player: Player): boolean => {
   return state.puck.position.z * attackDirection(player.team) <= exit;
 };
 
+// Horizontal distance a player covers while it dives from the surface to the
+// floor at swim speed, in meters.
+const DIVE_REACH = 1.8;
+// A loose or carried puck this close needs the player on the floor now, in
+// meters.
+const SURFACE_THREAT = 3.5;
+
+// Swimming along the surface is as fast as swimming on the floor, and it
+// refills air instead of spending it. At a swimoff only the forwards race
+// straight down. The rest travel on top and dive once the dive itself covers
+// the rest of the way, or once the puck comes near.
+export const approachAtSurface = (
+  state: Simulation,
+  player: Player,
+): boolean => {
+  if (
+    state.faceoff?.phase !== "strike" ||
+    player.emergency ||
+    state.puckChasers[player.team] === player.id ||
+    positionRole(playerPosition(state, player).code) === "forward"
+  )
+    return false;
+  const flat = (a: Vector3, b: Vector3): number =>
+    Math.hypot(a.x - b.x, a.z - b.z);
+  return (
+    flat(player.position, player.target) > DIVE_REACH &&
+    flat(player.position, state.puck.position) > SURFACE_THREAT
+  );
+};
+
 // How many of a team may be off the floor at once for a top up. A player at or
 // below its safe reserve still surfaces, so this never risks a drowning.
 export const surfacingQuota = (size: number): number =>
@@ -95,9 +181,30 @@ export const teammatesAway = (state: Simulation, player: Player): number =>
       (other.mode === "ascending" || other.mode === "recovering"),
   ).length;
 
+// A player still counts as playing the puck for a moment after it lets go,
+// and uses air faster on the way up. This covers that extra air, in percent.
+const HANDLING_ASCENT_AIR = 6;
+
 export const safeAirReserve = (state: Simulation, player: Player): number =>
-  (12 + Math.max(0, 2.31 - player.position.y) * 3) *
+  (9 +
+    Math.max(0, 2.31 - player.position.y) * 3 +
+    (airEngaged(state, player) ? HANDLING_ASCENT_AIR : 0)) *
   state.tactics[player.team].airBudget;
+
+// Seconds of play a player has left before it must head up for air. It
+// counts the air above the safe reserve at the rate the player would use it,
+// on the puck or off it. A player on the way up or at the surface has none.
+export const airSeconds = (
+  state: Simulation,
+  player: Player,
+  engaged: boolean,
+): number =>
+  player.emergency ||
+  player.mode === "ascending" ||
+  player.mode === "recovering"
+    ? 0
+    : Math.max(0, player.air - safeAirReserve(state, player)) /
+      underwaterAirUse(state, player, engaged, 1);
 
 export const followingAttack = (state: Simulation, player: Player): boolean =>
   !player.emergency &&
@@ -130,6 +237,11 @@ export const teamPuckCarrier = (
       player.position.distanceToSquared(state.puck.position) < 0.81,
   );
 };
+
+// Speed a chaser closes on the puck, in meters per second, and the air it
+// should still have when it gets there, in seconds.
+const CHASE_SPEED = 2;
+const CHASE_SPARE_SECONDS = 3;
 
 export const coordinatePuckPursuit = (state: Simulation, team: Team): void => {
   const carrier = teamPuckCarrier(state, team);
@@ -181,8 +293,13 @@ export const coordinatePuckPursuit = (state: Simulation, team: Team): void => {
         (acrossCourt ? weights.acrossCourt : 0) +
         (keeper ? weights.keeper : 0) +
         (player.duty === "pressure" ? weights.pressureDuty : 0);
+    // A chaser that would arrive with little air left would have to leave
+    // the puck again. Each missing second counts as a meter of distance.
+    const spare = airSeconds(state, player, true) - horizontal / CHASE_SPEED;
+    const shortOfAir = Math.max(0, CHASE_SPARE_SECONDS - spare);
     return (
       horizontal +
+      shortOfAir +
       (followingAttack(state, player) ? weights.followingAttack : 0) +
       Math.max(0, player.position.y - 0.4) * weights.depth +
       (player.human && horizontal < 1 ? weights.humanNear : 0) +
@@ -313,6 +430,35 @@ export const steerThroughTraffic = (
     player.dummy = player.evadeSide * strength;
 };
 
+// A swimmer on its way up sidesteps any body above it within this reach, in
+// meters. Pushing straight up into it would stall the ascent.
+const ASCENT_CLEARANCE = 0.85;
+const ASCENT_LOOKAHEAD = 1.4;
+const ASCENT_SIDESTEP = 1.3;
+
+export const clearAscent = (
+  state: Simulation,
+  player: Player,
+  desired: Vector3,
+): void => {
+  if (player.mode !== "ascending") return;
+  const sidestep = new Vector3();
+  for (const other of state.players) {
+    const above = other.position.y - player.position.y;
+    if (other === player || above <= 0 || above > ASCENT_LOOKAHEAD) continue;
+    const away = player.position.clone().sub(other.position).setY(0);
+    const distance = away.length();
+    if (distance > ASCENT_CLEARANCE) continue;
+    if (distance < 0.001) away.set(player.slot % 2 === 0 ? 1 : -1, 0, 0);
+    sidestep.addScaledVector(
+      away.normalize(),
+      (ASCENT_CLEARANCE - distance) / ASCENT_CLEARANCE,
+    );
+  }
+  if (sidestep.lengthSq() < 0.0001) return;
+  desired.copy(sidestep.setLength(ASCENT_SIDESTEP));
+};
+
 export const shouldSprintToPuck = (
   state: Simulation,
   player: Player,
@@ -324,7 +470,9 @@ export const shouldSprintToPuck = (
     player.air < safeAirReserve(state, player) + 10
   )
     return false;
-  if (state.faceoff?.phase === "strike") return true;
+  // Only the striker races the swimoff. The rest keep stamina for the play.
+  if (state.faceoff?.phase === "strike")
+    return state.puckChasers[player.team] === player.id;
   const profile = botProfiles[state.difficulty];
   const pursuit =
     player.duty === "pressure" ||

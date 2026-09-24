@@ -1,11 +1,17 @@
 import { Quaternion, Vector3 } from "three";
+import { planCarry } from "./bot-carry";
+import { botControls } from "./bot-driver";
 import {
   nearOwnGoal,
   protectGoalApproach,
   safeGoalTurn,
 } from "./bot-goal-safety";
 import {
+  airSeconds,
+  applyBotBuilds,
+  approachAtSurface,
   botProfiles,
+  clearAscent,
   coordinatePuckPursuit,
   defendingZone,
   followingAttack,
@@ -20,20 +26,34 @@ import {
 } from "./bots";
 import type { CharacterSpecies } from "./characters";
 import { coachTeam } from "./coach";
-import { avoidBodies, resolveBodies } from "./collisions";
+import { avoidBodies, pushWeakerBodies, resolveBodies } from "./collisions";
+import { FLICK_BASE, FLICK_GAIN } from "./flick";
 import { wallLane } from "./formation-layout";
 import { planTeam } from "./formations";
 import {
+  chargePower,
   curlSpeedScale,
   flickScale,
+  MAX_HELD,
   NEUTRAL_ATTRIBUTES,
+  shotPower,
   swimSpeedScale,
 } from "./player-profile";
 import { teamSize } from "./positions";
 import { advancePuck, puckFloorHeight } from "./puck-physics";
 import { RULESETS, type Rules } from "./rules";
 import { announce, announceTo } from "./simulation-events";
-import { airRate, staminaRate } from "./vitals";
+import {
+  CURL_TURN_SPEED,
+  HARD_TURN_FORWARD_RATE,
+  HARD_TURN_RATE,
+  HARD_TURN_RELEASE,
+  pointerTurnGain,
+  SPRINT_SPEED,
+  SWIM_SPEED,
+  swimTurnLimit,
+} from "./swim-limits";
+import { airEngaged, airRate, staminaRate } from "./vitals";
 
 export {
   goalSurfaceHeight,
@@ -41,6 +61,11 @@ export {
   puckInsideGoal,
 } from "./puck-physics";
 export { announce, announceTo } from "./simulation-events";
+export {
+  CARRY_TURN_SPEED,
+  CURL_TURN_SPEED,
+  SURFACE_TURN_SPEED,
+} from "./swim-limits";
 
 import {
   canGrabPuck,
@@ -147,6 +172,7 @@ const makePlayer = (
     velocity: new Vector3(),
     yaw: team === 0 ? 0 : Math.PI,
     aimYaw: undefined,
+    plannedShot: undefined,
     evadeSide: 0,
     evadeUntil: 0,
     evadeTarget: position.clone(),
@@ -312,6 +338,7 @@ export const createSimulation = (
     human.attributes = { ...(selection.attributes ?? NEUTRAL_ATTRIBUTES) };
     human.autoCurl = selection.autoCurl ?? false;
   }
+  applyBotBuilds(state);
   state.puck.previous.copy(state.puck.position);
   for (const player of state.players) {
     updateStick(player, 1 / 120);
@@ -509,28 +536,9 @@ const updateStamina = (rules: Rules, player: Player, dt: number): void => {
 // Air a player keeps above its reserve when the surfacing quota is full. The
 // ascent itself costs air, so waiting down to the bare reserve risks a drown.
 const HELD_AIR_MARGIN = 6;
-// Heading error a bot ignores, in radians. Tuned with `bun run arena`.
-const HEADING_DEADBAND = 0.1;
-// Curl rate in radians per second. A full curl takes 2*PI/CURL_TURN_SPEED
-// seconds, so 4.189 gives a 1.5 second curl.
-export const CURL_TURN_SPEED = 4.189;
-// Turn limit while the player carries the puck. Turn radius is swim speed
-// divided by this rate, so a lower value forces a wider arc around the puck.
-export const CARRY_TURN_SPEED = 1.5;
-// Base turn limit for swimming without the puck. The player setting scales it.
-const SWIM_TURN_SPEED = 2.795;
-const FREE_SWIM_TURN_SPEED = 3.6;
-// Turn limit at the surface, where the puck is not played. It allows 1.5 full
-// turns per second, fast enough to reorient before the next dive.
-export const SURFACE_TURN_SPEED = 1.5 * 2 * Math.PI;
 const TURN_RELEASE_RESPONSE = 18;
-const HARD_TURN_RATE = 2.6;
-const HARD_TURN_FORWARD_RATE = 4.1;
 const HARD_TURN_CURL_RATE = 7.5;
-const HARD_TURN_RELEASE = 1.6;
 const AUTO_DUMMY_TIMING = 1.6;
-const POINTER_TURN_GAIN = 1.45;
-const FREE_SWIM_POINTER_TURN_GAIN = 2.05;
 
 const bodyTurnRate = (controls: Controls): number =>
   controls.lateral * (controls.sprint && controls.forward > 0 ? 2.08 : 2.47);
@@ -623,9 +631,7 @@ const updateHumanMovement = (
 ): void => {
   const rules = rulesFor(state);
   const carrying = state.puck.controlOwner === player.id;
-  const pointerGain = carrying
-    ? POINTER_TURN_GAIN
-    : FREE_SWIM_POINTER_TURN_GAIN;
+  const pointerGain = pointerTurnGain(carrying);
   const requestedRate = requestedTurnRate(controls, dt, pointerGain);
   player.turnRate =
     Math.abs(requestedRate) > 0.01
@@ -702,11 +708,7 @@ const updateHumanMovement = (
   // pivot around the puck and the puck is not played up here.
   const turnLimit =
     curl === 0
-      ? underwater
-        ? carrying
-          ? CARRY_TURN_SPEED * state.swimTurn
-          : Math.max(FREE_SWIM_TURN_SPEED, SWIM_TURN_SPEED * state.swimTurn)
-        : SURFACE_TURN_SPEED
+      ? swimTurnLimit(state.swimTurn, carrying, underwater)
       : curlTurnSpeed;
   player.yaw += !rules.autoCurl
     ? steer
@@ -725,7 +727,8 @@ const updateHumanMovement = (
       ? 0
       : Math.max(locomotion.forward, Math.abs(locomotion.lateral));
   const speed =
-    (player.sprint ? 2.9 : 1.55) * swimSpeedScale(player.attributes);
+    (player.sprint ? SPRINT_SPEED : SWIM_SPEED) *
+    swimSpeedScale(player.attributes);
   const braking = locomotion.forward < 0;
   const forwardSpeed =
     curl !== 0
@@ -775,7 +778,9 @@ const updateHumanCharge = (
     player.curl === 0 &&
     controls.dummy === 0 &&
     player.mode !== "ascending";
-  player.charge = player.charging ? clamp(controls.charge, 0, 1) : 0;
+  player.charge = player.charging
+    ? chargePower(player.attributes, clamp(controls.charge, 0, MAX_HELD))
+    : 0;
   if (player.shotTime <= 0)
     player.shotDraw +=
       (player.charge - player.shotDraw) * (1 - Math.exp(-16 * dt));
@@ -870,7 +875,9 @@ const updateHuman = (
       ),
   );
   if (controls.shot > 0) {
-    if (requestShot(player, controls.shot, forward)) {
+    if (
+      requestShot(player, shotPower(player.attributes, controls.shot), forward)
+    ) {
       player.cradle = undefined;
       player.grab = undefined;
     }
@@ -887,6 +894,9 @@ const updateHuman = (
 
 const prepareAI = (state: Simulation, player: Player): void => {
   player.aimYaw = undefined;
+  const committed =
+    state.puck.controlOwner === player.id && player.plannedShot !== undefined;
+  player.plannedShot = undefined;
   const puck = state.puck;
   const direction = attackDirection(player.team);
   const near =
@@ -914,46 +924,7 @@ const prepareAI = (state: Simulation, player: Player): void => {
       .setY(FLOOR_HEIGHT);
     player.aimYaw = directionYaw(travel.x, travel.z);
     player.duty = "pressure";
-    const distanceToGoal = 12.5 - puck.position.z * direction;
-    const receiver = state.players
-      .filter(
-        (other: Player): boolean =>
-          other.team === player.team &&
-          other.id !== player.id &&
-          other.mode === "playing" &&
-          (other.position.z - puck.position.z) * direction > 0.5 &&
-          other.position.y < FLOOR_HEIGHT + 0.2 &&
-          other.position.distanceTo(puck.position) < 2.7,
-      )
-      .sort(
-        (a: Player, b: Player): number =>
-          b.position.z * direction - a.position.z * direction,
-      )
-      .at(0);
-    if (distanceToGoal < 3.9 && player.cooldown <= 0)
-      requestShot(
-        player,
-        clamp(distanceToGoal * 0.16, 0.18, 0.62),
-        travel,
-        0.04,
-      );
-    else if (
-      receiver &&
-      (player.air < 48 || (player.cooldown <= 0 && state.time % 2 < 0.2))
-    ) {
-      requestShot(
-        player,
-        clamp(
-          0.35 + (receiver.position.distanceTo(puck.position) - 1) * 0.35,
-          0.35,
-          0.8,
-        ),
-        receiver.position
-          .clone()
-          .addScaledVector(receiver.velocity, 0.25)
-          .sub(puck.position),
-      );
-    }
+    if (carrying) planCarry(state, player, committed);
   } else if (!teammateControl && pursuing) {
     player.duty = "pressure";
     const incoming = puck.position
@@ -966,12 +937,11 @@ const prepareAI = (state: Simulation, player: Player): void => {
       incoming.x - player.position.x,
       incoming.z - player.position.z,
     );
+    // The body stops short of the puck, so it lies under the chest where a
+    // grab reaches it. Tuned with bot match trials.
     player.target
       .copy(incoming)
       .addScaledVector(forwardVector(angle), -0.34)
-      .add(
-        new Vector3(Math.cos(angle), 0, -Math.sin(angle)).multiplyScalar(0.16),
-      )
       .setY(FLOOR_HEIGHT);
     player.aimYaw = angle;
   } else {
@@ -983,8 +953,57 @@ const prepareAI = (state: Simulation, player: Player): void => {
   }
 };
 
-const updateAI = (state: Simulation, player: Player, dt: number): void => {
-  const profile = botProfiles[state.difficulty];
+// Teammates whose air runs out within this many seconds of each other would
+// head up together. The one with the least air goes early to break the group,
+// once it is below this much air.
+const STAGGER_SECONDS = 3;
+const STAGGER_AIR = 60;
+
+const floorTeammates = (state: Simulation, player: Player): Player[] =>
+  state.players.filter(
+    (other): boolean =>
+      other.team === player.team &&
+      other.id !== player.id &&
+      !other.emergency &&
+      (other.mode === "playing" || other.mode === "diving"),
+  );
+
+const breathesWithOthers = (state: Simulation, player: Player): boolean => {
+  const own = airSeconds(state, player, false);
+  const group = floorTeammates(state, player).filter(
+    (other): boolean =>
+      Math.abs(airSeconds(state, other, false) - own) < STAGGER_SECONDS,
+  );
+  return (
+    group.length >= 2 &&
+    group.every((other): boolean => airSeconds(state, other, false) >= own)
+  );
+};
+
+// A surfaced player dives before its tank is full when a teammate below is
+// nearly out of air or too few teammates are down to hold the floor.
+const SUPPORT_AIR = 80;
+const SUPPORT_SECONDS = 4;
+
+const teamNeedsSupport = (state: Simulation, player: Player): boolean => {
+  const floor = floorTeammates(state, player);
+  const size = teamSize(state.formations[player.team]);
+  return (
+    floor.length < Math.ceil(size / 2) ||
+    floor.some(
+      (other): boolean =>
+        other.mode === "playing" &&
+        airSeconds(state, other, airEngaged(state, other)) < SUPPORT_SECONDS,
+    )
+  );
+};
+
+// A player on its way up turns back to defend only with this much air. The
+// safe reserve shrinks near the surface, so on its own it would send a player
+// back down nearly empty.
+const DIVE_BACK_AIR = 45;
+
+const updateBotMode = (state: Simulation, player: Player): void => {
   const defending = defendingZone(state, player);
   const followThrough = followingAttack(state, player);
   const reserve = safeAirReserve(state, player);
@@ -993,12 +1012,14 @@ const updateAI = (state: Simulation, player: Player, dt: number): void => {
       active.incoming === player.id || active.outgoing === player.id,
   );
   const cycling = airRotation?.outgoing === player.id;
+  const approach = approachAtSurface(state, player);
   if (
     (defending || followThrough) &&
+    !approach &&
     !player.emergency &&
     !cycling &&
     player.mode === "ascending" &&
-    player.air > reserve + 10
+    player.air > Math.max(reserve + 10, DIVE_BACK_AIR)
   )
     player.mode = "diving";
   const nearSurface = player.position.y > SURFACE_HEIGHT - 0.065;
@@ -1025,127 +1046,83 @@ const updateAI = (state: Simulation, player: Player, dt: number): void => {
       (!defending && !player.wantDown && roomToSurface && player.air < 80))
   )
     player.mode = "ascending";
+  if (
+    player.mode === "playing" &&
+    !followThrough &&
+    roomToSurface &&
+    player.air < STAGGER_AIR &&
+    breathesWithOthers(state, player)
+  )
+    player.mode = "ascending";
   if (nearSurface && player.mode === "ascending") player.mode = "recovering";
   if (
     player.mode === "recovering" &&
-    player.air >= (defending ? 68 : 80) &&
-    player.wantDown &&
-    state.time >= player.cycleUntil
+    !approach &&
+    ((player.air >= (defending ? 68 : 80) &&
+      player.wantDown &&
+      state.time >= player.cycleUntil) ||
+      (player.air >= SUPPORT_AIR && teamNeedsSupport(state, player)))
   )
     player.mode = "diving";
   if (player.position.y < FLOOR_HEIGHT + 0.05 && player.mode === "diving")
     player.mode = "playing";
+};
+
+// Bots send the same controls as a player and run through the player
+// controller, so every movement, turn, stick and shot rule applies to them.
+const updateBot = (state: Simulation, player: Player, dt: number): void => {
+  const profile = botProfiles[state.difficulty];
+  updateBotMode(state, player);
   const pursuing =
     state.puck.controlOwner === undefined &&
     state.puck.shotOwner === undefined &&
     state.puckChasers[player.team] === player.id;
-  const closePursuit =
-    pursuing && player.position.distanceToSquared(state.puck.position) < 2.25;
-  const grabbing = pursuing && canGrabPuck(state, player, -0.45);
-  if (grabbing)
-    player.grab = { elapsed: 0, target: state.puck.position.clone() };
-  else if (player.grab) {
-    player.grab.elapsed += dt;
-    player.grab.target.copy(state.puck.position);
-    if (
-      !pursuing ||
-      player.grab.elapsed > 0.55 ||
-      !puckInGrabReach(state, player, -0.45)
-    )
-      player.grab = undefined;
-  }
   protectGoalApproach(state, player);
   const travel = player.target.clone().sub(player.position).setY(0);
   const distance = travel.length();
-  const resting = player.mode === "recovering" && distance < 0.7;
-  player.sprint =
+  const sprint =
     canSprint(rulesFor(state), player) &&
     shouldSprintToPuck(state, player, distance);
-  const speed = Math.min(
-    distance * 2.0,
-    player.sprint ? profile.sprintSpeed : 1.45,
-  );
-  const desired = travel.normalize().multiplyScalar(speed);
+  const desired = travel
+    .normalize()
+    .multiplyScalar(
+      Math.min(distance * 2.0, sprint ? profile.sprintSpeed : 1.45),
+    );
   yieldToPuckChaser(state, player, desired);
+  clearAscent(state, player, desired);
+  // A carrier turns slowly, so a detour would force a curl. It keeps its line
+  // and uses the dummy to slip past instead.
+  const line = desired.clone();
   steerThroughTraffic(state, player, desired);
+  if (state.puck.controlOwner === player.id) desired.copy(line);
   avoidBodies(player, state.players, desired);
   const desiredSpeed = desired.length();
   const arriving = distance < 0.07 && desiredSpeed < 0.2;
-  // Direction to a nearby target swings wildly as a bot drifts. A swimmer
-  // holding station keeps its heading instead of steering at that noise, but
-  // still closes the last of the distance.
-  const holdingHeading = distance < 0.35 && desiredSpeed < 0.35;
+  const holdHeading = distance < 0.35 && desiredSpeed < 0.35;
   const targetYaw = player.grab
     ? player.yaw
-    : !holdingHeading && desiredSpeed > 0.05
+    : !holdHeading && desiredSpeed > 0.05
       ? directionYaw(desired.x, desired.z)
       : (player.aimYaw ?? player.yaw);
-  const turnSpeed = profile.turnSpeed * (closePursuit ? 1.85 : 1.2);
-  // A bot holding station sees its target direction jitter, which reads as a
-  // constant left and right twitch. Small heading errors are ignored so the
-  // swimmer holds a line instead of chasing that noise.
   const headingError = safeGoalTurn(player, desired, targetYaw);
-  player.yaw +=
-    Math.abs(headingError) < HEADING_DEADBAND
-      ? 0
-      : clamp(headingError, -turnSpeed * dt, turnSpeed * dt);
-  const forward = forwardVector(player.yaw);
-  const alignment =
-    desiredSpeed > 0.001 ? Math.max(0, desired.dot(forward) / desiredSpeed) : 0;
-  const propulsion =
-    arriving || player.grab ? 0 : desiredSpeed * alignment ** 2;
-  const currentSpeed = Math.max(0, player.velocity.dot(forward));
-  const blend = 1 - Math.exp(-profile.response * dt);
   const unsafeGoalHeading =
-    nearOwnGoal(player) && forward.z * attackDirection(player.team) < 0;
-  const forwardSpeed = unsafeGoalHeading
-    ? 0
-    : currentSpeed + (propulsion - currentSpeed) * blend;
-  player.velocity.x = forward.x * forwardSpeed;
-  player.velocity.z = forward.z * forwardSpeed;
-  player.kick = resting ? 0.1 : Math.min(1.5, forwardSpeed / 1.4);
-  const targetY =
-    player.mode === "ascending" || player.mode === "recovering"
-      ? SURFACE_HEIGHT
-      : FLOOR_HEIGHT;
-  player.velocity.y +=
-    ((targetY - player.position.y) * 2.2 - player.velocity.y) *
-    (1 - Math.exp(-4 * dt));
-  player.curl = 0;
-  const relative = state.puck.position
-    .clone()
-    .sub(player.position)
-    .applyAxisAngle(new Vector3(0, 1, 0), -player.yaw);
-  const nearby =
-    state.puck.position.y <= 0.12 &&
-    !teamPuckCarrier(state, player.team) &&
-    (state.mode !== "match" || state.puckChasers[player.team] === player.id) &&
-    relative.z < -0.3 &&
-    relative.z > -1.55 &&
-    Math.abs(relative.x) < 0.9;
-  const targetOffset = new Vector3(
-    nearby ? clamp(relative.x, -0.42, 0.42) : handSide(player) * 0.13,
-    nearby ? clamp(state.puck.position.y - PUCK_HEIGHT, 0, 0.1) : 0,
-    nearby ? clamp(relative.z + 0.065, -0.68, -0.36) : -STICK_REACH,
+    nearOwnGoal(player) &&
+    forwardVector(player.yaw).z * attackDirection(player.team) < 0;
+  const controls = botControls(
+    state,
+    player,
+    {
+      desired,
+      headingError,
+      holdHeading,
+      sprint,
+      stop: arriving || player.grab !== undefined || unsafeGoalHeading,
+      pursuing,
+      dummy: player.dummy,
+    },
+    dt,
   );
-  if (state.puck.controlOwner === player.id) {
-    targetOffset.set(
-      handSide(player) * 0.13 + player.dummy * 0.2,
-      0,
-      -STICK_REACH,
-    );
-  }
-  if (player.grab) {
-    const seat = puckSeat(player).sub(player.stick);
-    targetOffset
-      .copy(player.grab.target)
-      .sub(seat)
-      .sub(player.position)
-      .applyAxisAngle(new Vector3(0, 1, 0), -player.yaw)
-      .setY(0);
-  }
-  player.stickOffset.lerp(targetOffset, 1 - Math.exp(-24 * dt));
-  updateCradle(state, player, dt);
+  updateHuman(state, player, controls, dt);
 };
 
 const updateAir = (state: Simulation, player: Player, dt: number): void => {
@@ -1325,7 +1302,8 @@ const fireShot = (state: Simulation, player: Player): void => {
   puck.velocity
     .copy(player.shotDirection)
     .multiplyScalar(
-      (2.2 + player.shotPower * 2.8) * flickScale(player.attributes),
+      (FLICK_BASE + player.shotPower * FLICK_GAIN) *
+        flickScale(player.attributes),
     )
     .addScaledVector(player.velocity, 0.65);
   puck.velocity.y = 0.75 + player.shotPower * 0.85;
@@ -1828,19 +1806,18 @@ const updateWallStart = (
   clearActions(controls);
   if (faceoff.remaining === 0) {
     state.faceoff = { phase: "strike", elapsed: 0 };
+    planStrike(state);
     for (const player of state.players) {
+      const surface = !player.human && approachAtSurface(state, player);
       player.wallReady = false;
-      player.mode = "diving";
+      player.mode = surface ? "ascending" : "diving";
       player.velocity
         .copy(forwardVector(player.yaw))
-        .multiplyScalar(
-          player.human ? 1.7 : botProfiles[state.difficulty].sprintSpeed,
-        )
-        .setY(-0.6);
-      player.sprint = !player.human;
+        .multiplyScalar(1.7)
+        .setY(surface ? 0.3 : -0.6);
+      player.sprint = false;
     }
     announce(state, "Go!", 1);
-    planStrike(state);
   }
   return true;
 };
@@ -1897,7 +1874,15 @@ export const stepSimulation = (
       for (const player of state.players)
         if (!player.human) prepareAI(state, player);
     }
-    state.decisionTime = botProfiles[state.difficulty].decisionPeriod;
+    state.decisionTime =
+      botProfiles[state.difficulty].decisionPeriod *
+      (state.botNoise ? 0.6 + 0.8 * state.botNoise() : 1);
+    if (state.botNoise)
+      for (const player of state.players)
+        if (!player.human) {
+          player.target.x += (state.botNoise() - 0.5) * 0.3;
+          player.target.z += (state.botNoise() - 0.5) * 0.3;
+        }
   }
   for (const player of state.players) {
     player.previous.copy(player.position);
@@ -1905,7 +1890,7 @@ export const stepSimulation = (
     player.previousBodyPitch = player.bodyPitch;
     if (player.human)
       updateHuman(state, player, playerControls(controls, player.id), dt);
-    else updateAI(state, player, dt);
+    else updateBot(state, player, dt);
     player.cooldown = Math.max(0, player.cooldown - dt);
     player.knockdownCooldown = Math.max(0, player.knockdownCooldown - dt);
     player.knockdownTime = Math.max(0, player.knockdownTime - dt);
@@ -1918,6 +1903,7 @@ export const stepSimulation = (
   }
   resolveBodies(state.players, dt, false);
   resolveBodies(state.players, dt, false);
+  pushWeakerBodies(state.players);
   for (const player of state.players) {
     player.position.addScaledVector(player.velocity, dt);
     player.position.x = clamp(player.position.x, -7.18, 7.18);

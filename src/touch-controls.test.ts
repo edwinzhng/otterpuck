@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import { pollMovement } from "./handling";
+import { MAX_HELD } from "./player-profile";
 import { createSimulation, stepSimulation, updateStick } from "./simulation";
 import { puckSeat } from "./stick";
 import { createTouchController } from "./touch-controls";
@@ -46,10 +47,11 @@ test("captured shot drag remains an aim action far outside its button", (): void
   touch.move(1, point(-200, -2000));
   touch.poll(1000);
   expect(controls.pitch).toBe(1.05);
-  expect(controls.charge).toBe(1);
+  // A one second hold passes the longest useful hold, so both stop there.
+  expect(controls.charge).toBe(MAX_HELD);
   touch.end(1, 1000);
   touch.poll(1000);
-  expect(controls.shot).toBe(1);
+  expect(controls.shot).toBe(MAX_HELD);
 });
 
 test("touch cancellation and capture loss never release a shot or cancel the other thumb", (): void => {

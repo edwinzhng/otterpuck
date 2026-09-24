@@ -3,6 +3,7 @@ import { atPlayingDepth } from "./depth";
 import { getElement } from "./dom";
 import { bindFullscreen } from "./fullscreen";
 import { puckReaction } from "./handling";
+import { chargePower, NEUTRAL_ATTRIBUTES } from "./player-profile";
 import { createTouchController } from "./touch-controls";
 import { type Controls, clamp, type Simulation } from "./types";
 
@@ -42,7 +43,13 @@ export const createTouchInput = (
     abort.signal,
   );
   const coarse = matchMedia("(pointer: coarse) and (hover: none)");
-  const state = { active: false, x: 0, y: 0, charge: 0 };
+  const state = {
+    active: false,
+    x: 0,
+    y: 0,
+    charge: 0,
+    attributes: NEUTRAL_ATTRIBUTES,
+  };
   const shot = getElement(".touch-shot", HTMLButtonElement);
   const paint = (): void => {
     const stick = controller.joystick();
@@ -64,7 +71,9 @@ export const createTouchInput = (
       if (button.getAttribute("aria-pressed") !== value)
         button.setAttribute("aria-pressed", value);
     }
-    const charge = Math.round(controls.charge * 100);
+    const charge = Math.round(
+      chargePower(state.attributes, controls.charge) * 100,
+    );
     if (charge !== state.charge) {
       shot.style.setProperty("--touch-charge", `${charge}%`);
       state.charge = charge;
@@ -95,6 +104,7 @@ export const createTouchInput = (
       if (!input.enabled) return;
       const player = simulation.players.at(0);
       if (!player) return;
+      state.attributes = player.attributes;
       const available = atPlayingDepth(player);
       controller.setStickAvailable(available);
       const reaction = puckReaction(simulation, player, controls.pitch);

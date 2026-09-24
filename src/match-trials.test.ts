@@ -11,6 +11,10 @@ const setup = {
   seed: 1,
 } as const;
 
+// Each full match takes about 1.3 s, so a test that plays several needs more
+// than the default 5 s limit.
+const MATCHES_TIMEOUT = 20_000;
+
 test("a trial plays a full bot match and reports both teams", () => {
   const report = runTrial(setup);
   expect(report.contacts).toBeGreaterThan(0);
@@ -24,12 +28,16 @@ test("a trial plays a full bot match and reports both teams", () => {
   }
 });
 
-test("the same setup replays identically and a new seed diverges", () => {
-  const first = runTrial(setup);
-  expect(runTrial(setup)).toEqual(first);
-  const other = runTrial({ ...setup, seed: 2 });
-  expect(other.contacts).not.toBe(first.contacts);
-});
+test(
+  "the same setup replays identically and a new seed diverges",
+  () => {
+    const first = runTrial(setup);
+    expect(runTrial(setup)).toEqual(first);
+    const other = runTrial({ ...setup, seed: 2 });
+    expect(other.contacts).not.toBe(first.contacts);
+  },
+  MATCHES_TIMEOUT,
+);
 
 test("the matrix covers every formation pairing for each seed", () => {
   const formations = sizeFormations(6);
@@ -40,14 +48,18 @@ test("the matrix covers every formation pairing for each seed", () => {
   );
 });
 
-test("each team runs its own chaser weights", () => {
-  const eager = { ...pursuitWeights, keeper: 0, acrossCourt: 0 };
-  const shipped = runTrial(setup);
-  expect(runTrial(setup, [pursuitWeights, pursuitWeights])).toEqual(shipped);
-  const split = runTrial(setup, [eager, pursuitWeights]);
-  expect(split.contacts).not.toBe(shipped.contacts);
-  expect(split.exposed).not.toEqual(shipped.exposed);
-});
+test(
+  "each team runs its own chaser weights",
+  () => {
+    const eager = { ...pursuitWeights, keeper: 0, acrossCourt: 0 };
+    const shipped = runTrial(setup);
+    expect(runTrial(setup, [pursuitWeights, pursuitWeights])).toEqual(shipped);
+    const split = runTrial(setup, [eager, pursuitWeights]);
+    expect(split.contacts).not.toBe(shipped.contacts);
+    expect(split.exposed).not.toEqual(shipped.exposed);
+  },
+  MATCHES_TIMEOUT,
+);
 
 test("a duel plays every setup from both sides", () => {
   const result = duel([setup], {

@@ -11,12 +11,15 @@ import {
   directionYaw,
   FLOOR_HEIGHT,
   freshControls,
+  PUCK_HEIGHT,
   STEP,
 } from "./types";
 
 for (const team of [0, 1] as const) {
-  for (const distance of [0.9, 2, 3.5]) {
-    test(`team ${team} finishes a low goal shot from ${distance}m`, (): void => {
+  // A player flick cannot score from much closer than 1.2 m. Bots shoot
+  // from about 1.6 m, so the nearest case starts there.
+  for (const distance of [1.6, 2, 3.5]) {
+    test(`team ${team} scores from ${distance}m`, (): void => {
       const state = createSimulation("3-3", "3-3", "practice");
       const bot = createSimulation().players.find(
         (player) => player.team === team && !player.human,
@@ -67,3 +70,36 @@ test("attack commitment keeps a recent shooter down but respects the air reserve
   state.time += 4;
   expect(followingAttack(state, player)).toBe(false);
 });
+
+// Too close to flick into the tray, a bot swims the loose puck in instead of
+// turning back and forth for a shot it cannot make.
+for (const [x, z] of [
+  [0, 0.6],
+  [0.6, 1],
+]) {
+  test(`a bot finishes a loose puck ${z}m in front of the goal`, (): void => {
+    const state = createSimulation("3-3", "3-3", "practice");
+    const bot = createSimulation().players.find(
+      (player) => player.team === 0 && !player.human,
+    );
+    if (!bot) throw new Error("Missing bot");
+    state.players = [bot];
+    bot.position.set((x ?? 0) + 1.2, FLOOR_HEIGHT, -12.38 + (z ?? 0) + 1.5);
+    bot.previous.copy(bot.position);
+    bot.mode = "playing";
+    bot.wallReady = false;
+    bot.air = 80;
+    bot.yaw = directionYaw(-1.2, -1.5);
+    state.mode = "match";
+    state.faceoff = undefined;
+    state.puckChasers[0] = bot.id;
+    state.puck.position.set(x ?? 0, PUCK_HEIGHT, -12.38 + (z ?? 0));
+    state.puck.velocity.set(0, 0, 0);
+    for (const frame of Array.from({ length: 360 })) {
+      void frame;
+      stepSimulation(state, freshControls(), STEP);
+      if ((state.scores.at(0) ?? 0) > 0) break;
+    }
+    expect(state.scores.at(0) ?? 0).toBe(1);
+  });
+}

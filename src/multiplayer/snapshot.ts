@@ -5,7 +5,7 @@ import { CHARACTER_SPECIES } from "../characters";
 import { coachTeam } from "../coach";
 import { teamSize } from "../positions";
 import { NEUTRAL_TACTICS, type Simulation } from "../types";
-import { attributesSchema } from "./protocol";
+import { attributeLevelsSchema } from "./protocol";
 
 const n = z.number().finite();
 const vector = z
@@ -19,7 +19,7 @@ const playerFields = z.object({
   slot: n,
   human: z.boolean(),
   handedness: z.enum(["left", "right"]),
-  attributes: attributesSchema,
+  attributes: attributeLevelsSchema,
   autoCurl: z.boolean(),
   position: vector,
   previous: vector,
@@ -31,6 +31,7 @@ const playerFields = z.object({
   velocity: vector,
   yaw: n,
   aimYaw: n.optional(),
+  plannedShot: z.object({ yaw: n, power: n }).optional(),
   evadeSide: n,
   evadeUntil: n,
   evadeTarget: vector,
@@ -102,6 +103,7 @@ const playerFields = z.object({
 const playerSchema = playerFields.transform((p) => ({
   ...p,
   aimYaw: p.aimYaw,
+  plannedShot: p.plannedShot,
   cradle: p.cradle,
   grab: p.grab,
   shotOrigin: p.shotOrigin,

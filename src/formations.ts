@@ -1,4 +1,9 @@
-import { defendingZone, followingAttack, safeAirReserve } from "./bots";
+import {
+  defendingZone,
+  followingAttack,
+  safeAirReserve,
+  teamPuckCarrier,
+} from "./bots";
 import {
   formationTarget,
   positionSide,
@@ -218,6 +223,25 @@ const planRotation = (
     applyRotation(state, team, rotation);
 };
 
+// While a teammate carries the puck through midfield, side players spread out
+// to open lanes at least this far from the puck, in meters. It stays inside a
+// flick's reach, so the carrier can switch play to them.
+const FLANK_WIDTH = 2.3;
+const FLANK_LANE = 6.3;
+// Midfield runs between these depths, in meters from centre.
+const MIDFIELD = [-4.2, 4.2] as const;
+
+const spreadToFlank = (state: Simulation, player: Player): void => {
+  const puck = state.puck.position;
+  const station = player.formationTarget;
+  const out =
+    Math.sign(station.x - puck.x) ||
+    positionSide(playerPosition(state, player).code) *
+      -attackDirection(player.team);
+  const offset = Math.max(Math.abs(station.x - puck.x), FLANK_WIDTH);
+  station.x = clamp(puck.x + out * offset, -FLANK_LANE, FLANK_LANE);
+};
+
 export const planTeam = (state: Simulation, team: Team): void => {
   const players = state.players.filter(
     (player): boolean => player.team === team,
@@ -226,6 +250,10 @@ export const planTeam = (state: Simulation, team: Team): void => {
     state.strongSides[team] = Math.sign(state.puck.position.x);
   const formation = state.formations[team];
   const strongSide = strongPositionSide(state, team);
+  const carrier = teamPuckCarrier(state, team);
+  const puckDepth = state.puck.position.z * attackDirection(team);
+  const flanking =
+    carrier !== undefined && puckDepth > MIDFIELD[0] && puckDepth < MIDFIELD[1];
   for (const player of players) {
     const position = playerPosition(state, player);
     const strong = positionSide(position.code) === strongSide;
@@ -240,6 +268,13 @@ export const planTeam = (state: Simulation, team: Team): void => {
     )
       player.duty = "pressure";
     player.formationTarget.copy(formationTarget(state, player));
+    if (
+      flanking &&
+      player !== carrier &&
+      !forward &&
+      positionSide(position.code)
+    )
+      spreadToFlank(state, player);
     player.target.copy(player.formationTarget);
     player.wantDown = true;
   }
