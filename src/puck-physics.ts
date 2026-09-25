@@ -133,6 +133,11 @@ export const advancePuck = (state: Simulation, dt: number): void => {
     if (puckInsideGoal(state) && state.mode !== "playground") {
       const scoring: Team = puck.position.z < 0 ? 0 : 1;
       state.scores[scoring] += 1;
+      state.goals.push({
+        team: scoring,
+        scorer: puck.lastTouch,
+        second: state.duration - state.seconds,
+      });
       state.restartTime = 3;
       announce(state, scoring === 0 ? "Black scores" : "White scores", 3);
       puck.velocity.set(0, 0, 0);

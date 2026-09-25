@@ -61,7 +61,7 @@ export const uiShell = (): string => `
     </div>
     <div class="hud-status-stack">
       <div id="fps" class="performance panel"></div>
-      <div class="scoreboard panel"><div class="score-team team-black"><span>BLACK</span><strong id="home-score">0</strong></div><time id="clock">03:00</time><div class="score-team team-white"><strong id="away-score">0</strong><span>WHITE</span></div><span id="match-label" hidden></span></div>
+      <div class="scoreboard panel"><div class="score-team team-black"><span>BLACK</span><strong id="home-score">0</strong></div><time id="clock">03:00</time><div class="score-team team-white"><strong id="away-score">0</strong><span>WHITE</span></div><span id="match-label" hidden></span><div class="scorers" aria-label="Goal scorers"><ol id="home-scorers" class="team-black"></ol><ol id="away-scorers" class="team-white"></ol></div></div>
       <div class="vitals panel"><div class="vital-row"><div class="vital-label"><span id="air-label">Air</span><span class="vital-value"><strong id="air">100</strong>%</span></div><div class="air-track"><i id="air-fill"></i></div></div><div class="stamina-row"><div class="vital-label"><span>Stamina</span><span class="vital-value"><strong id="stamina-value">100</strong>%</span></div><div class="stamina-track"><i id="stamina-fill"></i></div></div></div>
       <div id="network-status" hidden><div class="network-server"><span class="network-dot" aria-hidden="true"></span><strong id="network-region"></strong><span id="network-ping">—</span></div><span id="network-issue" role="status" hidden></span></div>
     </div>

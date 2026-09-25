@@ -4,9 +4,10 @@ import { handlingLabel, puckReaction } from "./handling";
 import type { Input } from "./input";
 import { drawMap } from "./minimap";
 import type { HudValues } from "./multiplayer/hud";
+import { type PlayerNames, teamScorers } from "./player-names";
 import { chargePower } from "./player-profile";
 import { playerPosition } from "./positions";
-import type { Simulation } from "./types";
+import type { Simulation, Team } from "./types";
 import type { UI } from "./ui-types";
 
 export { getElement } from "./dom";
@@ -49,16 +50,41 @@ export const updateHudValues = (
   ui.elements.stamina.classList.toggle("spent", stamina < 25);
 };
 
+const renderScorers = (
+  list: HTMLElement,
+  state: Simulation,
+  team: Team,
+  names: PlayerNames,
+): void => {
+  const lines = teamScorers(state, team, names).map(
+    ({ name, goals, ownGoal }): string =>
+      `${name}${ownGoal ? " (own goal)" : ""}${goals > 1 ? ` ×${goals}` : ""}`,
+  );
+  const key = lines.join("\n");
+  if (list.dataset.key === key) return;
+  list.dataset.key = key;
+  list.replaceChildren(
+    ...lines.map((line): HTMLElement => {
+      const item = document.createElement("li");
+      item.textContent = line;
+      return item;
+    }),
+  );
+};
+
 export const updateUI = (
   ui: UI,
   state: Simulation,
   input: Input,
   world: { headLift: number; frameRate: number },
+  names: PlayerNames,
 ): void => {
   const player = state.players.at(0);
   if (!player) return;
   setText(ui.elements.homeScore, String(state.scores.at(0)));
   setText(ui.elements.awayScore, String(state.scores.at(1)));
+  renderScorers(ui.elements.homeScorers, state, 0, names);
+  renderScorers(ui.elements.awayScorers, state, 1, names);
   setText(
     ui.elements.role,
     state.mode !== "match" ? "PRACTICE" : playerPosition(state, player).code,

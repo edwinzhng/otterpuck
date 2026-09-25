@@ -9,7 +9,7 @@ import {
   MIN_ATTRIBUTE,
 } from "../player-profile";
 import { SWIM_TURNS } from "../swim-turn";
-export const PROTOCOL = 11;
+export const PROTOCOL = 12;
 const speciesSchema = z.enum(CHARACTER_SPECIES);
 const teamSpeciesSchema = z.tuple([speciesSchema, speciesSchema]);
 export const teamSizeSchema = z.union([

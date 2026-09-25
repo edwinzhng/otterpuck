@@ -170,6 +170,15 @@ export const snapshotSchema = z.object({
   puck: puckSchema,
   formations: z.tuple([formation, formation]),
   scores: z.tuple([n, n]),
+  goals: z
+    .array(
+      z.object({
+        team: z.union([z.literal(0), z.literal(1)]),
+        scorer: optionalId,
+        second: n,
+      }),
+    )
+    .max(200),
   seconds: n,
   duration: n,
   time: n,

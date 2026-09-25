@@ -219,6 +219,9 @@ export type Simulation = {
   puck: Puck;
   formations: [Formation, Formation];
   scores: [number, number];
+  // Every goal in order. The scorer is the last player to touch the puck, so
+  // an own goal names a player of the other team.
+  goals: Goal[];
   seconds: number;
   duration: number;
   time: number;
@@ -235,6 +238,12 @@ export type Simulation = {
   eventTime: number;
   contacts: number;
   shots: number;
+};
+export type Goal = {
+  team: Team;
+  scorer: number | undefined;
+  // Match time of the goal, in seconds from the start.
+  second: number;
 };
 export const POOL = { width: 15, length: 25, depth: 2.44, goal: 3 };
 export const MAX_STAMINA = 100;

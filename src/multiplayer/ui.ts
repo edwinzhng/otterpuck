@@ -14,6 +14,7 @@ import {
 import { getElement } from "../dom";
 import { BOT_DIFFICULTY_OPTIONS, botDifficultyChoice } from "../game-options";
 import { playerChoiceButton } from "../player-build";
+import { NO_NAMES, type PlayerNames } from "../player-names";
 import {
   defaultFormation,
   formationChoices,
@@ -88,6 +89,7 @@ export const bindMultiplayer = (callbacks: {
   arena: () => ArenaId;
   profile: (change: Partial<PlayerProfile>) => void;
   buildLocked: () => boolean;
+  names: () => PlayerNames;
   input: (controls: Controls, seconds?: number) => void;
   cancelInput: () => void;
   frame: () => void;
@@ -761,6 +763,21 @@ export const bindMultiplayer = (callbacks: {
     .catch(() =>
       setStatus("Could not load server locations. Reload to retry."),
     );
+  let namedRoom: RoomView | undefined;
+  let roomNames: PlayerNames = NO_NAMES;
+  const names = (): PlayerNames => {
+    const room = session?.room();
+    if (room !== namedRoom) {
+      namedRoom = room;
+      roomNames = new Map(
+        room?.members.map((member): [number, string] => [
+          member.playerId,
+          member.name,
+        ]),
+      );
+    }
+    return roomNames;
+  };
   const buildLocked = (): boolean =>
     Boolean(session) && session?.room()?.phase !== "waiting";
   return {
@@ -771,6 +788,7 @@ export const bindMultiplayer = (callbacks: {
       session?.profile(buildLocked() ? rest : change);
     },
     buildLocked,
+    names,
     input: (controls, seconds): void => session?.input(controls, seconds),
     cancelInput: (): void => session?.cancelInput(),
     frame: (): void => session?.frame(),

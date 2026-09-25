@@ -232,6 +232,10 @@ body:not(.touch-mode) .touch-help {
   font-size: clamp(18px, 5vw, 23px);
   text-align: center;
 }
+.touch-mode .scorers {
+  gap: 8px;
+  font-size: 9px;
+}
 .touch-mode .scoreboard time {
   flex: 0 0 auto;
   font-size: clamp(13px, 3.6vw, 16px);

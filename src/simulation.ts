@@ -313,6 +313,7 @@ export const createSimulation = (
     formations:
       humanTeam === 0 ? [formation, opposition] : [opposition, formation],
     scores: [0, 0],
+    goals: [],
     seconds: duration,
     duration,
     time: 0,

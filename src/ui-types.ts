@@ -40,6 +40,8 @@ export type UI = {
     clock: HTMLElement;
     labReadout: HTMLElement;
     homeScore: HTMLElement;
+    homeScorers: HTMLElement;
+    awayScorers: HTMLElement;
     awayScore: HTMLElement;
     air: HTMLElement;
     airLabel: HTMLElement;

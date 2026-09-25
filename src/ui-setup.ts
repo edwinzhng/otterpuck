@@ -49,6 +49,8 @@ export const createUI = (): UI => {
       clock: element("clock"),
       labReadout: element("lab-readout"),
       homeScore: element("home-score"),
+      homeScorers: element("home-scorers"),
+      awayScorers: element("away-scorers"),
       awayScore: element("away-score"),
       air: element("air"),
       airLabel: element("air-label"),

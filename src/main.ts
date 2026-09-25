@@ -16,6 +16,7 @@ import { enableOffline } from "./offline";
 import { createFrameMeter } from "./performance";
 import { bindPlayerBuild } from "./player-build";
 import { renderPlayerLabels } from "./player-labels";
+import { NO_NAMES } from "./player-names";
 import { sizeLabel, teamSize } from "./positions";
 import {
   bindAutoCurlSetting,
@@ -548,6 +549,7 @@ const boot = async (): Promise<void> => {
             ? app.accumulator / STEP
             : 1,
         world.renderer.getPixelRatio(),
+        multiplayer?.names() ?? NO_NAMES,
       );
     if (app.phase !== "menu")
       updateHudValues(
@@ -556,7 +558,7 @@ const boot = async (): Promise<void> => {
         multiplayer?.active() ? multiplayerHud.read(now) : undefined,
       );
     if (now - app.uiTime > 100 && app.phase !== "menu") {
-      updateUI(ui, app.state, input, world);
+      updateUI(ui, app.state, input, world, multiplayer?.names() ?? NO_NAMES);
       app.uiTime = now;
     }
   };
