@@ -3,14 +3,16 @@ import { Vector3 } from "three";
 import { planCarry } from "./bot-carry";
 import { botControls } from "./bot-driver";
 import { clearAscent, safeAirReserve } from "./bots";
-import { createSimulation } from "./simulation";
+import { createSimulation, stepSimulation } from "./simulation";
 import {
   angleDifference,
   attackDirection,
   directionYaw,
   FLOOR_HEIGHT,
+  freshControls,
   type Player,
   PUCK_HEIGHT,
+  STEP,
   SURFACE_HEIGHT,
 } from "./types";
 
@@ -117,4 +119,65 @@ test("a recovering bot keeps kicking up until it breathes", (): void => {
   expect(botControls(state, carrier, intent, 1 / 120).vertical).toBe(1);
   carrier.position.y = SURFACE_HEIGHT;
   expect(botControls(state, carrier, intent, 1 / 120).vertical).toBe(0);
+});
+
+// Team 0 bots on the floor with full air, deep in their own half, and the
+// puck loose on the attacking side of centre.
+const airSetup = () => {
+  const state = createSimulation("2-3-1", "2-3-1", "match");
+  state.faceoff = undefined;
+  state.puck.position.set(0, PUCK_HEIGHT, 2 * attackDirection(0));
+  for (const player of state.players) {
+    player.human = false;
+    player.air = 100;
+    onFloor(player, player.team === 0 ? -9 : 9, player.slot - 2.5);
+  }
+  const [far, near] = state.players.filter(
+    (player): boolean => player.team === 0 && player.slot > 0,
+  );
+  if (!far || !near) throw new Error("Missing players");
+  return { state, far, near };
+};
+
+const step = (state: ReturnType<typeof createSimulation>): void =>
+  stepSimulation(state, freshControls(), STEP);
+
+test("a bot too far from play to use its air tops up now", (): void => {
+  const { state, far, near } = airSetup();
+  onFloor(near, 1.5, 0.5);
+  onFloor(far, -7, 0);
+  far.air = 55;
+  near.air = 55;
+  step(state);
+  expect(far.mode).toBe("ascending");
+  expect(near.mode).toBe("playing");
+});
+
+test("a bot that heads up early keeps going instead of turning back", (): void => {
+  const { state, far } = airSetup();
+  state.puck.position.z = -4 * attackDirection(0);
+  far.air = 50;
+  far.position.z = 8 * attackDirection(0);
+  step(state);
+  expect(far.mode).toBe("ascending");
+  for (let frame = 0; frame < 30; frame++) {
+    step(state);
+    expect(far.mode).not.toBe("playing");
+    expect(far.mode).not.toBe("diving");
+  }
+});
+
+test("only the deepest defender holds the line down to its reserve", (): void => {
+  const { state } = airSetup();
+  state.puck.position.z = -4 * attackDirection(0);
+  const mates = state.players.filter((player): boolean => player.team === 0);
+  const deepest = mates.at(-1);
+  const other = mates.at(-2);
+  if (!deepest || !other) throw new Error("Missing players");
+  onFloor(deepest, -11, 0);
+  onFloor(other, -4.5, 0.8);
+  for (const player of [deepest, other]) player.air = 28;
+  step(state);
+  expect(deepest.mode).toBe("playing");
+  expect(other.mode).toBe("ascending");
 });

@@ -1001,6 +1001,43 @@ const teamNeedsSupport = (state: Simulation, player: Player): boolean => {
   );
 };
 
+// A player stays down only with enough air to reach the puck and still play
+// it for this long, in seconds. With less, the time down is wasted, so it tops
+// up while play is elsewhere. Bot match trials gain most from 5 to 7 seconds.
+const USEFUL_SECONDS = 6;
+// Above this much air a top up gains too little to be worth the trip.
+const OUT_OF_PLAY_AIR = 60;
+// A player this close to the puck is already in play, in meters.
+const IN_PLAY_REACH = 1.5;
+
+const outOfPlay = (state: Simulation, player: Player): boolean => {
+  if (
+    player.air > OUT_OF_PLAY_AIR ||
+    state.puckChasers[player.team] === player.id ||
+    state.puck.controlOwner === player.id
+  )
+    return false;
+  const reach = Math.max(
+    0,
+    Math.hypot(
+      player.position.x - state.puck.position.x,
+      player.position.z - state.puck.position.z,
+    ) - IN_PLAY_REACH,
+  );
+  return airSeconds(state, player, false) < reach / SWIM_SPEED + USEFUL_SECONDS;
+};
+
+// While the team defends, its deepest player on the floor holds the line down
+// to the safe reserve. The others top up as usual, so one threat does not
+// keep the whole team down until its air runs low.
+const holdsLine = (state: Simulation, player: Player): boolean => {
+  const depth = (other: Player): number =>
+    other.position.z * attackDirection(other.team);
+  return floorTeammates(state, player).every(
+    (other): boolean => depth(other) >= depth(player),
+  );
+};
+
 // A player on its way up turns back to defend only with this much air. The
 // safe reserve shrinks near the surface, so on its own it would send a player
 // back down nearly empty.
@@ -1016,8 +1053,25 @@ const updateBotMode = (state: Simulation, player: Player): void => {
   );
   const cycling = airRotation?.outgoing === player.id;
   const approach = approachAtSurface(state, player);
+  const nearSurface = player.position.y > SURFACE_HEIGHT - 0.065;
+  // An early top up waits until the team has room for it. Surfacing at or below
+  // the safe reserve ignores the quota, so nobody is held down while short.
+  const roomToSurface =
+    teammatesAway(state, player) <
+    surfacingQuota(teamSize(state.formations[player.team]));
+  const holding = defending && holdsLine(state, player);
+  // Reasons to go up early. A player on the way up keeps going while any of
+  // them still holds, so it never turns back and forth at the floor.
+  const earlyTopUp =
+    !followThrough &&
+    !airRotation &&
+    roomToSurface &&
+    !holding &&
+    (outOfPlay(state, player) ||
+      (player.air < STAGGER_AIR && breathesWithOthers(state, player)));
   if (
     (defending || followThrough) &&
+    !earlyTopUp &&
     !approach &&
     !player.emergency &&
     !cycling &&
@@ -1025,12 +1079,6 @@ const updateBotMode = (state: Simulation, player: Player): void => {
     player.air > Math.max(reserve + 10, DIVE_BACK_AIR)
   )
     player.mode = "diving";
-  const nearSurface = player.position.y > SURFACE_HEIGHT - 0.065;
-  // An early top up waits until the team has room for it. Surfacing at or below
-  // the safe reserve ignores the quota, so nobody is held down while short.
-  const roomToSurface =
-    teammatesAway(state, player) <
-    surfacingQuota(teamSize(state.formations[player.team]));
   // Without room the player still surfaces at its safe reserve. The quota only
   // withholds the early top up, never the breath the player actually needs.
   const topUp = roomToSurface
@@ -1043,18 +1091,11 @@ const updateBotMode = (state: Simulation, player: Player): void => {
       ((cycling && airRotation.phase === "handoff") ||
       airRotation?.incoming === player.id
         ? reserve
-        : defending
+        : holding
           ? reserve
           : topUp) ||
+      earlyTopUp ||
       (!defending && !player.wantDown && roomToSurface && player.air < 80))
-  )
-    player.mode = "ascending";
-  if (
-    player.mode === "playing" &&
-    !followThrough &&
-    roomToSurface &&
-    player.air < STAGGER_AIR &&
-    breathesWithOthers(state, player)
   )
     player.mode = "ascending";
   if (nearSurface && player.mode === "ascending") player.mode = "recovering";
