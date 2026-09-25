@@ -24,6 +24,10 @@ import { boundKeycap, button, control } from "./ui-components";
 const ACTIONS = Object.keys(KEY_BINDING_ACTIONS) as KeyBindingAction[];
 const actionName = (action: KeyBindingAction): string =>
   KEY_BINDING_ACTIONS[action].label;
+const actionHint = (action: KeyBindingAction): string => {
+  const entry = KEY_BINDING_ACTIONS[action];
+  return "hint" in entry ? ` title="${entry.hint}"` : "";
+};
 const isAction = (value: string | undefined): value is KeyBindingAction =>
   value !== undefined && value in KEY_BINDING_ACTIONS;
 
@@ -35,7 +39,7 @@ export const keyboardHelpMarkup = (): string =>
 export const keyBindingsMarkup = (): string =>
   `<p class="key-bindings-intro">Choose an action. Then press a key or mouse button.</p><div class="key-bindings">${ACTIONS.map(
     (action): string =>
-      `<div class="key-binding"><span id="key-${action}-label">${actionName(action)}</span>${button(`key-${action}`, boundKeycap(action), "secondary", `data-key-action="${action}" aria-pressed="false" aria-labelledby="key-${action}-label key-${action}"`)}</div>`,
+      `<div class="key-binding"${actionHint(action)}><span id="key-${action}-label">${actionName(action)}</span>${button(`key-${action}`, boundKeycap(action), "secondary", `data-key-action="${action}" aria-pressed="false" aria-labelledby="key-${action}-label key-${action}"`)}</div>`,
   ).join(
     "",
   )}</div><p id="key-bindings-status" class="key-bindings-status" role="status"></p><div class="settings-footer">${button("reset-keys", "Reset keys", "quiet")}</div>`;

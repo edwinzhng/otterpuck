@@ -70,11 +70,18 @@ export const KEY_BINDING_ACTIONS = {
   grab: { label: "Grab", code: "KeyX" },
   glanceLeft: { label: "Glance left", code: "KeyQ" },
   glanceRight: { label: "Glance right", code: "KeyE" },
-  freeLook: { label: "Free look", code: "KeyF" },
+  freeLook: {
+    label: "Free look",
+    code: "KeyF",
+    hint: "Double-tap and hold to watch the puck",
+  },
   facePuck: { label: "Look at puck", code: "Mouse1" },
   tactics: { label: "Tactics", code: "KeyT" },
   retry: { label: "Reset puck", code: "KeyP" },
-} as const satisfies Record<string, { label: string; code: string }>;
+} as const satisfies Record<
+  string,
+  { label: string; code: string; hint?: string }
+>;
 
 export type KeyBindingAction = keyof typeof KEY_BINDING_ACTIONS;
 
@@ -90,6 +97,7 @@ export const DESKTOP_CONTROL_HELP = [
   ["{dummy} + {left} / {right}", "Dummy"],
   ["{glanceLeft} / {glanceRight}", "Glance"],
   ["{freeLook}", "Hold to look around and keep your heading"],
+  ["{freeLook} {freeLook}", "Double-tap and hold to watch the puck"],
   ["{facePuck}", "Turn to the puck"],
   ["{grab}", "Grab / knock down"],
   ["{tactics}", "Tactics"],

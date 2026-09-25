@@ -24,6 +24,9 @@ export type Input = {
   poll: () => void;
 };
 
+// A second free look press this soon after the first also watches the puck.
+const DOUBLE_TAP_MS = 300;
+
 // Practice tools that are not in the key bindings. A bound key takes priority.
 const LAB_KEYS = {
   KeyV: "camera",
@@ -41,6 +44,7 @@ export const createInput = (
   const controls = freshControls();
   const keys = new Set<string>();
   const capture = { held: false };
+  const freeLookTap = { last: -Infinity, watching: false };
   const touch = createTouchInput(canvas, controls, onPause);
   const input: Input = {
     controls,
@@ -82,7 +86,13 @@ export const createInput = (
     if (action === "dummy") controls.dummyMode = true;
     if (action === "tactics") onTactics();
     if (action === "retry") onReset();
-    if (action === "freeLook") input.look.free = true;
+    if (action === "freeLook") {
+      const now = performance.now();
+      input.look.free = true;
+      freeLookTap.watching = now - freeLookTap.last < DOUBLE_TAP_MS;
+      if (freeLookTap.watching) startSeek(input.look);
+      freeLookTap.last = now;
+    }
     if (action === "facePuck") startSeek(input.look);
     if (action === "shoot") {
       input.charging = true;
@@ -91,7 +101,16 @@ export const createInput = (
   };
   const release = (action: KeyBindingAction | undefined): void => {
     if (action === "dummy") controls.dummyMode = false;
-    if (action === "freeLook") input.look.free = false;
+    if (action === "freeLook") {
+      input.look.free = false;
+      // Watching the puck only moved the camera, so it must not go on to
+      // turn the swimmer once free look ends.
+      if (freeLookTap.watching) {
+        input.look.seekHeld = false;
+        input.look.seeking = false;
+      }
+      freeLookTap.watching = false;
+    }
     if (action === "facePuck") input.look.seekHeld = false;
     if (action === "shoot" && input.charging && input.locked) {
       // The hold fraction goes to the simulation, which applies the minimum
