@@ -57,8 +57,9 @@ export type Player = {
   yaw: number;
   aimYaw: number | undefined;
   // A bot's next shot or pass. The bot turns to this heading, charges and
-  // releases like a player.
-  plannedShot: { yaw: number; power: number } | undefined;
+  // releases like a player. A held shot charges on the way in but is not
+  // released yet.
+  plannedShot: { yaw: number; power: number; hold?: boolean } | undefined;
   evadeSide: number;
   evadeUntil: number;
   evadeTarget: Vector3;

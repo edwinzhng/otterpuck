@@ -1,22 +1,24 @@
 import { Vector3 } from "three";
-import { airSeconds } from "./bots";
+import { airSeconds, FINISH_AIR, FINISH_RANGE, TRAY_DEPTH } from "./bots";
 import { FLICK_BASE, FLICK_GAIN } from "./flick";
-import { flickScale } from "./player-profile";
+import { chargeTimeScale, flickScale } from "./player-profile";
+import { SWIM_SPEED } from "./swim-limits";
 import {
   angleDifference,
   attackDirection,
   clamp,
   directionYaw,
   FLOOR_HEIGHT,
+  forwardVector,
   type Player,
   PUCK_HEIGHT,
   type Simulation,
 } from "./types";
+import { underwaterAirUse } from "./vitals";
 
 // A player flick scores from 1.15 m to 2.65 m in front of the goal tray. Power
 // must grow with distance: 0.35 at 1.2 m up to full power at 2.65 m. Measured
 // by flicking a carried puck at the tray from each distance.
-const TRAY_DEPTH = 12.38;
 const SHOT_NEAREST = 1.15;
 const SHOT_FARTHEST = 2.3;
 // The carrier stops this far from the tray, inside the best part of the range.
@@ -25,6 +27,22 @@ const SHOT_SPOT = 1.6;
 const PUCK_LEAD = 0.45;
 export const goalShotPower = (distance: number): number =>
   clamp(0.35 + (distance - 1.2) * 0.45, 0.22, 1);
+// The carrier's own speed carries into the flick. Fired on the move, a shot
+// flies like a standing shot from this much closer per m/s of speed toward
+// the tray, in seconds. Lone bot carriers score every time from 0.15 to 0.25.
+const MOVING_SHOT_LEAD = 0.2;
+// A flick adds this share of the swimmer's velocity to the puck.
+const CARRIED_SPEED = 0.65;
+// On the way in the carrier charges to release here, in the middle of the
+// range, so it does not stop to charge.
+const SHOT_RELEASE_REACH = 2;
+// A player charges a full shot by holding the button for 0.65 s.
+const FULL_CHARGE_SECONDS = 0.65;
+// The carrier brakes when its charge would end this close to the near end of
+// the range, in meters.
+const BRAKE_MARGIN = 0.15;
+// Below this speed toward the tray the carrier is not coming in, in m/s.
+const APPROACH_SPEED = 0.3;
 
 // A player flick at power 0.22 rests 1.54 m away and each 0.1 of power adds
 // 0.162 m, up to 2.8 m at full power. Measured from a carried puck.
@@ -88,6 +106,19 @@ const WALL_STRIDE = 3;
 // goal, in meters.
 const BLOCK_LENGTH = 2.5;
 const BLOCK_WIDTH = 0.9;
+// With no pass, a spent carrier flicks the puck to space. It tries
+// these headings and flick lengths, in meters, and values each landing spot.
+const SPACE_HEADINGS = 16;
+const SPACE_LENGTHS = [1.8, 2.3, 2.8] as const;
+const SPACE_X = 6.5;
+const SPACE_Z = 11.8;
+// A spot a teammate reaches first is worth this much per second of lead, up
+// to SPACE_LEAD_CAP seconds. Each meter toward goal is worth SPACE_DEPTH.
+const SPACE_LEAD_VALUE = 1;
+const SPACE_LEAD_CAP = 2;
+const SPACE_DEPTH = 0.35;
+// An opponent this close to the flick line would cut the puck off, in meters.
+const SPACE_LANE = 0.6;
 
 const onFloor = (player: Player): boolean =>
   player.mode === "playing" &&
@@ -130,21 +161,42 @@ export const planCarry = (
     );
   const pressure = nearest(puck) < PRESSURE;
 
+  const ahead = toGoal.clone().normalize();
+  const closing = Math.max(0, player.velocity.dot(ahead));
+  const reach = goalDistance - closing * MOVING_SHOT_LEAD;
   // Too close to flick it in, the carrier swims the puck into the tray. A
   // carried puck that crosses the goal line scores like a shot.
-  if (goalDistance <= SHOT_NEAREST) {
+  if (reach <= SHOT_NEAREST) {
     player.target.copy(tray).setY(FLOOR_HEIGHT);
     player.aimYaw = goalYaw;
     return;
   }
-
-  if (goalDistance > SHOT_NEAREST && goalDistance < SHOT_FARTHEST) {
-    player.plannedShot = {
-      yaw: goalYaw,
-      power: strengthAdjusted(player, goalShotPower(goalDistance)),
-    };
-    player.aimYaw = goalYaw;
-    player.target.copy(player.position).setY(FLOOR_HEIGHT);
+  // The carrier's own speed carries into the flick, so a shot on the move
+  // aims off the tray to cancel the sideways part of that speed.
+  const aimAt = (power: number): number => {
+    const launch =
+      (FLICK_BASE + FLICK_GAIN * power) * flickScale(player.attributes);
+    const drift = player.velocity.clone().setY(0).multiplyScalar(CARRIED_SPEED);
+    const across = drift.clone().addScaledVector(ahead, -drift.dot(ahead));
+    const along = Math.sqrt(Math.max(0, launch ** 2 - across.lengthSq()));
+    const aim = ahead.clone().multiplyScalar(along).sub(across);
+    return directionYaw(aim.x, aim.z);
+  };
+  // Seconds of charge still needed to reach a power.
+  const chargeLeft = (power: number): number =>
+    Math.max(0, power - player.charge) *
+    chargeTimeScale(player.attributes) *
+    FULL_CHARGE_SECONDS;
+  // In range the carrier shoots on the move and keeps swimming at the tray. It
+  // brakes only when the charge would not end before the range does.
+  if (reach > SHOT_NEAREST && reach < SHOT_FARTHEST) {
+    const power = strengthAdjusted(player, goalShotPower(reach));
+    const yaw = aimAt(power);
+    player.plannedShot = { yaw, power };
+    player.aimYaw = yaw;
+    const braking =
+      reach - closing * chargeLeft(power) < SHOT_NEAREST + BRAKE_MARGIN;
+    player.target.copy(braking ? player.position : tray).setY(FLOOR_HEIGHT);
     return;
   }
 
@@ -153,7 +205,6 @@ export const planCarry = (
   // pushes on to the end, and in its own half it never passes back.
   const depth = puck.z * direction;
   const breath = airSeconds(state, player, true);
-  const ahead = toGoal.clone().normalize();
   const blocked = opponents.some((other): boolean => {
     const offset = other.position.clone().sub(puck).setY(0);
     const along = offset.dot(ahead);
@@ -163,7 +214,36 @@ export const planCarry = (
       Math.abs(offset.x * ahead.z - offset.z * ahead.x) < BLOCK_WIDTH
     );
   });
-  const spent = depth > 0 && blocked && breath < RELEASE_SECONDS;
+  // With the way open the carrier starts to charge on the way in, late enough
+  // that the charge ends as it reaches the middle of the range.
+  const release = strengthAdjusted(player, goalShotPower(SHOT_RELEASE_REACH));
+  if (
+    !blocked &&
+    reach >= SHOT_FARTHEST &&
+    closing > APPROACH_SPEED &&
+    (player.charging ||
+      (reach - SHOT_RELEASE_REACH) / closing <= chargeLeft(release))
+  ) {
+    const yaw = aimAt(release);
+    player.plannedShot = { yaw, power: release, hold: true };
+    player.aimYaw = yaw;
+    player.target.copy(tray).setY(FLOOR_HEIGHT);
+    return;
+  }
+  // An attacker is spent when it has too little air left to turn, charge and
+  // release a pass and a defender is in its way, or its air cannot take the
+  // puck to a shot at all. Near the goal it may use its air down to the finish
+  // reserve.
+  const finishSeconds =
+    Math.max(0, player.air - FINISH_AIR) /
+    underwaterAirUse(state, player, true, 1);
+  const carrySpeed = Math.max(closing, SWIM_SPEED);
+  const outOfAir =
+    breath < Math.max(0, goalDistance - FINISH_RANGE) / carrySpeed ||
+    finishSeconds <
+      Math.max(0, reach - SHOT_RELEASE_REACH) / carrySpeed +
+        chargeLeft(release);
+  const spent = depth > 0 && (blocked || outOfAir) && breath < RELEASE_SECONDS;
   const attacking = goalDistance < ATTACK_RANGE;
   const airFraction = (time: number): number =>
     Math.min(time, RECEIVER_FULL_SECONDS) / RECEIVER_FULL_SECONDS;
@@ -226,6 +306,14 @@ export const planCarry = (
     player.aimYaw = pass.yaw;
     return;
   }
+  // A spent carrier with no pass does not take the puck up with it. It flicks
+  // the puck where a teammate gets to it first, or at least deep.
+  const flick = spent ? spaceFlick(state, player, teammates) : undefined;
+  if (flick) {
+    player.plannedShot = flick;
+    player.aimYaw = flick.yaw;
+    return;
+  }
   // In its own third an off-centre carrier takes the puck to the wall and up
   // along it.
   if (depth < OWN_THIRD && Math.abs(puck.x) > WALL_SIDE) {
@@ -250,4 +338,67 @@ export const planCarry = (
     .addScaledVector(toGoal.clone().normalize(), -(SHOT_SPOT + PUCK_LEAD))
     .setY(FLOOR_HEIGHT);
   player.aimYaw = goalYaw;
+};
+
+// Picks where to flick a puck the carrier cannot keep: a spot a teammate
+// reaches before any opponent, as deep toward goal as it can be. With no such
+// spot, the deepest one wins, so the team at least gains space.
+const spaceFlick = (
+  state: Simulation,
+  player: Player,
+  teammates: readonly Player[],
+): { yaw: number; power: number } | undefined => {
+  const puck = state.puck.position;
+  const direction = attackDirection(player.team);
+  const opponents = state.players.filter(
+    (other): boolean => other.team !== player.team && onFloor(other),
+  );
+  const arrival = (players: readonly Player[], spot: Vector3): number =>
+    players.reduce(
+      (soonest, other): number =>
+        Math.min(
+          soonest,
+          Math.hypot(other.position.x - spot.x, other.position.z - spot.z) /
+            SWIM_SPEED,
+        ),
+      Number.POSITIVE_INFINITY,
+    );
+  let chosen: { yaw: number; power: number; value: number } | undefined;
+  for (let index = 0; index < SPACE_HEADINGS; index += 1) {
+    const yaw = (index / SPACE_HEADINGS) * Math.PI * 2;
+    const heading = forwardVector(yaw);
+    // Stay out of the line of any opponent.
+    const cut = opponents.some((other): boolean => {
+      const offset = other.position.clone().sub(puck).setY(0);
+      const along = offset.dot(heading);
+      return (
+        along > 0 &&
+        along < SPACE_LENGTHS[SPACE_LENGTHS.length - 1] &&
+        Math.abs(offset.x * heading.z - offset.z * heading.x) < SPACE_LANE
+      );
+    });
+    if (cut) continue;
+    for (const length of SPACE_LENGTHS) {
+      const spot = puck.clone().addScaledVector(heading, length);
+      if (Math.abs(spot.x) > SPACE_X || Math.abs(spot.z) > SPACE_Z) continue;
+      // With nobody on one side the lead is undefined, so it counts as none.
+      const lead =
+        clamp(
+          arrival(opponents, spot) - arrival(teammates, spot),
+          -SPACE_LEAD_CAP,
+          SPACE_LEAD_CAP,
+        ) || 0;
+      const value =
+        lead * SPACE_LEAD_VALUE +
+        (spot.z - puck.z) * direction * SPACE_DEPTH -
+        turnCost(player, yaw);
+      if (!chosen || value > chosen.value)
+        chosen = {
+          yaw,
+          power: strengthAdjusted(player, passPower(length)),
+          value,
+        };
+    }
+  }
+  return chosen && { yaw: chosen.yaw, power: chosen.power };
 };

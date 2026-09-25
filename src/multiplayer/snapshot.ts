@@ -31,7 +31,9 @@ const playerFields = z.object({
   velocity: vector,
   yaw: n,
   aimYaw: n.optional(),
-  plannedShot: z.object({ yaw: n, power: n }).optional(),
+  plannedShot: z
+    .object({ yaw: n, power: n, hold: z.boolean().optional() })
+    .optional(),
   evadeSide: n,
   evadeUntil: n,
   evadeTarget: vector,

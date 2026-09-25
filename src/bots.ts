@@ -206,15 +206,44 @@ export const airSeconds = (
     : Math.max(0, player.air - safeAirReserve(state, player)) /
       underwaterAirUse(state, player, engaged, 1);
 
+// The goal tray lies this far from centre, in meters.
+export const TRAY_DEPTH = 12.38;
+// Near the goal a chance is worth the last of the air. A goal is worth far
+// more than the few seconds an emergency ascent costs, so the player keeps
+// playing down to this much air, in percent, inside this range of the tray,
+// in meters.
+export const FINISH_AIR = 3;
+export const FINISH_RANGE = 3.5;
+
+export const finishingChance = (state: Simulation, player: Player): boolean => {
+  const puck = state.puck;
+  const toTray = Math.hypot(
+    puck.position.x,
+    puck.position.z - attackDirection(player.team) * TRAY_DEPTH,
+  );
+  return (
+    !player.emergency &&
+    player.air > FINISH_AIR &&
+    player.position.y < 0.8 &&
+    toTray < FINISH_RANGE &&
+    (puck.controlOwner === player.id ||
+      puck.shotOwner === player.id ||
+      (puck.lastTouch === player.id &&
+        state.time - puck.touchTime < 3 &&
+        player.position.distanceToSquared(puck.position) < 4))
+  );
+};
+
 export const followingAttack = (state: Simulation, player: Player): boolean =>
-  !player.emergency &&
-  player.air > safeAirReserve(state, player) + 8 &&
-  player.position.y < 0.8 &&
-  (state.puck.controlOwner === player.id ||
-    state.puck.shotOwner === player.id ||
-    (state.puck.lastTouch === player.id &&
-      state.time - state.puck.touchTime < 3 &&
-      player.position.distanceToSquared(state.puck.position) < 25));
+  finishingChance(state, player) ||
+  (!player.emergency &&
+    player.air > safeAirReserve(state, player) + 8 &&
+    player.position.y < 0.8 &&
+    (state.puck.controlOwner === player.id ||
+      state.puck.shotOwner === player.id ||
+      (state.puck.lastTouch === player.id &&
+        state.time - state.puck.touchTime < 3 &&
+        player.position.distanceToSquared(state.puck.position) < 25)));
 
 export const teamPuckCarrier = (
   state: Simulation,

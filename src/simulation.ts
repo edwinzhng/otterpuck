@@ -900,7 +900,9 @@ const GRAB_STANDOFF = 0.34;
 const prepareAI = (state: Simulation, player: Player): void => {
   player.aimYaw = undefined;
   const committed =
-    state.puck.controlOwner === player.id && player.plannedShot !== undefined;
+    state.puck.controlOwner === player.id &&
+    player.plannedShot !== undefined &&
+    !player.plannedShot.hold;
   player.plannedShot = undefined;
   const puck = state.puck;
   const direction = attackDirection(player.team);

@@ -2,13 +2,14 @@ import { expect, test } from "bun:test";
 import { Vector3 } from "three";
 import { planCarry } from "./bot-carry";
 import { botControls } from "./bot-driver";
-import { clearAscent, safeAirReserve } from "./bots";
+import { clearAscent, followingAttack, safeAirReserve } from "./bots";
 import { createSimulation, stepSimulation } from "./simulation";
 import {
   angleDifference,
   attackDirection,
   directionYaw,
   FLOOR_HEIGHT,
+  forwardVector,
   freshControls,
   type Player,
   PUCK_HEIGHT,
@@ -71,15 +72,99 @@ test("a spent forward blocked in attack passes back to its support", (): void =>
   ).toBeLessThan(0.3);
 });
 
-test("a spent forward with the way open pushes on to the goal", (): void => {
+test("a forward whose air cannot reach a shot plays the puck back", (): void => {
   const { state, carrier, mate, rival } = setup();
   carryAt(state, carrier, 4, 0);
   onFloor(mate, 2.4, 1.2);
   onFloor(rival, 5.6, 4);
   carrier.air = safeAirReserve(state, carrier) + 4;
   planCarry(state, carrier, false);
+  const back = mate.position.clone().sub(state.puck.position);
+  expect(
+    Math.abs(
+      angleDifference(
+        carrier.plannedShot?.yaw ?? Number.NaN,
+        directionYaw(back.x, back.z),
+      ),
+    ),
+  ).toBeLessThan(0.3);
+});
+
+test("a forward low on air near the goal pushes on to a shot", (): void => {
+  const { state, carrier, mate, rival } = setup();
+  carryAt(state, carrier, 8.5, 0);
+  onFloor(mate, 6.9, 1.2);
+  onFloor(rival, 9.5, 4);
+  carrier.air = safeAirReserve(state, carrier) + 4;
+  planCarry(state, carrier, false);
   expect(carrier.plannedShot).toBeUndefined();
-  expect(carrier.target.z * attackDirection(0)).toBeGreaterThan(8);
+  expect(carrier.target.z * attackDirection(0)).toBeGreaterThan(9);
+});
+
+test("a spent forward with no pass flicks the puck deep past the defender", (): void => {
+  const { state, carrier, rival } = setup();
+  carryAt(state, carrier, 4, 0);
+  onFloor(rival, 5.6, 0.2);
+  carrier.air = safeAirReserve(state, carrier) + 4;
+  planCarry(state, carrier, false);
+  const shot = carrier.plannedShot;
+  if (!shot) throw new Error("No flick");
+  const heading = forwardVector(shot.yaw);
+  const toRival = rival.position.clone().sub(state.puck.position);
+  expect(heading.z * attackDirection(0)).toBeGreaterThan(0);
+  expect(
+    Math.abs(angleDifference(shot.yaw, directionYaw(toRival.x, toRival.z))),
+  ).toBeGreaterThan(0.3);
+});
+
+test("a carrier in range shoots on the move instead of stopping", (): void => {
+  const { state, carrier } = setup();
+  carryAt(state, carrier, 9.4, 0);
+  carrier.velocity.set(0, 0, 2 * attackDirection(0));
+  carrier.charging = true;
+  carrier.charge = 0.6;
+  planCarry(state, carrier, false);
+  expect(carrier.plannedShot?.hold).toBeFalsy();
+  expect(carrier.target.z * attackDirection(0)).toBeGreaterThan(12);
+});
+
+test("a carrier coming in fast charges its shot on the way", (): void => {
+  const { state, carrier, rival } = setup();
+  carryAt(state, carrier, 8.3, 0);
+  onFloor(rival, 9, 4);
+  carrier.velocity.set(0, 0, 2.9 * attackDirection(0));
+  planCarry(state, carrier, false);
+  expect(carrier.plannedShot?.hold).toBe(true);
+  expect(carrier.target.z * attackDirection(0)).toBeGreaterThan(12);
+});
+
+test("a held shot charges but is not released", (): void => {
+  const { state, carrier } = setup();
+  carryAt(state, carrier, 8.3, 0);
+  carrier.plannedShot = { yaw: carrier.yaw, power: 0.5, hold: true };
+  carrier.charging = true;
+  carrier.charge = 1;
+  const intent = {
+    desired: new Vector3(0, 0, attackDirection(0)),
+    headingError: 0,
+    holdHeading: false,
+    sprint: false,
+    stop: false,
+    pursuing: false,
+    dummy: 0,
+  };
+  const controls = botControls(state, carrier, intent, 1 / 120);
+  expect(controls.shot).toBe(0);
+  expect(controls.charging).toBe(true);
+});
+
+test("a chance at the goal is played down to the last of the air", (): void => {
+  const { state, carrier } = setup();
+  carryAt(state, carrier, 9, 0);
+  carrier.air = 8;
+  expect(followingAttack(state, carrier)).toBe(true);
+  carryAt(state, carrier, 2, 0);
+  expect(followingAttack(state, carrier)).toBe(false);
 });
 
 test("an off-centre carrier in its own third takes the puck up the wall", (): void => {
