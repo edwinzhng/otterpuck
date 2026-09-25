@@ -2,9 +2,8 @@ import { Quaternion, Vector3 } from "three";
 import { z } from "zod";
 import { pursuitWeights } from "../bots";
 import { CHARACTER_SPECIES } from "../characters";
-import { coachTeam } from "../coach";
 import { teamSize } from "../positions";
-import { NEUTRAL_TACTICS, type Simulation } from "../types";
+import type { Simulation } from "../types";
 import { attributeLevelsSchema } from "./protocol";
 
 const n = z.number().finite();
@@ -149,6 +148,22 @@ const rotation = z.object({
   phase: z.enum(["handoff", "recover", "return"]),
   started: n,
 });
+// The host's coach rewrites the chaser weights and tactics only on its
+// decision ticks, so the snapshot carries them rather than re-deriving them.
+const weights = z.object({
+  forwardBehindPuck: n,
+  forwardAheadOfPuck: n,
+  acrossCourt: n,
+  keeper: n,
+  pressureDuty: n,
+  followingAttack: n,
+  depth: n,
+  humanNear: n,
+  coveringRotation: n,
+  outgoingRotation: n,
+  hysteresis: n,
+});
+const tactics = z.object({ airBudget: n });
 export const snapshotSchema = z.object({
   difficulty: z.enum(["easy", "medium", "hard", "elite"]),
   ruleset: z.enum(["alternative", "original"]),
@@ -204,6 +219,8 @@ export const snapshotSchema = z.object({
   contacts: n,
   shots: n,
   swimTurn: n.default(1),
+  pursuit: z.tuple([weights, weights]),
+  tactics: z.tuple([tactics, tactics]),
 });
 const rosterSchema = snapshotSchema.refine((state): boolean =>
   ([0, 1] as const).every(
@@ -215,20 +232,12 @@ const rosterSchema = snapshotSchema.refine((state): boolean =>
 export const parseSnapshot = (value: unknown): Simulation | undefined => {
   const result = rosterSchema.safeParse(unpackSnapshot(value));
   if (!result.success) return undefined;
-  const state: Simulation = {
+  return {
     ...result.data,
     faceoff: result.data.faceoff,
-    pursuit: [{ ...pursuitWeights }, { ...pursuitWeights }],
     pursuitBase: [{ ...pursuitWeights }, { ...pursuitWeights }],
     coached: [true, true],
-    tactics: [{ ...NEUTRAL_TACTICS }, { ...NEUTRAL_TACTICS }],
   };
-  // Weights and tactics are derived, not sent. The coach reads only fields the
-  // snapshot carries, so re-running it here rebuilds what the host holds and
-  // keeps the wire format unchanged.
-  coachTeam(state, 0);
-  coachTeam(state, 1);
-  return state;
 };
 export const localView = (state: Simulation, playerId: number): Simulation => {
   state.players.sort(

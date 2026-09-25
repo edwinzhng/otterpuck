@@ -39,3 +39,16 @@ test("finished matches emit the final state once and stop work", () => {
   for (let i = 0; i < 120; i++) expect(match.advance(1 / 60)).toBe(false);
   expect(match.state.time).toBe(time);
 });
+test("snapshots keep the host's coach weights between decisions", () => {
+  const state = createSimulation();
+  const [home, away] = state.tactics;
+  const [weights] = state.pursuit;
+  if (!home || !away || !weights) throw new Error("Missing coach state");
+  away.airBudget = 0.7;
+  weights.keeper = 1.4;
+  const decoded = parseSnapshot(
+    JSON.parse(stringifySnapshot(packSnapshot(state))),
+  );
+  expect(decoded?.tactics).toEqual([home, away]);
+  expect(decoded?.pursuit[0].keeper).toBe(1.4);
+});
