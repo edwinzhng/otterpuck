@@ -892,6 +892,10 @@ const updateHuman = (
     announceTo(player, "Low air", 2);
 };
 
+// The body stops this short of a loose puck, so it lies under the chest where
+// a grab reaches it, in meters. Tuned with bot match trials.
+const GRAB_STANDOFF = 0.34;
+
 const prepareAI = (state: Simulation, player: Player): void => {
   player.aimYaw = undefined;
   const committed =
@@ -920,7 +924,7 @@ const prepareAI = (state: Simulation, player: Player): void => {
     const travel = goal.sub(puck.position).setY(0).normalize();
     player.target
       .copy(puck.position)
-      .addScaledVector(travel, carrying ? 2.4 : -0.34)
+      .addScaledVector(travel, carrying ? 2.4 : -GRAB_STANDOFF)
       .setY(FLOOR_HEIGHT);
     player.aimYaw = directionYaw(travel.x, travel.z);
     player.duty = "pressure";
@@ -937,11 +941,9 @@ const prepareAI = (state: Simulation, player: Player): void => {
       incoming.x - player.position.x,
       incoming.z - player.position.z,
     );
-    // The body stops short of the puck, so it lies under the chest where a
-    // grab reaches it. Tuned with bot match trials.
     player.target
       .copy(incoming)
-      .addScaledVector(forwardVector(angle), -0.34)
+      .addScaledVector(forwardVector(angle), -GRAB_STANDOFF)
       .setY(FLOOR_HEIGHT);
     player.aimYaw = angle;
   } else {
@@ -1741,21 +1743,24 @@ const planStrike = (state: Simulation): void => {
   if (state.faceoff?.phase !== "strike") return;
   planTeam(state, 0);
   planTeam(state, 1);
+  const puck = state.puck.position;
   for (const player of state.players) {
-    const direction = attackDirection(player.team);
-    const lead = state.players.find(
-      (other: Player): boolean =>
-        other.team === player.team && other.slot === 0,
-    );
-    if (!lead) continue;
     player.wantDown = true;
-    if (player.slot === 0) {
-      state.puckChasers[player.team] = player.id;
-      player.role = "Striker";
-      player.duty = "pressure";
-      player.target.set(-direction * 0.25, FLOOR_HEIGHT, -direction * 0.34);
-      player.aimYaw = directionYaw(-player.position.x, -player.position.z);
-    }
+    if (player.slot !== 0) continue;
+    state.puckChasers[player.team] = player.id;
+    player.role = "Striker";
+    player.duty = "pressure";
+    // The striker heads straight at the puck and stops short on its own line,
+    // as a chaser does, so it never passes beside the puck and turns back.
+    const angle = directionYaw(
+      puck.x - player.position.x,
+      puck.z - player.position.z,
+    );
+    player.target
+      .copy(puck)
+      .addScaledVector(forwardVector(angle), -GRAB_STANDOFF)
+      .setY(FLOOR_HEIGHT);
+    player.aimYaw = angle;
   }
 };
 
