@@ -793,6 +793,8 @@ legend {
   background: var(--blue);
 }
 .settings-footer {
+  display: grid;
+  gap: 10px;
   margin-top: 22px;
 }
 .settings-footer .button {
@@ -835,6 +837,42 @@ legend {
 }
 .control kbd {
   justify-self: start;
+}
+.key-bindings-intro,
+.key-bindings-status {
+  font-size: 13px;
+  line-height: 1.4;
+}
+.key-bindings-status {
+  min-height: 1.4em;
+  margin: 12px 0 0;
+  color: #4c7185;
+}
+.key-bindings {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px 18px;
+  margin-top: 16px;
+}
+.key-binding {
+  display: grid;
+  grid-template-columns: 1fr 128px;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.key-binding .button {
+  min-height: 40px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+.key-binding .button[aria-pressed="true"] {
+  border-color: var(--blue);
+  background: var(--panel);
+}
+.touch-mode #show-keys {
+  display: none;
 }
 .overlay {
   position: fixed;

@@ -30,6 +30,7 @@ export const updateWorldCamera = (
   alpha: number,
   liftHead: boolean,
   glance: number,
+  lookYaw = 0,
 ): void => {
   const human = state.players.at(0);
   if (active && human) {
@@ -53,7 +54,7 @@ export const updateWorldCamera = (
     world.camera.position.y += world.headLift;
     world.glance = approachGlance(world.glance, glanceYaw(glance), dt);
     world.camera.rotation.order = "YXZ";
-    world.camera.rotation.set(pitch, viewYaw + world.glance, 0);
+    world.camera.rotation.set(pitch, viewYaw + world.glance + lookYaw, 0);
     world.camera.fov +=
       (Math.min(
         110,

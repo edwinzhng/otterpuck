@@ -1,4 +1,10 @@
 import { Vector3 } from "three";
+import type { KeyBindingAction } from "./control-registry";
+import {
+  DEFAULT_KEY_BINDINGS,
+  type KeyBindings,
+  keyCode,
+} from "./key-bindings";
 import { shieldScale, tackleScale } from "./player-profile";
 import { RULESETS } from "./rules";
 import { puckProtection } from "./shielding";
@@ -192,16 +198,21 @@ export const isPuckContested = (state: Simulation, player: Player): boolean =>
       bladeChallengesPuck(state, other, challengeReach(state, player, other)),
   );
 
-export const pollMovement = (controls: Controls, keys: Set<string>): void => {
-  const sideways = Number(keys.has("KeyD")) - Number(keys.has("KeyA"));
-  controls.forward = Number(keys.has("KeyW")) - Number(keys.has("KeyS"));
+export const pollMovement = (
+  controls: Controls,
+  keys: ReadonlySet<string>,
+  bindings: KeyBindings = DEFAULT_KEY_BINDINGS,
+): void => {
+  const held = new Set(Array.from(keys, keyCode));
+  const down = (action: KeyBindingAction): number =>
+    Number(held.has(bindings[action]));
+  const sideways = down("right") - down("left");
+  controls.forward = down("forward") - down("brake");
   controls.lateral = sideways;
   controls.dummy = controls.dummyMode ? sideways : 0;
-  controls.vertical =
-    Number(keys.has("Space")) -
-    Number(keys.has("ControlLeft") || keys.has("ControlRight"));
-  controls.sprint = keys.has("ShiftLeft") || keys.has("ShiftRight");
-  controls.glance = Number(keys.has("KeyE")) - Number(keys.has("KeyQ"));
+  controls.vertical = down("rise") - down("descend");
+  controls.sprint = down("sprint") === 1;
+  controls.glance = down("glanceRight") - down("glanceLeft");
 };
 
 export const handlingLabel = (state: Simulation, player: Player): string => {

@@ -54,16 +54,45 @@ export const TOUCH_BUTTONS = {
 
 export type TouchButtonAction = keyof typeof TOUCH_BUTTONS;
 
+// Codes are KeyboardEvent.code values. Modifier codes drop their Left or Right
+// suffix, and mouse buttons use "Mouse" plus MouseEvent.button.
+export const KEY_BINDING_ACTIONS = {
+  forward: { label: "Swim", code: "KeyW" },
+  brake: { label: "Brake", code: "KeyS" },
+  left: { label: "Steer left", code: "KeyA" },
+  right: { label: "Steer right", code: "KeyD" },
+  sprint: { label: "Sprint", code: "Shift" },
+  rise: { label: "Rise", code: "Space" },
+  descend: { label: "Descend", code: "Control" },
+  duckDive: { label: "Duck dive", code: "KeyC" },
+  shoot: { label: "Shoot", code: "Mouse0" },
+  dummy: { label: "Dummy", code: "Mouse2" },
+  grab: { label: "Grab", code: "KeyX" },
+  glanceLeft: { label: "Glance left", code: "KeyQ" },
+  glanceRight: { label: "Glance right", code: "KeyE" },
+  freeLook: { label: "Free look", code: "KeyF" },
+  facePuck: { label: "Look at puck", code: "Mouse1" },
+  tactics: { label: "Tactics", code: "KeyT" },
+  retry: { label: "Reset puck", code: "KeyP" },
+} as const satisfies Record<string, { label: string; code: string }>;
+
+export type KeyBindingAction = keyof typeof KEY_BINDING_ACTIONS;
+
+// Each {action} token shows the key the player bound to that action.
 export const DESKTOP_CONTROL_HELP = [
-  ["W / S", "Swim / brake"],
-  ["A / D", "Steer"],
+  ["{forward} / {brake}", "Swim / brake"],
+  ["{left} / {right}", "Steer"],
   ["Mouse", "Look / aim"],
-  ["Shift", "Sprint"],
-  ["Space / Ctrl", "Rise / dive"],
-  ["LMB", "Hold to charge · release to shoot"],
-  ["RMB + A / D", "Dummy"],
-  ["Q / E", "Glance"],
-  ["X", "Grab / knock down"],
+  ["{sprint}", "Sprint"],
+  ["{rise} / {descend}", "Rise / descend"],
+  ["{duckDive}", "Duck dive"],
+  ["{shoot}", "Hold to charge · release to shoot"],
+  ["{dummy} + {left} / {right}", "Dummy"],
+  ["{glanceLeft} / {glanceRight}", "Glance"],
+  ["{freeLook}", "Hold to look around and keep your heading"],
+  ["{facePuck}", "Turn to the puck"],
+  ["{grab}", "Grab / knock down"],
+  ["{tactics}", "Tactics"],
   ["Esc", "Pause"],
 ] as const;
 

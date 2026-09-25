@@ -1,3 +1,6 @@
+import type { KeyBindingAction } from "./control-registry";
+import { bindingLabel } from "./key-bindings";
+
 export const button = (
   id: string,
   label: string,
@@ -43,6 +46,10 @@ const escapeText = (value: string): string =>
 
 export const keycap = (label: string): string =>
   `<kbd>${escapeText(label)}</kbd>`;
+
+// Show the key bound to an action. Key binding changes update the label.
+export const boundKeycap = (action: KeyBindingAction): string =>
+  `<kbd data-binding="${action}">${escapeText(bindingLabel(action))}</kbd>`;
 
 export const dialog = (
   id: string,

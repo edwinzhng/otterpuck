@@ -1,5 +1,5 @@
-import { DESKTOP_CONTROL_HELP } from "./control-registry";
 import { goalConfettiMarkup } from "./goal-confetti";
+import { keyBindingsMarkup, keyboardHelpMarkup } from "./key-binding-menu";
 import { lobbyMarkup } from "./lobby";
 import { multiplayerMarkup } from "./multiplayer/ui";
 import { playerDialogMarkup } from "./player-build";
@@ -9,8 +9,8 @@ import {
   touchSettingsMarkup,
 } from "./touch-markup";
 import {
+  boundKeycap,
   button,
-  control,
   dialog,
   field,
   keycap,
@@ -23,9 +23,7 @@ const handednessField = (): string =>
     ["left", "Left"],
   ]);
 export const controlsMarkup = (): string =>
-  `<div class="controls-grid keyboard-help">${DESKTOP_CONTROL_HELP.map(
-    ([key, label]): string => control(key ?? "", label ?? ""),
-  ).join("")}</div>${touchHelpMarkup()}`;
+  `<div class="controls-grid keyboard-help">${keyboardHelpMarkup()}</div>${touchHelpMarkup()}`;
 
 export const uiShell = (): string => `
   <canvas id="pool" tabindex="0" aria-label="Otterpuck playing pool"></canvas><div class="water-vignette" aria-hidden="true"></div>
@@ -45,9 +43,10 @@ export const uiShell = (): string => `
         ["2", "Extra sharp"],
         ["0.85", "Battery saver"],
       ],
-    )}${touchSettingsMarkup()}${["music", "effects"].map((kind): string => `<label class="volume-setting">${kind === "music" ? "Music" : "Effects"}<output id="${kind}-volume-value"></output><input id="${kind}-volume" type="range" min="0" max="100" step="1" aria-label="${kind === "music" ? "Music" : "Effects"} volume"/></label>`).join("")}<div class="settings-row">${button("sound", "Sound on", "secondary", 'aria-pressed="true"')}${button("music", "Music on", "secondary", 'aria-pressed="true"')}</div>${toggle("performance-toggle", "Frame rate", "Show performance details")}<div class="settings-footer">${button("show-credits", "Credits", "quiet")}</div>`,
+    )}${touchSettingsMarkup()}${["music", "effects"].map((kind): string => `<label class="volume-setting">${kind === "music" ? "Music" : "Effects"}<output id="${kind}-volume-value"></output><input id="${kind}-volume" type="range" min="0" max="100" step="1" aria-label="${kind === "music" ? "Music" : "Effects"} volume"/></label>`).join("")}<div class="settings-row">${button("sound", "Sound on", "secondary", 'aria-pressed="true"')}${button("music", "Music on", "secondary", 'aria-pressed="true"')}</div>${toggle("performance-toggle", "Frame rate", "Show performance details")}<div class="settings-footer">${button("show-keys", "Key bindings")}${button("show-credits", "Credits", "quiet")}</div>`,
     "close-settings",
   )}
+  ${dialog("keys-dialog", "Key bindings", keyBindingsMarkup(), "close-keys")}
   ${dialog("controls-dialog", "Controls", controlsMarkup(), "close-controls")}
   ${dialog(
     "credits-dialog",
@@ -66,14 +65,14 @@ export const uiShell = (): string => `
       <div id="network-status" hidden><div class="network-server"><span class="network-dot" aria-hidden="true"></span><strong id="network-region"></strong><span id="network-ping">—</span></div><span id="network-issue" role="status" hidden></span></div>
     </div>
     <div id="player-labels" aria-label="Player positions"></div>
-    <div id="knockdown-prompt" class="reaction hidden" role="status">${keycap("X")}<strong id="reaction-label">Grab</strong></div>
+    <div id="knockdown-prompt" class="reaction hidden" role="status">${boundKeycap("grab")}<strong id="reaction-label">Grab</strong></div>
     <div id="puck-indicator" class="puck-indicator hidden" aria-hidden="true"><span class="puck-indicator-dot"></span><i class="puck-indicator-arrow"></i></div>
     <div id="announcement" class="announcement" role="status"></div>
     <div id="turnover" class="turnover" role="status"><strong id="turnover-title" class="turnover-title"></strong></div>
     ${goalConfettiMarkup()}
     <div class="hud-bottom">
-      <div class="handling"><div id="bottom-guidance" class="bottom-guidance panel hidden" role="status"><strong id="bottom-title"></strong><span id="bottom-detail"></span><div id="descend-cue">${keycap("Ctrl")} ↓</div></div><div id="stick-controls"><div id="shot-charge" class="shot-charge"><span></span></div><strong id="handling-mode"></strong></div></div>
-      <div id="map-wrap" class="map-wrap panel"><div class="map-title"><span id="role"></span>${keycap("T")}</div><canvas id="map" width="320" height="500" aria-label="Pool minimap"></canvas></div>
+      <div class="handling"><div id="bottom-guidance" class="bottom-guidance panel hidden" role="status"><strong id="bottom-title"></strong><span id="bottom-detail"></span><div id="descend-cue">${boundKeycap("descend")} ↓</div></div><div id="stick-controls"><div id="shot-charge" class="shot-charge"><span></span></div><strong id="handling-mode"></strong></div></div>
+      <div id="map-wrap" class="map-wrap panel"><div class="map-title"><span id="role"></span>${boundKeycap("tactics")}</div><canvas id="map" width="320" height="500" aria-label="Pool minimap"></canvas></div>
     </div>
     <output id="lab-readout" class="lab-readout panel hidden"></output>
   </section>

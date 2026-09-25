@@ -51,6 +51,8 @@ Updates download in the background and take over after existing game tabs or win
 
 ## Desktop controls
 
+These are the default keys. Change them in **Settings → Key bindings**. The browser saves your keys.
+
 | Input | Action |
 | --- | --- |
 | W / S | Swim / brake |
@@ -62,12 +64,15 @@ Updates download in the background and take over after existing game tabs or win
 | Left mouse | Hold to charge; release to shoot |
 | Right mouse + A / D | Swerve |
 | Q / E | Glance left / right without turning |
+| F | Hold to look around; the swimmer keeps its heading and A / D still steer |
+| Middle mouse | Turn to the puck |
 | X | Grab a nearby puck or knock down an incoming shot |
 | T | Tactics |
 | Esc | Pause / release mouse |
 | Ctrl + F | Toggle fullscreen |
 | H / P | Tutorial help / retry |
 | Shift + L | Hide / show the tackle log |
+| V / G / R | Free swim: side camera / slow motion / feed a puck |
 
 ## Gameplay rules
 

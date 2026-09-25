@@ -1,5 +1,6 @@
 import { getElement } from "./dom";
 import { DEFAULT_MATCH_DURATION } from "./game-options";
+import { bindKeyBindingMenu } from "./key-binding-menu";
 import { bindLobby } from "./lobby";
 import { savedAttributes, savedAutoCurl } from "./player-profile";
 import { bindSelectFields } from "./select-fields";
@@ -91,6 +92,7 @@ export const createUI = (): UI => {
     },
   );
   bindSelectFields();
+  bindKeyBindingMenu();
   document.addEventListener("click", (event: MouseEvent): void => {
     if (!(event.target instanceof HTMLDialogElement) || !event.target.open)
       return;
@@ -105,11 +107,11 @@ export const createUI = (): UI => {
     const cancel = new Event("cancel", { cancelable: true });
     if (dialog.dispatchEvent(cancel)) dialog.close();
   });
-  for (const name of ["controls", "settings", "credits"]) {
+  for (const name of ["controls", "settings", "credits", "keys"]) {
     getElement(`#show-${name}`, HTMLButtonElement).addEventListener(
       "click",
       (): void => {
-        if (name === "credits")
+        if (name === "credits" || name === "keys")
           getElement("#settings-dialog", HTMLDialogElement).close();
         getElement(`#${name}-dialog`, HTMLDialogElement).showModal();
       },

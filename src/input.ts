@@ -1,4 +1,12 @@
+import type { KeyBindingAction } from "./control-registry";
 import { pollMovement } from "./handling";
+import {
+  bindingAction,
+  currentKeyBindings,
+  keyCode,
+  mouseCode,
+} from "./key-bindings";
+import { freshLook, type Look, moveLook, startSeek } from "./look-controls";
 import { MAX_HELD } from "./player-profile";
 import { createTouchInput, type TouchInput } from "./touch-input";
 import { type Controls, clamp, freshControls } from "./types";
@@ -6,6 +14,7 @@ import { type Controls, clamp, freshControls } from "./types";
 export type Input = {
   controls: Controls;
   keys: Set<string>;
+  look: Look;
   charging: boolean;
   chargeStart: number;
   locked: boolean;
@@ -14,6 +23,13 @@ export type Input = {
   clear: () => void;
   poll: () => void;
 };
+
+// Practice tools that are not in the key bindings. A bound key takes priority.
+const LAB_KEYS = {
+  KeyV: "camera",
+  KeyG: "slow",
+  KeyR: "feed",
+} as const;
 
 export const createInput = (
   canvas: HTMLCanvasElement,
@@ -29,6 +45,7 @@ export const createInput = (
   const input: Input = {
     controls,
     keys,
+    look: freshLook(),
     charging: false,
     chargeStart: 0,
     locked: false,
@@ -43,6 +60,7 @@ export const createInput = (
       touch.clear();
       const { pitch } = controls;
       Object.assign(controls, freshControls(), { pitch });
+      Object.assign(input.look, freshLook());
       input.charging = false;
     },
     poll: (): void => {
@@ -51,13 +69,43 @@ export const createInput = (
         input.charging = controls.charging;
         return;
       }
-      pollMovement(controls, keys);
+      pollMovement(controls, keys, currentKeyBindings());
       controls.charging = input.charging;
       controls.charge = input.charging
         ? clamp((performance.now() - input.chargeStart) / 650, 0, MAX_HELD)
         : 0;
     },
   };
+  const press = (action: KeyBindingAction | undefined): void => {
+    if (action === "grab") controls.knockdown = true;
+    if (action === "duckDive") controls.dive = true;
+    if (action === "dummy") controls.dummyMode = true;
+    if (action === "tactics") onTactics();
+    if (action === "retry") onReset();
+    if (action === "freeLook") input.look.free = true;
+    if (action === "facePuck") startSeek(input.look);
+    if (action === "shoot") {
+      input.charging = true;
+      input.chargeStart = performance.now();
+    }
+  };
+  const release = (action: KeyBindingAction | undefined): void => {
+    if (action === "dummy") controls.dummyMode = false;
+    if (action === "freeLook") input.look.free = false;
+    if (action === "facePuck") input.look.seekHeld = false;
+    if (action === "shoot" && input.charging && input.locked) {
+      // The hold fraction goes to the simulation, which applies the minimum
+      // power and the player's charge speed.
+      controls.shot = clamp(
+        (performance.now() - input.chargeStart) / 650,
+        0.01,
+        MAX_HELD,
+      );
+      input.charging = false;
+    }
+  };
+  const actionFor = (code: string): KeyBindingAction | undefined =>
+    bindingAction(currentKeyBindings(), code);
   document.addEventListener("pointerlockchange", (): void => {
     const held = document.pointerLockElement === canvas;
     document.body.classList.toggle("pointer-captured", held);
@@ -85,20 +133,21 @@ export const createInput = (
     }
     if (event.code === "KeyF" && event.ctrlKey) return;
     event.preventDefault();
-    keys.add(event.code);
+    const code = keyCode(event.code);
+    keys.add(code);
     if (event.repeat) return;
-    if (event.code === "Escape") onPause();
-    if (event.code === "KeyX") controls.knockdown = true;
-    if (event.code === "KeyC") controls.dive = true;
-    if (event.code === "KeyT") onTactics();
-    if (event.code === "KeyP") onReset();
-    if (event.code === "KeyV") onLabAction("camera");
-    if (event.code === "KeyG") onLabAction("slow");
-    if (event.code === "KeyF") onLabAction("feed");
-    if (event.code === "KeyL" && event.shiftKey) onLabAction("log");
+    if (code === "Escape") onPause();
+    const action = actionFor(code);
+    press(action);
+    if (action) return;
+    if (code === "KeyL" && event.shiftKey) onLabAction("log");
+    const lab = LAB_KEYS[code as keyof typeof LAB_KEYS];
+    if (lab) onLabAction(lab);
   });
   window.addEventListener("keyup", (event: KeyboardEvent): void => {
-    keys.delete(event.code);
+    const code = keyCode(event.code);
+    keys.delete(code);
+    if (!touch.enabled) release(actionFor(code));
   });
   window.addEventListener("mousemove", (event: MouseEvent): void => {
     if (
@@ -107,12 +156,11 @@ export const createInput = (
       document.pointerLockElement !== canvas
     )
       return;
-
-    controls.yawDelta -= event.movementX * 0.002;
-    controls.pitch = clamp(
-      controls.pitch - event.movementY * 0.0017,
-      -1.15,
-      1.05,
+    moveLook(
+      input.look,
+      controls,
+      -event.movementX * 0.002,
+      -event.movementY * 0.0017,
     );
   });
   window.addEventListener("mousedown", (event: MouseEvent): void => {
@@ -127,25 +175,20 @@ export const createInput = (
       event.target.closest("button, dialog")
     )
       return;
-    if (event.button === 2) controls.dummyMode = true;
-    if (event.button === 0) {
-      input.charging = true;
-      input.chargeStart = performance.now();
-    }
+    const code = mouseCode(event.button);
+    if (event.button !== 0 && event.button !== 2) event.preventDefault();
+    keys.add(code);
+    press(actionFor(code));
   });
   window.addEventListener("mouseup", (event: MouseEvent): void => {
     if (touch.enabled) return;
-    if (event.button === 2) controls.dummyMode = false;
-    if (event.button === 0 && input.charging && input.locked) {
-      // The hold fraction goes to the simulation, which applies the minimum
-      // power and the player's charge speed.
-      controls.shot = clamp(
-        (performance.now() - input.chargeStart) / 650,
-        0.01,
-        MAX_HELD,
-      );
-      input.charging = false;
-    }
+    // Stop middle-click autoscroll and back or forward navigation on the
+    // extra mouse buttons while they are bound to game actions.
+    if (input.locked && event.button !== 0 && event.button !== 2)
+      event.preventDefault();
+    const code = mouseCode(event.button);
+    keys.delete(code);
+    release(actionFor(code));
   });
 
   window.addEventListener("contextmenu", (event: MouseEvent): void => {

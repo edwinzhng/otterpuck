@@ -1,5 +1,6 @@
 import { assetUrl } from "./asset-url";
 import { getElement } from "./dom";
+import { withKeyLabels } from "./key-bindings";
 import { lessons } from "./learning-content";
 import {
   advanceProgress,
@@ -11,7 +12,7 @@ import {
 } from "./learning-progress";
 import { prepareLesson } from "./learning-setup";
 import type { Simulation } from "./types";
-import { button, keycap } from "./ui-components";
+import { boundKeycap, button, keycap } from "./ui-components";
 
 const prefix = "otterpuck-learn-v2";
 const seenKey = `${prefix}-seen`;
@@ -49,7 +50,7 @@ export const createLearning = (hooks: {
   retry: () => void;
 } => {
   const container = document.createElement("div");
-  container.innerHTML = `<dialog id="lesson-card" class="lesson-card" aria-labelledby="lesson-title"><img id="lesson-image" width="1536" height="1024" alt="" hidden/><div class="lesson-copy"><span id="lesson-count"></span><h2 id="lesson-title"></h2><p id="lesson-text"></p><strong id="lesson-keys"></strong><div class="lesson-actions">${button("lesson-go", "Try it", "primary")}${button("lesson-close", "Not now")}</div></div></dialog><aside id="lesson-objective" class="lesson-objective" hidden aria-label="Practice objective"><div><span id="lesson-number"></span><strong id="lesson-task"></strong></div><progress id="lesson-progress" max="1" value="0" aria-label="Exercise progress"></progress><p id="lesson-feedback" role="status" aria-live="polite" hidden></p><div class="lesson-tools">${button("lesson-help", "Help")}${button("lesson-retry", "Retry")}${button("lesson-exit", "Exit")}</div><span class="lesson-shortcuts">${keycap("H")} Help · ${keycap("P")} Retry · ${keycap("Esc")} Pause</span></aside>`;
+  container.innerHTML = `<dialog id="lesson-card" class="lesson-card" aria-labelledby="lesson-title"><img id="lesson-image" width="1536" height="1024" alt="" hidden/><div class="lesson-copy"><span id="lesson-count"></span><h2 id="lesson-title"></h2><p id="lesson-text"></p><strong id="lesson-keys"></strong><div class="lesson-actions">${button("lesson-go", "Try it", "primary")}${button("lesson-close", "Not now")}</div></div></dialog><aside id="lesson-objective" class="lesson-objective" hidden aria-label="Practice objective"><div><span id="lesson-number"></span><strong id="lesson-task"></strong></div><progress id="lesson-progress" max="1" value="0" aria-label="Exercise progress"></progress><p id="lesson-feedback" role="status" aria-live="polite" hidden></p><div class="lesson-tools">${button("lesson-help", "Help")}${button("lesson-retry", "Retry")}${button("lesson-exit", "Exit")}</div><span class="lesson-shortcuts">${keycap("H")} Help · ${boundKeycap("retry")} Retry · ${keycap("Esc")} Pause</span></aside>`;
   document.body.append(container);
   const card = getElement("#lesson-card", HTMLDialogElement);
   const artwork = { version: 0 };
@@ -67,7 +68,7 @@ export const createLearning = (hooks: {
     const rightHanded = hooks.state().players.at(0)?.handedness !== "left";
     const controls = hooks.touch()
       ? "[[Dummy]] + steer"
-      : "[[right mouse]] + [[A]] or [[D]]";
+      : "[[{dummy}]] + [[{left}]] or [[{right}]]";
     return value
       .replaceAll("{curlDirection}", rightHanded ? "right" : "left")
       .replaceAll("{reverseDirection}", rightHanded ? "left" : "right")
@@ -78,7 +79,7 @@ export const createLearning = (hooks: {
       .split(/(\[\[[^\]]+\]\])/)
       .map((part): string =>
         part.startsWith("[[") && part.endsWith("]]")
-          ? keycap(part.slice(2, -2))
+          ? keycap(withKeyLabels(part.slice(2, -2)))
           : part
               .replaceAll("&", "&amp;")
               .replaceAll("<", "&lt;")

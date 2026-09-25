@@ -733,6 +733,7 @@ export const renderWorld = (
   alpha = 1,
   liftHead = false,
   glance = 0,
+  lookYaw = 0,
 ): void => {
   if (world.arena) world.arena.time.value = time;
   updateShaderTime(world.shaders, time);
@@ -742,7 +743,17 @@ export const renderWorld = (
     state.puck.position,
     alpha,
   );
-  updateWorldCamera(world, state, dt, active, pitch, alpha, liftHead, glance);
+  updateWorldCamera(
+    world,
+    state,
+    dt,
+    active,
+    pitch,
+    alpha,
+    liftHead,
+    glance,
+    lookYaw,
+  );
   world.camera.updateMatrixWorld();
   for (const [index, view] of world.swimmers.entries()) {
     const player = state.players.find(

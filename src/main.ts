@@ -8,6 +8,7 @@ import { randomOpponent } from "./characters";
 import { createGameTransition } from "./game-transition";
 import { createInput } from "./input";
 import { createLearning } from "./learning";
+import { updateLook } from "./look-controls";
 import { matchResult } from "./match-result";
 import { createHudPresentation } from "./multiplayer/hud";
 import { createRoomSimulation } from "./multiplayer/match";
@@ -451,6 +452,18 @@ const boot = async (): Promise<void> => {
     app.previousTime = now;
     if (app.phase === "playing") {
       input.poll();
+      const human = app.state.players.at(0);
+      updateLook(
+        input.look,
+        input.controls,
+        dt,
+        human && {
+          bodyYaw: human.yaw,
+          camera: world.camera.position,
+          puck: world.puck.position,
+          carrying: app.state.puck.controlOwner === human.id,
+        },
+      );
       if (multiplayer?.active()) multiplayer.input(input.controls, dt);
     }
     multiplayer?.frame();
@@ -504,7 +517,7 @@ const boot = async (): Promise<void> => {
       now / 1000,
       renderDt,
       app.phase !== "menu",
-      input.controls.pitch,
+      input.controls.pitch + input.look.pitch,
       multiplayer?.active()
         ? multiplayer.alpha()
         : app.phase === "playing"
@@ -512,6 +525,7 @@ const boot = async (): Promise<void> => {
           : 1,
       app.phase === "playing" && input.controls.vertical > 0,
       app.phase === "playing" ? input.controls.glance : 0,
+      input.look.yaw,
     );
     meter.sample(renderDt * 1000, performance.now() - frameStart);
     if (revealGame && app.phase === "playing") {
