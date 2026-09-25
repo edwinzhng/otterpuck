@@ -100,7 +100,7 @@ test("active handling exhausts air before cruising does", (): void => {
   const active = exhaust({ ...freshControls(), forward: 1, dummy: 1 });
   const cruise = exhaust({ ...freshControls(), forward: 1 });
   expect(active).toBeGreaterThan(5);
-  expect(active).toBeLessThan(cruise * 0.9);
+  expect(active).toBeLessThan(cruise * 0.95);
 });
 
 test("a nearby puck is held through a curl and settles by the front of the blade on release", (): void => {

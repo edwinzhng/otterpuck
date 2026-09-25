@@ -507,6 +507,33 @@ export const clearAscent = (
   desired.copy(sidestep.setLength(ASCENT_SIDESTEP));
 };
 
+// A sprint drives the heart up, and a fast heart burns air. Above the swim
+// rate a bot sprints only to win a close race for the puck, to keep it from a
+// chaser or to finish a chance, in beats per minute. Bot match trials favour
+// 120 over 110, 130 and 150.
+const SPRINT_HEART = 120;
+// A race is close when an opponent is no more than this much further from the
+// puck, in meters.
+const RACE_MARGIN = 1;
+// A carrier with an opponent this close is being chased, in meters.
+const CHASED = 2;
+
+const flatDistance = (a: Vector3, b: Vector3): number =>
+  Math.hypot(a.x - b.x, a.z - b.z);
+
+const closeRace = (state: Simulation, player: Player): boolean => {
+  const puck = state.puck.position;
+  const own = flatDistance(player.position, puck);
+  return state.players.some(
+    (other): boolean =>
+      other.team !== player.team &&
+      !other.emergency &&
+      (other.mode === "playing" || other.mode === "diving") &&
+      flatDistance(other.position, puck) <
+        (state.puck.controlOwner === player.id ? CHASED : own + RACE_MARGIN),
+  );
+};
+
 export const shouldSprintToPuck = (
   state: Simulation,
   player: Player,
@@ -516,6 +543,12 @@ export const shouldSprintToPuck = (
     player.mode === "ascending" ||
     player.mode === "recovering" ||
     player.air < safeAirReserve(state, player) + 10
+  )
+    return false;
+  if (
+    player.heartRate > SPRINT_HEART &&
+    !finishingChance(state, player) &&
+    !closeRace(state, player)
   )
     return false;
   // Only the striker races the swimoff. The rest keep stamina for the play.

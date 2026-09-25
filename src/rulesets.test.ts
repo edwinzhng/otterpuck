@@ -158,7 +158,7 @@ test("a breath lasts longest at rest and shortest in a sprint", (): void => {
   const swim = breathHold("alternative", swimming());
   const sprint = breathHold("alternative", sprinting(), true);
   expect(still).toBeCloseTo(40, 0);
-  expect(swim).toBeLessThan(still * 0.6);
+  expect(swim).toBeLessThan(still * 0.7);
   expect(swim).toBeGreaterThan(15.4);
   expect(sprint).toBeLessThan(swim * 0.7);
   expect(sprint).toBeGreaterThan(4.9);

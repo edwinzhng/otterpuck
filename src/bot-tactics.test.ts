@@ -2,7 +2,12 @@ import { expect, test } from "bun:test";
 import { Vector3 } from "three";
 import { planCarry } from "./bot-carry";
 import { botControls } from "./bot-driver";
-import { clearAscent, followingAttack, safeAirReserve } from "./bots";
+import {
+  clearAscent,
+  followingAttack,
+  safeAirReserve,
+  shouldSprintToPuck,
+} from "./bots";
 import { createSimulation, stepSimulation } from "./simulation";
 import {
   angleDifference,
@@ -267,4 +272,20 @@ test("only the deepest defender holds the line down to its reserve", (): void =>
   step(state);
   expect(deepest.mode).toBe("playing");
   expect(other.mode).toBe("ascending");
+});
+
+test("a bot with a racing heart sprints only for a close race", (): void => {
+  const { state, carrier, rival } = setup();
+  state.puck.controlOwner = undefined;
+  state.puck.position.set(0, PUCK_HEIGHT, 0);
+  onFloor(carrier, -5, 0);
+  carrier.air = 90;
+  carrier.wantDown = true;
+  state.puckChasers[0] = carrier.id;
+  carrier.heartRate = 110;
+  expect(shouldSprintToPuck(state, carrier, 5)).toBe(true);
+  carrier.heartRate = 140;
+  expect(shouldSprintToPuck(state, carrier, 5)).toBe(false);
+  onFloor(rival, -5.5, 0.5);
+  expect(shouldSprintToPuck(state, carrier, 5)).toBe(true);
 });
