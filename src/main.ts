@@ -462,6 +462,11 @@ const boot = async (): Promise<void> => {
           camera: world.camera.position,
           puck: world.puck.position,
           carrying: app.state.puck.controlOwner === human.id,
+          contested: app.state.players.some(
+            (player): boolean =>
+              player.id === app.state.puck.controlOwner &&
+              player.team !== human.team,
+          ),
         },
       );
       if (multiplayer?.active()) multiplayer.input(input.controls, dt);

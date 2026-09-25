@@ -58,6 +58,7 @@ test("look at puck turns the swimmer until the view reaches the puck", (): void 
     camera: new Vector3(0, 1, 0),
     puck: new Vector3(-4, 0.2, 0),
     carrying: false,
+    contested: false,
   };
   startSeek(look);
   look.seekHeld = false;
@@ -85,8 +86,86 @@ test("look at puck in free look turns only the camera", (): void => {
       camera: new Vector3(0, 1, 0),
       puck: new Vector3(4, 1, -4),
       carrying: false,
+      contested: false,
     });
   }
   expect(controls.yawDelta).toBe(0);
+  expect(look.yaw).toBeCloseTo(-Math.PI / 4, 2);
+});
+
+const turnFor = (
+  puck: Vector3,
+  contested: boolean,
+  frames: number,
+): { look: ReturnType<typeof freshLook>; yaw: number } => {
+  const look = freshLook();
+  const controls = freshControls();
+  const seek = {
+    bodyYaw: 0,
+    camera: new Vector3(0, 1, 0),
+    puck,
+    carrying: false,
+    contested,
+  };
+  startSeek(look);
+  for (const unused of Array.from({ length: frames })) {
+    void unused;
+    controls.yawDelta = 0;
+    updateLook(look, controls, 1 / 60, seek);
+    seek.bodyYaw += controls.yawDelta * 1.3 * 2.05;
+  }
+  return { look, yaw: seek.bodyYaw };
+};
+
+test("look at puck turns slower toward an opponent's puck as it gets closer", (): void => {
+  const far = turnFor(new Vector3(-6, 1, 0), true, 6).yaw;
+  const middle = turnFor(new Vector3(-3.5, 1, 0), true, 6).yaw;
+  const loose = turnFor(new Vector3(-3.5, 1, 0), false, 6).yaw;
+  expect(far).toBeCloseTo(turnFor(new Vector3(-6, 1, 0), false, 6).yaw, 6);
+  expect(middle).toBeLessThan(loose);
+  expect(middle).toBeGreaterThan(0);
+});
+
+test("up close, holding look at puck makes one turn and does not follow an opponent's puck", (): void => {
+  const puck = new Vector3(-1.5, 1, 0);
+  const { look, yaw } = turnFor(puck, true, 90);
+  expect(Math.abs(angleDifference(Math.PI / 2, yaw))).toBeLessThan(0.05);
+  expect(look.seeking).toBe(false);
+  expect(look.seekHeld).toBe(false);
+  // The carrier cuts across. The released turn must not chase it.
+  const controls = freshControls();
+  puck.set(0, 1, -1.5);
+  updateLook(look, controls, 1 / 60, {
+    bodyYaw: yaw,
+    camera: new Vector3(0, 1, 0),
+    puck,
+    carrying: false,
+    contested: true,
+  });
+  expect(controls.yawDelta).toBe(0);
+});
+
+test("up close, holding look at puck keeps following a loose puck", (): void => {
+  const { look } = turnFor(new Vector3(-1.5, 1, 0), false, 90);
+  expect(look.seeking).toBe(true);
+  expect(look.seekHeld).toBe(true);
+});
+
+test("free look at puck stays unlimited up close", (): void => {
+  const look = freshLook();
+  const controls = freshControls();
+  look.free = true;
+  startSeek(look);
+  for (const unused of Array.from({ length: 90 })) {
+    void unused;
+    updateLook(look, controls, 1 / 60, {
+      bodyYaw: 0,
+      camera: new Vector3(0, 1, 0),
+      puck: new Vector3(1, 1, -1),
+      carrying: false,
+      contested: true,
+    });
+  }
+  expect(look.seekHeld).toBe(true);
   expect(look.yaw).toBeCloseTo(-Math.PI / 4, 2);
 });
