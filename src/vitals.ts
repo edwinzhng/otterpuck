@@ -2,6 +2,7 @@ import {
   airRefillScale,
   airUseScale,
   heartRecoveryScale,
+  puckEffortScale,
   staminaDrainScale,
 } from "./player-profile";
 import { RULESETS, type Rules } from "./rules";
@@ -59,7 +60,7 @@ export const airEngaged = (state: Simulation, player: Player): boolean =>
 // Where the heart is heading and how fast, as a time constant in seconds.
 // Effort sets the target: rest when still, up to the swim rate with a full
 // kick and the sprint rate in a sprint. Playing the puck and curling add to
-// it. Undefined for a ruleset without a heart model.
+// it, less with more technique. Undefined for a ruleset without a heart model.
 export const heartDrive = (
   state: Simulation,
   player: Player,
@@ -72,8 +73,9 @@ export const heartDrive = (
   const target = Math.min(
     heart.sprint,
     effort +
-      (airEngaged(state, player) ? heart.handling : 0) +
-      (player.curl !== 0 ? heart.curl : 0),
+      ((airEngaged(state, player) ? heart.handling : 0) +
+        (player.curl !== 0 ? heart.curl : 0)) *
+        puckEffortScale(player.attributes),
   );
   const seconds =
     target >= player.heartRate

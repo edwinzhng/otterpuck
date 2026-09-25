@@ -14,7 +14,7 @@ import { button, dialog } from "./ui-components";
 const ATTRIBUTE_DETAILS = {
   strength: "Swim faster, shoot further and push weaker swimmers aside.",
   technique:
-    "Curl faster, win more puck battles and charge shots quicker. Shots go a little further.",
+    "Curl faster, win more puck battles and charge shots quicker. Shots go a little further. Your heart stays calmer on the puck.",
   fitness:
     "Use less air underwater and get it back faster. Stamina lasts longer.",
 } as const;

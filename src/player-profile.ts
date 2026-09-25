@@ -111,8 +111,6 @@ export const strengthPush = (
 
 // Fitness: level 5 uses 10% less air underwater, refills air 20% faster at
 // the surface and uses stamina 16% slower. Level 1 is the same amount worse.
-// At 5% less air per level, a fitness point is worth about a technique point
-// in bot match trials.
 export const airRefillScale = (attributes: Attributes): number =>
   scale(attributes.fitness, 0.1);
 export const staminaDrainScale = (attributes: Attributes): number =>
@@ -135,6 +133,11 @@ export const shieldScale = (attributes: Attributes): number =>
   scale(attributes.technique, 0.15);
 export const chargeTimeScale = (attributes: Attributes): number =>
   scale(attributes.technique, -0.25);
+// Technique also lowers the heart rate that playing the puck and curling add:
+// 30% less at level 5, 30% more at level 1. A fast heart burns air, so a
+// skilled carrier keeps the puck longer on one breath.
+export const puckEffortScale = (attributes: Attributes): number =>
+  scale(attributes.technique, -0.15);
 
 // Longest useful hold, as a fraction of the 0.65 s full charge. Technique 1
 // charges one and a half times slower, so it needs this long to reach full

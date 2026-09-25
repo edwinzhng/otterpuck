@@ -11,6 +11,7 @@ import {
   curlSpeedScale,
   flickScale,
   NEUTRAL_ATTRIBUTES,
+  puckEffortScale,
   shieldScale,
   shotPower,
   staminaDrainScale,
@@ -30,7 +31,7 @@ import {
   type Simulation,
   STEP,
 } from "./types";
-import { airRate, staminaRate } from "./vitals";
+import { airRate, heartDrive, staminaRate } from "./vitals";
 
 const GENTLE = 0.008;
 // A pointer turn of 0.06 rad per step asks for about 13.6 rad/s.
@@ -113,6 +114,7 @@ test("neutral attributes leave every quality unchanged", (): void => {
     curlSpeedScale,
     tackleScale,
     shieldScale,
+    puckEffortScale,
   ])
     expect(modifier(NEUTRAL_ATTRIBUTES)).toBe(1);
 });
@@ -228,6 +230,21 @@ test("technique charges a full shot in half the time at level 5", (): void => {
   expect(flickScale({ strength: 3, technique: 5, fitness: 2 })).toBeLessThan(
     flickScale({ strength: 5, technique: 3, fitness: 2 }),
   );
+});
+
+test("technique keeps the heart calmer on the puck", (): void => {
+  const target = (attributes: Attributes, curl: number): number => {
+    const { state, player } = carrying(attributes);
+    player.curl = curl;
+    const heart = heartDrive(state, player);
+    if (!heart) throw new Error("Heart model missing");
+    return heart.target;
+  };
+  const skilled = { strength: 3, technique: 5, fitness: 2 };
+  const clumsy = { strength: 5, technique: 1, fitness: 4 };
+  expect(target(skilled, 0)).toBeLessThan(target(clumsy, 0));
+  expect(target(skilled, 1)).toBeCloseTo(70 + (15 + 30) * 0.7, 5);
+  expect(target(clumsy, 1)).toBeCloseTo(70 + (15 + 30) * 1.3, 5);
 });
 
 test("technique curls faster", (): void => {

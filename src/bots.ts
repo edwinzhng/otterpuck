@@ -86,12 +86,12 @@ const byRole = (forward: Build, middle: Build, back: Build): RoleBuilds => {
 };
 
 // Found with `bun run tune:builds` and confirmed head to head. Strength is
-// maxed first. Forwards then gain most from fitness, which keeps them down
-// through an attack, and backs from technique, which wins the puck back.
+// maxed first. With the heart rate model, fitness then beats technique for
+// every position until fitness is full.
 export const botBuilds: Record<BotDifficulty, RoleBuilds> = {
   easy: byRole([5, 1, 1], [5, 1, 1], [5, 1, 1]),
-  medium: byRole([5, 1, 3], [5, 2, 2], [5, 3, 1]),
-  hard: byRole([5, 1, 5], [5, 4, 2], [5, 5, 1]),
+  medium: byRole([5, 1, 3], [5, 1, 3], [5, 1, 3]),
+  hard: byRole([5, 1, 5], [5, 1, 5], [5, 1, 5]),
   elite: byRole([5, 3, 5], [5, 5, 3], [5, 5, 3]),
 };
 
