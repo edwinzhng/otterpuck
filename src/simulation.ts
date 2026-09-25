@@ -53,7 +53,7 @@ import {
   SWIM_SPEED,
   swimTurnLimit,
 } from "./swim-limits";
-import { airEngaged, airRate, staminaRate } from "./vitals";
+import { airEngaged, airRate, heartDrive, staminaRate } from "./vitals";
 
 export {
   goalSurfaceHeight,
@@ -123,6 +123,7 @@ import {
   POOL,
   PUCK_HEIGHT,
   PUCK_RADIUS,
+  REST_HEART_RATE,
   type Ruleset,
   type Simulation,
   STICK_EDGE,
@@ -178,6 +179,7 @@ const makePlayer = (
     evadeTarget: position.clone(),
     air: 100,
     stamina: MAX_STAMINA,
+    heartRate: REST_HEART_RATE,
     mode: "playing",
     duty: "support",
     role: "Forward",
@@ -525,6 +527,15 @@ const rulesFor = (state: Simulation): Rules => RULESETS[state.ruleset];
 
 const canSprint = (rules: Rules, player: Player): boolean =>
   !rules.sprintGate || player.stamina > (player.sprint ? 0 : rules.sprintFloor);
+
+// An exact exponential step, so the heart never overshoots its target.
+const updateHeart = (state: Simulation, player: Player, dt: number): void => {
+  const heart = heartDrive(state, player);
+  if (!heart) return;
+  player.heartRate =
+    heart.target +
+    (player.heartRate - heart.target) * Math.exp(-dt / heart.seconds);
+};
 
 const updateStamina = (rules: Rules, player: Player, dt: number): void => {
   player.stamina = clamp(
@@ -1844,6 +1855,7 @@ const updateWallStart = (
     player.role = player.slot === 0 ? "Striker · at the wall" : "At the wall";
     player.air = 100;
     player.stamina = MAX_STAMINA;
+    player.heartRate = REST_HEART_RATE;
     player.previous.copy(player.position);
     player.previousYaw = player.yaw;
     player.previousBodyPitch = player.bodyPitch;
@@ -1945,6 +1957,7 @@ export const stepSimulation = (
     player.knockdownTime = Math.max(0, player.knockdownTime - dt);
     player.shotTime = Math.max(0, player.shotTime - dt);
     if (state.mode !== "playground") {
+      updateHeart(state, player, dt);
       updateStamina(rulesFor(state), player, dt);
       updateAir(state, player, dt);
     }

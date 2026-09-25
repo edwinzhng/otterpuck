@@ -556,6 +556,7 @@ const boot = async (): Promise<void> => {
         ui,
         app.state,
         multiplayer?.active() ? multiplayerHud.read(now) : undefined,
+        now,
       );
     if (now - app.uiTime > 100 && app.phase !== "menu") {
       updateUI(ui, app.state, input, world, multiplayer?.names() ?? NO_NAMES);

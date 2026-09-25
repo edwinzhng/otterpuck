@@ -1,17 +1,27 @@
 import { RULESETS } from "../rules";
-import { clamp, type Simulation } from "../types";
-import { airRate, staminaRate } from "../vitals";
+import { clamp, REST_HEART_RATE, type Simulation } from "../types";
+import { airRate, heartRateChange, staminaRate } from "../vitals";
 
-export type HudValues = { air: number; stamina: number; seconds: number };
+export type HudValues = {
+  air: number;
+  stamina: number;
+  heartRate: number;
+  seconds: number;
+};
 
 // Presentation only: never feed extrapolated vitals or time into gameplay.
 export const createHudPresentation = (): {
   push: (state: Simulation, now: number) => void;
   read: (now: number) => HudValues | undefined;
 } => {
-  const anchor: HudValues = { air: 100, stamina: 100, seconds: 0 };
-  const rates: HudValues = { air: 0, stamina: 0, seconds: 0 };
-  const error: HudValues = { air: 0, stamina: 0, seconds: 0 };
+  const anchor: HudValues = {
+    air: 100,
+    stamina: 100,
+    heartRate: REST_HEART_RATE,
+    seconds: 0,
+  };
+  const rates: HudValues = { air: 0, stamina: 0, heartRate: 0, seconds: 0 };
+  const error: HudValues = { air: 0, stamina: 0, heartRate: 0, seconds: 0 };
   const display: HudValues = { ...anchor };
   let received: number | undefined;
   let transition = "";
@@ -29,6 +39,11 @@ export const createHudPresentation = (): {
       anchor.stamina + rates.stamina * age + error.stamina * correction,
       0,
       100,
+    );
+    // The heart converges, so a straight line past a short gap is close enough.
+    display.heartRate = Math.max(
+      0,
+      anchor.heartRate + rates.heartRate * age + error.heartRate * correction,
     );
     const seconds = Math.max(
       0,
@@ -52,9 +67,11 @@ export const createHudPresentation = (): {
         Math.abs(state.seconds - display.seconds) > 2;
       error.air = snap ? 0 : display.air - player.air;
       error.stamina = snap ? 0 : display.stamina - player.stamina;
+      error.heartRate = snap ? 0 : display.heartRate - player.heartRate;
       error.seconds = snap ? 0 : display.seconds - state.seconds;
       anchor.air = player.air;
       anchor.stamina = player.stamina;
+      anchor.heartRate = player.heartRate;
       anchor.seconds = state.seconds;
       if (snap) Object.assign(display, anchor);
       const running =
@@ -66,6 +83,10 @@ export const createHudPresentation = (): {
       rates.stamina =
         running && state.mode !== "playground"
           ? staminaRate(RULESETS[state.ruleset], player)
+          : 0;
+      rates.heartRate =
+        running && state.mode !== "playground"
+          ? heartRateChange(state, player)
           : 0;
       rates.seconds = running && state.mode === "match" ? -1 : 0;
       received = now;

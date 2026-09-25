@@ -67,6 +67,7 @@ test("packet corrections blend and clock never ticks backward", () => {
   expect(hud.read(1500)).toEqual({
     air: 100,
     stamina: 100,
+    heartRate: player.heartRate,
     seconds: state.seconds,
   });
   state.finished = true;

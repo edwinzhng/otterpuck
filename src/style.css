@@ -1138,6 +1138,29 @@ legend {
 .original-rules .stamina-row {
   display: none;
 }
+.heart-row {
+  --beat: 1;
+  margin-top: 11px;
+}
+.heart-row[hidden] {
+  display: none;
+}
+.heart-row .vital-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.heart {
+  width: 13px;
+  height: 13px;
+  fill: #e36170;
+  transform: scale(var(--beat));
+}
+@media (prefers-reduced-motion: reduce) {
+  .heart {
+    transform: none;
+  }
+}
 .speed-value {
   display: block;
   font-size: 10px;
@@ -1509,8 +1532,13 @@ legend {
   body:not(.touch-mode) .stamina-track {
     height: 12px;
   }
-  body:not(.touch-mode) .stamina-row {
+  body:not(.touch-mode) .stamina-row,
+  body:not(.touch-mode) .heart-row {
     margin-top: 18px;
+  }
+  body:not(.touch-mode) .heart {
+    width: 18px;
+    height: 18px;
   }
 }
 @media (max-width: 850px) {

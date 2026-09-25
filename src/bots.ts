@@ -1,6 +1,7 @@
 import { Vector3 } from "three";
 import { positionSide, strongPositionSide } from "./formation-layout";
 import { formationPositions, playerPosition } from "./positions";
+import { RULESETS } from "./rules";
 import {
   type Attributes,
   attackDirection,
@@ -185,10 +186,28 @@ export const teammatesAway = (state: Simulation, player: Player): number =>
 // and uses air faster on the way up. This covers that extra air, in percent.
 const HANDLING_ASCENT_AIR = 6;
 
+// The reserve is tuned for a heart at the swim rate. A faster heart burns more
+// air on the way up, so the reserve grows with it. The swimmer kicks on the
+// way up, so the heart never counts as slower than the swim rate.
+const ascentHeartScale = (state: Simulation, player: Player): number => {
+  const heart = RULESETS[state.ruleset].heart;
+  if (!heart) return 1;
+  return (
+    underwaterAirUse(
+      state,
+      player,
+      false,
+      1,
+      Math.max(heart.swim, player.heartRate),
+    ) / underwaterAirUse(state, player, false, 1, heart.swim)
+  );
+};
+
 export const safeAirReserve = (state: Simulation, player: Player): number =>
   (9 +
     Math.max(0, 2.31 - player.position.y) * 3 +
     (airEngaged(state, player) ? HANDLING_ASCENT_AIR : 0)) *
+  ascentHeartScale(state, player) *
   state.tactics[player.team].airBudget;
 
 // Seconds of play a player has left before it must head up for air. It

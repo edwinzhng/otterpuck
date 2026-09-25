@@ -36,8 +36,10 @@ const setup = () => {
   return { state, carrier, mate, rival };
 };
 
+// A player in play on the floor has its heart at the swim rate.
 const onFloor = (player: Player, depth: number, x: number): void => {
   player.mode = "playing";
+  player.heartRate = 120;
   player.position.set(x, FLOOR_HEIGHT, depth * attackDirection(0));
   player.velocity.set(0, 0, 0);
 };

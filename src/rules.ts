@@ -1,5 +1,28 @@
 import type { Ruleset } from "./types";
 
+// Heart rate model, in beats per minute. The heart moves toward a target set
+// by effort and slows back toward rest, so it converges instead of climbing
+// without end. Air use and refill follow the heart rate.
+export type HeartRules = {
+  rest: number;
+  swim: number;
+  sprint: number;
+  // Playing the puck and curling add to the target on top of swimming.
+  handling: number;
+  curl: number;
+  // Time constants, in seconds. The heart rises slowly while swimming and
+  // faster in a sprint. Fitness shortens the fall back to rest.
+  swimRise: number;
+  sprintRise: number;
+  fall: number;
+  // Air use underwater at rest, in percent per second. Each `airGrowth` beats
+  // above rest multiplies it by e.
+  restAirUse: number;
+  airGrowth: number;
+  // Each `refillFalloff` beats above rest divide the surface refill by e.
+  refillFalloff: number;
+};
+
 export type Rules = {
   sprintGate: boolean;
   sprintFloor: number;
@@ -24,6 +47,9 @@ export type Rules = {
   autoCurl: boolean;
   shielding: number;
   curlMouseTurn: number;
+  // Only rulesets with a heart rate model it. Without one, air follows kick
+  // effort and stamina.
+  heart: HeartRules | undefined;
 };
 
 export const RULESETS: Record<Ruleset, Rules> = {
@@ -33,8 +59,8 @@ export const RULESETS: Record<Ruleset, Rules> = {
     sprintDrain: 14,
     idleDrain: 0,
     kickDrain: 2.2,
-    recovery: 6.4,
-    surfaceRecovery: 10.5,
+    recovery: 5,
+    surfaceRecovery: 8,
     surfaceSprint: 0.5,
     emergencyRecovery: 0.45,
     airSupply: 0.48,
@@ -51,6 +77,20 @@ export const RULESETS: Record<Ruleset, Rules> = {
     autoCurl: true,
     shielding: 1,
     curlMouseTurn: 0.3,
+    // A full tank lasts about 40 s at 70, 15 s at 120 and 5 s at 180.
+    heart: {
+      rest: 70,
+      swim: 120,
+      sprint: 180,
+      handling: 15,
+      curl: 30,
+      swimRise: 10,
+      sprintRise: 4,
+      fall: 6,
+      restAirUse: 2.5,
+      airGrowth: 52.5,
+      refillFalloff: 100,
+    },
   },
   original: {
     sprintGate: false,
@@ -76,5 +116,6 @@ export const RULESETS: Record<Ruleset, Rules> = {
     autoCurl: false,
     shielding: 0,
     curlMouseTurn: 1,
+    heart: undefined,
   },
 };

@@ -36,6 +36,8 @@ export type UI = {
   music: boolean;
   map: HTMLCanvasElement;
   playerLabels: HTMLElement[];
+  // Where the HUD heart is in its beat, from 0 to 1, and when it last moved.
+  heartBeat: { phase: number; time: number | undefined };
   elements: {
     clock: HTMLElement;
     labReadout: HTMLElement;
@@ -47,6 +49,8 @@ export type UI = {
     airLabel: HTMLElement;
     stamina: HTMLElement;
     staminaValue: HTMLElement;
+    heartRow: HTMLElement;
+    heartRate: HTMLElement;
     event: HTMLElement;
     turnover: HTMLElement;
     turnoverTitle: HTMLElement;

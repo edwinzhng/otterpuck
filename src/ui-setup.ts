@@ -45,6 +45,7 @@ export const createUI = (): UI => {
       element("player-labels").append(label);
       return label;
     }),
+    heartBeat: { phase: 0, time: undefined },
     elements: {
       clock: element("clock"),
       labReadout: element("lab-readout"),
@@ -56,6 +57,8 @@ export const createUI = (): UI => {
       airLabel: element("air-label"),
       stamina: element("stamina-fill"),
       staminaValue: element("stamina-value"),
+      heartRow: element("heart-row"),
+      heartRate: element("heart-rate"),
       event: element("announcement"),
       turnover: element("turnover"),
       turnoverTitle: element("turnover-title"),

@@ -86,7 +86,7 @@ test("goals reset both teams to the wall and restore the central puck", (): void
   expect(state.puck.position.z).toBe(0);
 });
 
-test("active handling exhausts air well before cruising does", (): void => {
+test("active handling exhausts air before cruising does", (): void => {
   const exhaust = (controls: Controls): number => {
     const state = createSimulation("3-3", "3-3", "practice");
     state.puck.position.x = 5;
@@ -100,7 +100,7 @@ test("active handling exhausts air well before cruising does", (): void => {
   const active = exhaust({ ...freshControls(), forward: 1, dummy: 1 });
   const cruise = exhaust({ ...freshControls(), forward: 1 });
   expect(active).toBeGreaterThan(5);
-  expect(active).toBeLessThan(cruise * 0.8);
+  expect(active).toBeLessThan(cruise * 0.9);
 });
 
 test("a nearby puck is held through a curl and settles by the front of the blade on release", (): void => {

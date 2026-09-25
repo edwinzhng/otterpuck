@@ -39,6 +39,7 @@ const playerFields = z.object({
   evadeTarget: vector,
   air: n,
   stamina: n,
+  heartRate: n,
   mode: z.enum(["playing", "ascending", "recovering", "diving"]),
   duty: z.enum(["pressure", "support", "cover", "recover"]),
   role: z.string().max(120),

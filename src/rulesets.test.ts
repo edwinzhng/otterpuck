@@ -130,12 +130,14 @@ const breathHold = (
   controls: Controls,
   pinStamina = false,
   stamina = MAX_STAMINA,
+  heartRate?: number,
 ): number => {
   const { state, player } = setup(ruleset);
   let held = 0;
   while (player.air > 0 && held < 300) {
     player.position.y = FLOOR_HEIGHT;
     if (pinStamina) player.stamina = stamina;
+    if (heartRate !== undefined) player.heartRate = heartRate;
     controls.yawDelta = 0;
     stepSimulation(state, controls, STEP);
     held += STEP;
@@ -143,10 +145,23 @@ const breathHold = (
   return held;
 };
 
-test("alternative spends a full breath on the tuned schedule", (): void => {
-  expect(breathHold("alternative", freshControls())).toBeCloseTo(24, 1);
-  expect(breathHold("alternative", swimming())).toBeCloseTo(16, 1);
-  expect(breathHold("alternative", sprinting(), true)).toBeCloseTo(16, 1);
+test("alternative spends a full breath by heart rate", (): void => {
+  const held = (heartRate: number): number =>
+    breathHold("alternative", freshControls(), false, MAX_STAMINA, heartRate);
+  expect(held(70)).toBeCloseTo(40, 0);
+  expect(held(120)).toBeCloseTo(15.4, 0);
+  expect(held(180)).toBeCloseTo(4.9, 0);
+});
+
+test("a breath lasts longest at rest and shortest in a sprint", (): void => {
+  const still = breathHold("alternative", freshControls());
+  const swim = breathHold("alternative", swimming());
+  const sprint = breathHold("alternative", sprinting(), true);
+  expect(still).toBeCloseTo(40, 0);
+  expect(swim).toBeLessThan(still * 0.6);
+  expect(swim).toBeGreaterThan(15.4);
+  expect(sprint).toBeLessThan(swim * 0.7);
+  expect(sprint).toBeGreaterThan(4.9);
 });
 
 test("original keeps its own longer breath schedule", (): void => {

@@ -86,10 +86,10 @@ export const saveAutoCurl = (enabled: boolean): void => {
 const scale = (level: number, perLevel: number): number =>
   1 + (level - NEUTRAL_LEVEL) * perLevel;
 
-// Strength: level 5 swims 4% faster and flicks the puck 10% faster. It also
+// Strength: level 5 swims 6% faster and flicks the puck 10% faster. It also
 // pushes a weaker swimmer aside on contact, see strengthPush.
 export const swimSpeedScale = (attributes: Attributes): number =>
-  scale(attributes.strength, 0.02);
+  scale(attributes.strength, 0.03);
 
 // Strength and technique both lengthen the flick. Technique adds half as much
 // per level.
@@ -119,6 +119,10 @@ export const staminaDrainScale = (attributes: Attributes): number =>
   scale(attributes.fitness, -0.08);
 export const airUseScale = (attributes: Attributes): number =>
   scale(attributes.fitness, -0.05);
+// Fitness also brings the heart rate back to rest faster: 20% faster at level
+// 5, 20% slower at level 1.
+export const heartRecoveryScale = (attributes: Attributes): number =>
+  scale(attributes.fitness, 0.1);
 
 // Technique: level 5 curls 20% faster, reaches 30% further to challenge a
 // carrier and covers the puck 30% better while curling. It also charges a

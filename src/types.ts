@@ -65,6 +65,8 @@ export type Player = {
   evadeTarget: Vector3;
   air: number;
   stamina: number;
+  // Beats per minute. Only rulesets with a heart model change it.
+  heartRate: number;
   // This event is visible only to this player.
   event: string;
   eventTime: number;
@@ -248,6 +250,7 @@ export type Goal = {
 };
 export const POOL = { width: 15, length: 25, depth: 2.44, goal: 3 };
 export const MAX_STAMINA = 100;
+export const REST_HEART_RATE = 70;
 export const FLOOR_HEIGHT = 0.36;
 export const SURFACE_HEIGHT = POOL.depth - 0.13;
 export const PUCK_RADIUS = 0.04;

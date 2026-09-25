@@ -7,6 +7,7 @@ import type { HudValues } from "./multiplayer/hud";
 import { type PlayerNames, teamScorers } from "./player-names";
 import { chargePower } from "./player-profile";
 import { playerPosition } from "./positions";
+import { RULESETS } from "./rules";
 import type { Simulation, Team } from "./types";
 import type { UI } from "./ui-types";
 
@@ -14,10 +15,33 @@ export { getElement } from "./dom";
 export { createUI } from "./ui-setup";
 export type { UI } from "./ui-types";
 
+// One beat: a strong contraction and a weaker second one, as a scale above 1.
+const beatScale = (phase: number): number => {
+  const pulse = (centre: number): number =>
+    Math.exp(-(((phase - centre) / 0.05) ** 2));
+  return 1 + 0.22 * pulse(0.08) + 0.12 * pulse(0.28);
+};
+
+// The HUD heart beats at the player's heart rate. The phase carries over
+// between frames, so a change of rate never makes the heart jump.
+const updateHeart = (ui: UI, heartRate: number, now: number): void => {
+  const beat = ui.heartBeat;
+  const elapsed =
+    beat.time === undefined ? 0 : Math.min(0.25, (now - beat.time) / 1000);
+  beat.time = now;
+  beat.phase = (beat.phase + (elapsed * heartRate) / 60) % 1;
+  ui.elements.heartRow.style.setProperty(
+    "--beat",
+    beatScale(beat.phase).toFixed(3),
+  );
+  setText(ui.elements.heartRate, String(Math.round(heartRate)));
+};
+
 export const updateHudValues = (
   ui: UI,
   state: Simulation,
-  values?: HudValues,
+  values: HudValues | undefined,
+  now: number,
 ): void => {
   const player = state.players.at(0);
   if (!player) return;
@@ -48,6 +72,9 @@ export const updateHudValues = (
   ui.hud.style.setProperty("--stamina", `${stamina}%`);
   setText(ui.elements.staminaValue, String(Math.ceil(stamina)));
   ui.elements.stamina.classList.toggle("spent", stamina < 25);
+  const heart = RULESETS[state.ruleset].heart;
+  ui.elements.heartRow.hidden = !heart;
+  if (heart) updateHeart(ui, values?.heartRate ?? player.heartRate, now);
 };
 
 const renderScorers = (

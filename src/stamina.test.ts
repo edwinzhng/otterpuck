@@ -74,7 +74,8 @@ test("an exhausted swimmer drops out of the sprint until stamina rebuilds", (): 
   expect(player.stamina).toBeLessThan(1);
   holdBreath(state, player, 1, sprinting);
   expect(isSprinting(player)).toBe(false);
-  holdBreath(state, player, 3, freshControls());
+  // The heart must calm down before stamina comes back quickly.
+  holdBreath(state, player, 6, freshControls());
   holdBreath(state, player, STEP, sprinting);
   expect(isSprinting(player)).toBe(true);
 });
@@ -106,10 +107,10 @@ test("resting or swimming calmly at the surface still recovers stamina", (): voi
   ).toBeGreaterThan(0);
 });
 
-test("air comes back more slowly at the surface after a hard sprint", (): void => {
-  const recovered = [MAX_STAMINA, 0].map((stamina): number => {
+test("air comes back more slowly at the surface with a racing heart", (): void => {
+  const recovered = [70, 180].map((heartRate): number => {
     const { state, player } = setup();
-    player.stamina = stamina;
+    player.heartRate = heartRate;
     player.air = 40;
     player.position.y = SURFACE_HEIGHT;
     advance(state, 1);
