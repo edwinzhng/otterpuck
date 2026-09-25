@@ -14,9 +14,9 @@ import { button, dialog } from "./ui-components";
 const ATTRIBUTE_DETAILS = {
   strength: "Swim faster, shoot further and push weaker swimmers aside.",
   technique:
-    "Curl faster, win more puck battles and charge shots quicker. Shots go a little further. Your heart stays calmer on the puck.",
+    "Curl faster, charge shots quicker and win more puck battles. Your heart stays calmer on the puck.",
   fitness:
-    "Use less air underwater and get it back faster. Stamina lasts longer.",
+    "Use less air underwater and get it back faster. Stamina lasts longer and your heart calms down faster.",
 } as const;
 
 export const playerChoiceMarkup = (attributes: Attributes): string =>
