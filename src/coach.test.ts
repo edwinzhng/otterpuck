@@ -38,24 +38,37 @@ test("the plan keeps the roster size and swings with the scoreline", () => {
 test("applying a plan derives the live weights and leaves the base alone", () => {
   const state = match();
   state.coached = [true, true];
+  applyPlan(state, 1, {
+    formation: "3-3",
+    aggression: 3,
+    airBudget: 0.75,
+    commit: 1,
+  });
+  expect(state.pursuitBase[1]).toEqual(pursuitWeights);
+  expect(state.pursuit[1].acrossCourt).toBeLessThan(pursuitWeights.acrossCourt);
+  expect(state.pursuit[1].hysteresis).toBeLessThan(pursuitWeights.hysteresis);
+  expect(state.tactics[1].airBudget).toBeCloseTo(0.75, 6);
+  expect(state.formations[1]).toBe("3-3");
+  // A shape from another roster size must be refused; the snapshot schema
+  // requires the shape to match the players on the team.
+  applyPlan(state, 1, {
+    formation: "1-1",
+    aggression: 0,
+    airBudget: 1,
+    commit: 0,
+  });
+  expect(state.formations[1]).toBe("3-3");
+});
+
+test("the coach never changes the shape of a team with a human", () => {
+  const state = match();
+  state.coached = [true, true];
   applyPlan(state, 0, {
     formation: "3-3",
     aggression: 3,
     airBudget: 0.75,
     commit: 1,
   });
-  expect(state.pursuitBase[0]).toEqual(pursuitWeights);
-  expect(state.pursuit[0].acrossCourt).toBeLessThan(pursuitWeights.acrossCourt);
-  expect(state.pursuit[0].hysteresis).toBeLessThan(pursuitWeights.hysteresis);
+  expect(state.formations[0]).toBe("2-3-1");
   expect(state.tactics[0].airBudget).toBeCloseTo(0.75, 6);
-  expect(state.formations[0]).toBe("3-3");
-  // A shape from another roster size must be refused; the snapshot schema
-  // requires the shape to match the players on the team.
-  applyPlan(state, 0, {
-    formation: "1-1",
-    aggression: 0,
-    airBudget: 1,
-    commit: 0,
-  });
-  expect(state.formations[0]).toBe("3-3");
 });

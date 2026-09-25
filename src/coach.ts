@@ -72,7 +72,15 @@ export const applyPlan = (
   team: Team,
   plan: CoachPlan,
 ): void => {
-  if (teamSize(plan.formation) === teamSize(state.formations[team]))
+  // A team with a human keeps the shape the players picked. The coach still
+  // sets its tactics.
+  const humanTeam = state.players.some(
+    (player): boolean => player.team === team && player.human,
+  );
+  if (
+    !humanTeam &&
+    teamSize(plan.formation) === teamSize(state.formations[team])
+  )
     state.formations[team] = plan.formation;
 
   state.tactics[team].airBudget = clamp(plan.airBudget, 0.6, 1.5);
