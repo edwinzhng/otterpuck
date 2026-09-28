@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { ARENA_IDS } from "../../src/arena-catalog";
 import { blenderExecutable } from "../blender";
+import { packArenaColors } from "./pack-colors";
 
 for (const arena of ARENA_IDS.filter(
   (id) =>
@@ -55,4 +56,8 @@ print(json.dumps({'glb':${JSON.stringify(destination)},'vertices':sum(len(o.data
     { stdout: "inherit", stderr: "inherit" },
   );
   if ((await task.exited) !== 0) throw new Error(`${arena} export failed`);
+  const exported = new Uint8Array(await Bun.file(destination).arrayBuffer());
+  const packed = packArenaColors(exported);
+  await Bun.write(destination, packed);
+  console.info(`${arena}: ${exported.byteLength} → ${packed.byteLength} bytes`);
 }

@@ -49,7 +49,7 @@ const renderPreviews = async (): Promise<void> => {
       ];
       if (id === "tropical")
         sources.push("/art/arenas/island-rock-painted.webp");
-      const key = await previewCacheKey(`arena-v1-${id}`, sources);
+      const key = await previewCacheKey(`arena-v3-${id}`, sources);
       cacheKeys.set(id, key);
       const source = await readPreview(key);
       if (source) {

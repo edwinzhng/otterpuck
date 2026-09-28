@@ -27,8 +27,28 @@ for (const name of ARENA_IDS) {
     );
     expect(meshes.length).toBeLessThan(30);
     expect(triangles).toBeLessThan(100_000);
-    for (const mesh of meshes)
+    for (const mesh of meshes) {
       expect(mesh.geometry.getAttribute("uv")).toBeUndefined();
+      const position = mesh.geometry.getAttribute("position");
+      const normal = mesh.geometry.getAttribute("normal");
+      expect(normal.count).toBe(position.count);
+      expect([...position.array].every(Number.isFinite)).toBe(true);
+      expect([...normal.array].every(Number.isFinite)).toBe(true);
+      const paint = mesh.geometry.getAttribute("color");
+      if (paint) {
+        expect(paint.count).toBe(position.count);
+        for (let index = 0; index < paint.count; index++) {
+          for (const value of [
+            paint.getX(index),
+            paint.getY(index),
+            paint.getZ(index),
+          ]) {
+            expect(value).toBeGreaterThanOrEqual(0);
+            expect(value).toBeLessThanOrEqual(1);
+          }
+        }
+      }
+    }
     const materials = new Set(
       meshes.flatMap((mesh): string[] =>
         (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).map(

@@ -1,6 +1,7 @@
 import { Vector3 } from "three";
 import { ARENA_IDS, ARENA_LABELS, isArenaId } from "./arena-catalog";
 import { CHARACTER_SPECIES, type CharacterSpecies } from "./characters";
+import { createFrameMeter } from "./performance";
 import {
   createSimulation,
   resetPracticePuck,
@@ -40,6 +41,7 @@ export const bootReview = async (): Promise<void> => {
   )
     throw new Error("Movement review controls missing");
   const world = createWorld(canvas);
+  const meter = createFrameMeter();
   const requestedCharacter = new URL(location.href).searchParams.get(
     "character",
   );
@@ -126,8 +128,12 @@ export const bootReview = async (): Promise<void> => {
     ?.addEventListener("change", (event): void => {
       if (!(event.target instanceof HTMLSelectElement)) return;
       if (isArenaId(event.target.value))
-        setWorldArena(world, event.target.value).catch(console.error);
+        setWorldArena(world, event.target.value)
+          .then((): void => meter.reset())
+          .catch(console.error);
     });
+  camera.addEventListener("change", (): void => meter.reset());
+  movement.addEventListener("change", (): void => meter.reset());
   const offsets = new Map<string, Vector3>([
     ["Side", new Vector3(1.55, 0.32, 0)],
     ["Three quarter", new Vector3(1.1, 0.38, -1.25)],
@@ -143,9 +149,11 @@ export const bootReview = async (): Promise<void> => {
       !review.capture
     )
       return;
-    const dt = Math.min(0.08, (now - review.previous) / 1000);
+    const frameDuration = now - review.previous;
+    const dt = Math.min(0.08, frameDuration / 1000);
     review.previous = now;
     if (document.hidden) return;
+    const workStart = performance.now();
     const player = review.state.players.at(0);
     if (!player) return;
     if (!review.paused) {
@@ -254,8 +262,12 @@ export const bootReview = async (): Promise<void> => {
     }
     review.frames += 1;
     review.frameTime += dt;
+    meter.sample(frameDuration, performance.now() - workStart);
     if (review.frameTime > 0.8) {
-      status.value = `${movement.value} · ${Math.round(review.frames / review.frameTime)} fps · ${world.renderer.info.render.calls} draws · ${Math.round(world.renderer.info.render.triangles / 1000)}k triangles`;
+      status.value = `${world.arena ? ARENA_LABELS[world.arena.id] : ""} · ${movement.value} · ${Math.round(review.frames / review.frameTime)} fps · ${world.renderer.info.render.calls} draws · ${Math.round(world.renderer.info.render.triangles / 1000)}k triangles`;
+      status.dataset.metrics = JSON.stringify(
+        meter.read(world.renderer.info.render, world.renderer.info.memory),
+      );
       review.frames = 0;
       review.frameTime = 0;
     }

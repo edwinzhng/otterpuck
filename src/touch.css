@@ -203,13 +203,16 @@ body:not(.touch-mode) .touch-help {
 }
 .touch-mode .hud-top {
   inset: var(--hud-top) var(--hud-right) auto var(--hud-left);
+  z-index: 3;
 }
 .touch-mode #pause-button {
   min-width: 48px;
   min-height: 48px;
 }
-.touch-mode .scoreboard {
+.touch-mode .hud-status-stack > .scoreboard {
   position: static;
+  inset: auto;
+  transform: none;
   box-sizing: border-box;
   width: 100%;
   max-width: none;
@@ -244,12 +247,14 @@ body:not(.touch-mode) .touch-help {
   position: absolute;
   top: var(--hud-top);
   right: var(--hud-right);
+  z-index: 3;
   display: grid;
   width: var(--touch-status-width);
   gap: var(--touch-panel-gap);
 }
-.touch-mode .vitals {
+.touch-mode .hud-status-stack > .vitals {
   position: static;
+  inset: auto;
   width: 100%;
   padding: 8px 10px;
   border-radius: 12px;
@@ -268,17 +273,7 @@ body:not(.touch-mode) .touch-help {
   font-size: 10px;
 }
 .touch-mode .map-wrap {
-  position: absolute;
-  top: calc(var(--hud-top) + var(--hud-action-size) + 12px);
-  right: auto;
-  left: var(--hud-left);
-  width: 70px;
-  padding: 5px;
-  border-radius: 10px;
-  opacity: 0.9;
-}
-.touch-mode .map-title {
-  justify-content: center;
+  display: none;
 }
 .touch-mode .hud kbd,
 .touch-mode .desktop-shortcuts,
@@ -361,6 +356,41 @@ body:not(.touch-mode) .touch-help {
   max-height: 90dvh;
 }
 @media (orientation: landscape) and (max-height: 500px) {
+  .touch-mode .hud-status-stack {
+    width: min(350px, calc(100vw - var(--hud-left) - var(--hud-right) - 122px));
+    grid-template-columns: 132px minmax(0, 1fr);
+    align-items: start;
+    gap: 8px 10px;
+  }
+  .touch-mode .hud-status-stack > .scoreboard {
+    grid-area: 1 / 1;
+  }
+  .touch-mode .hud-status-stack > .vitals {
+    grid-area: 1 / 2;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    align-items: center;
+    min-height: 48px;
+    padding: 7px 9px;
+  }
+  .touch-mode .hud-status-stack .vital-label {
+    gap: 3px;
+    font-size: 8px;
+    letter-spacing: 0;
+  }
+  .touch-mode .vital-value {
+    font-size: 10px;
+  }
+  .touch-mode .stamina-row,
+  .touch-mode .air-track {
+    margin-top: 0;
+  }
+  .touch-mode .hud-status-stack > #network-status,
+  .touch-mode .performance {
+    grid-column: 1;
+    justify-self: stretch;
+  }
   .touch-mode .lobby-screen {
     top: 70px;
   }
@@ -399,8 +429,35 @@ body:not(.touch-mode) .touch-help {
   .touch-mode .bottom-guidance {
     max-width: 100%;
   }
-  .touch-mode .map-wrap {
-    width: 58px;
+}
+@media (orientation: landscape) and (max-height: 380px) {
+  .touch-mode {
+    --touch-size: 48px;
+    --touch-gap: 5px;
+  }
+  .touch-mode .touch-skills {
+    display: grid;
+    grid-template-columns: repeat(4, var(--touch-size));
+    width: max-content;
+  }
+  .touch-mode .touch-direction-pad {
+    grid-column: 1 / 4;
+    margin: 0;
+  }
+  .touch-mode .touch-secondary-actions {
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(2, var(--touch-size));
+  }
+  .touch-mode .touch-secondary-actions .touch-button {
+    flex-direction: column;
+  }
+  .touch-mode .touch-skills .touch-button {
+    padding: 3px;
+    gap: 1px;
+  }
+  .touch-mode .touch-skills .touch-shot {
+    grid-column: 1 / -1;
+    gap: 8px;
   }
 }
 
@@ -418,8 +475,9 @@ body:not(.touch-mode) .touch-help {
   height: 44px;
   border-radius: 14px;
 }
-.touch-mode #network-status {
+.touch-mode .hud-status-stack > #network-status {
   position: static;
+  inset: auto;
   box-sizing: border-box;
   width: 100%;
   max-width: none;
@@ -544,15 +602,6 @@ body:not(.touch-mode) .touch-help {
   .touch-skills {
     right: max(14px, env(safe-area-inset-right));
     gap: 12px;
-  }
-  .touch-mode .scoreboard {
-    top: 0;
-    right: 0;
-    left: auto;
-    transform: none;
-  }
-  .touch-mode .map-wrap {
-    width: 62px;
   }
   .touch-mode .lobby-screen {
     top: max(88px, calc(env(safe-area-inset-top) + 76px));

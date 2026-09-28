@@ -1,5 +1,4 @@
 import {
-  BackSide,
   Color,
   DataTexture,
   DirectionalLight,
@@ -24,7 +23,11 @@ import {
 } from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import type { ArenaId } from "./arena-catalog";
-import { createCascadeMaterial, finishArenaMaterial } from "./arena-materials";
+import {
+  createCascadeMaterial,
+  createPanoramaMaterial,
+  finishArenaMaterial,
+} from "./arena-materials";
 import { createPoolSurface } from "./arena-surfaces";
 import { assetUrl } from "./asset-url";
 import { sampleCharacterRamp } from "./character-look";
@@ -48,13 +51,13 @@ const atmosphere: Record<
   ArenaId,
   { sun: number; ground: number; air: number; fog: number }
 > = {
-  tropical: { sun: 0xffffff, ground: 0xb7c9d4, air: 0xb7e5ea, fog: 0x43b5c7 },
+  tropical: { sun: 0xffedcf, ground: 0xa3bcc8, air: 0xb7e5df, fog: 0x48b7bd },
   city: { sun: 0xffd0a5, ground: 0x425672, air: 0x465578, fog: 0x327d9c },
   alpine: { sun: 0xffefdc, ground: 0xbacfe8, air: 0xc3daed, fog: 0x4bafc6 },
   forest: { sun: 0xffdeb3, ground: 0x779282, air: 0xc1d2c2, fog: 0x3faeae },
   ruins: { sun: 0xfff3d6, ground: 0x7c9e87, air: 0xaad6cf, fog: 0x3aafba },
   desert: { sun: 0xffd1a1, ground: 0xd2ad91, air: 0xeac5b2, fog: 0x43b5c7 },
-  glacier: { sun: 0xc0dcff, ground: 0x738fb7, air: 0x284b76, fog: 0x319fbc },
+  glacier: { sun: 0xfff1df, ground: 0x8a9bc7, air: 0xa2bfdb, fog: 0x319fbc },
   terminal: { sun: 0xffd0a5, ground: 0x707c93, air: 0xccadc1, fog: 0x339fac },
 };
 
@@ -78,6 +81,7 @@ export const loadArena = async (id: ArenaId): Promise<ArenaView> => {
   }
   const city = id === "city";
   const palette = atmosphere[id];
+  const air = new Color(palette.air);
   sky.colorSpace = SRGBColorSpace;
   sky.mapping = EquirectangularReflectionMapping;
   const ramp = new DataTexture(
@@ -130,7 +134,7 @@ export const loadArena = async (id: ArenaId): Promise<ArenaView> => {
               : source.name === "Pool floor" || source.name === "Pool wall"
                 ? createPoolSurface(city, source.name === "Pool wall")
                 : source instanceof MeshStandardMaterial &&
-                    source.metalness < 0.1
+                    (source.metalness < 0.1 || !source.name.startsWith("Goal "))
                   ? new MeshToonMaterial({
                       color: source.color,
                       map: source.map,
@@ -148,7 +152,7 @@ export const loadArena = async (id: ArenaId): Promise<ArenaView> => {
         result.side = DoubleSide;
       }
       if (result instanceof MeshToonMaterial)
-        finishArenaMaterial(result, wind, time, rockTexture);
+        finishArenaMaterial(result, wind, time, air, rockTexture);
       converted.set(key, result);
       return result;
     };
@@ -168,26 +172,19 @@ export const loadArena = async (id: ArenaId): Promise<ArenaView> => {
   backdrop.offset.y = city ? -0.61 : 0;
   const horizon = new Mesh(
     new SphereGeometry(600, 64, 32),
-    new MeshBasicMaterial({
-      map: backdrop,
-      side: BackSide,
-      fog: false,
-      depthWrite: false,
-      toneMapped: false,
-      color: city ? 0xe7edff : 0xffffff,
-    }),
+    createPanoramaMaterial(backdrop, air, city),
   );
   horizon.name = "Distant panorama";
   horizon.renderOrder = -100;
   root.add(horizon);
   root.add(
     new HemisphereLight(
-      city ? 0xb9dafa : 0xffffff,
+      city ? 0xb9dafa : 0xdff5ff,
       palette.ground,
-      city ? 0.42 : 0.26,
+      city ? 0.6 : 0.54,
     ),
   );
-  const sun = new DirectionalLight(palette.sun, city ? 2.3 : Math.PI * 0.9);
+  const sun = new DirectionalLight(palette.sun, city ? 2.05 : 2.4);
   sun.position.set(-12, 22, -8);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
@@ -201,12 +198,12 @@ export const loadArena = async (id: ArenaId): Promise<ArenaView> => {
   });
   sun.shadow.normalBias = 0.035;
   sun.shadow.bias = -0.00025;
-  sun.shadow.radius = 3;
-  sun.shadow.intensity = city ? 0.4 : 0.52;
+  sun.shadow.radius = 5;
+  sun.shadow.intensity = city ? 0.32 : 0.34;
   root.add(sun);
   const fill = new DirectionalLight(
     city ? 0xec7bbb : 0xaeeaff,
-    city ? 0.28 : 0.12,
+    city ? 0.26 : 0.19,
   );
   fill.position.set(12, 8, 10);
   root.add(fill);
@@ -218,7 +215,7 @@ export const loadArena = async (id: ArenaId): Promise<ArenaView> => {
     time,
     shaders,
     fog: new Color(palette.fog),
-    air: new Color(palette.air),
+    air,
     rockTexture,
   };
 };

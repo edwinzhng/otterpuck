@@ -1,9 +1,40 @@
 import {
+  BackSide,
+  type Color,
   DoubleSide,
+  MeshBasicMaterial,
   MeshStandardMaterial,
   type MeshToonMaterial,
   type Texture,
 } from "three";
+import { paintNoiseGLSL } from "./painted-surface";
+
+export const createPanoramaMaterial = (
+  map: Texture,
+  air: Color,
+  city: boolean,
+): MeshBasicMaterial => {
+  const material = new MeshBasicMaterial({
+    map,
+    side: BackSide,
+    fog: false,
+    depthWrite: false,
+    toneMapped: false,
+  });
+  material.onBeforeCompile = (shader): void => {
+    shader.uniforms.uHorizonAir = { value: air };
+    shader.fragmentShader =
+      `uniform vec3 uHorizonAir;\n${shader.fragmentShader}`.replace(
+        "#include <color_fragment>",
+        `#include <color_fragment>
+float luminance = dot(diffuseColor.rgb, vec3(.2126,.7152,.0722));
+diffuseColor.rgb = mix(vec3(luminance), diffuseColor.rgb, ${city ? ".78" : ".91"});
+diffuseColor.rgb = mix(diffuseColor.rgb, uHorizonAir, ${city ? ".13" : ".07"});`,
+      );
+  };
+  material.customProgramCacheKey = (): string => `painted-panorama-1:${city}`;
+  return material;
+};
 
 export const createCascadeMaterial = (
   source: MeshStandardMaterial,
@@ -57,24 +88,38 @@ export const finishArenaMaterial = (
   material: MeshToonMaterial,
   wind: boolean,
   time: { value: number },
+  air: Color,
   rockTexture?: Texture,
 ): void => {
   const name = material.name;
   const kind =
     /Palm green|Sunlit foliage|pine needles|Canopy .*green|Rock moss/.test(name)
       ? "leaf"
-      : /Island stone/.test(name)
-        ? "rock"
-        : /Palm bark/.test(name)
-          ? "bark"
-          : /limestone|Canvas|ceramic/.test(name)
-            ? "stone"
-            : "plain";
+      : /City facade|City glazing/.test(name)
+        ? "facade"
+        : /Container|Station blue|Crane blue|Structural navy|Terrace metal|Rail steel/.test(
+              name,
+            )
+          ? "painted-metal"
+          : /Island stone/.test(name)
+            ? "rock"
+            : /bark|cedar|timber/i.test(name)
+              ? "bark"
+              : /snow/i.test(name)
+                ? "snow"
+                : /Glacier|Ice edge/i.test(name)
+                  ? "ice"
+                  : /stone|granite|plaster|ceramic|concrete|Mesa|Terracotta|sand/i.test(
+                        name,
+                      )
+                    ? "stone"
+                    : "plain";
   const color =
     kind === "leaf"
       ? `
-    float mottling = paintNoise(vPaintPosition * 4.2) * .65 + paintNoise(vPaintPosition * 11.) * .35;
-    diffuseColor.rgb *= mix(vec3(.80,.89,.79),vec3(1.13,1.07,.91),mottling);
+    float mottling = paintNoise(vPaintPosition * .85) * .75 + paintNoise(vPaintPosition * 3.4) * .25;
+    float tips = smoothstep(-.15, .85, normalize(vPaintNormal).y);
+    diffuseColor.rgb *= mix(vec3(.70,.87,.90),vec3(1.19,1.12,.79),mottling * .60 + tips * .40);
   `
       : kind === "rock"
         ? `
@@ -84,21 +129,50 @@ export const finishArenaMaterial = (
       + texture2D(uRockTexture, vPaintPosition.xz * .085).rgb * blend.y
       + texture2D(uRockTexture, vPaintPosition.xy * .085).rgb * blend.z;
     float value = dot(painted, vec3(.2126,.7152,.0722));
-    diffuseColor.rgb *= .96 + value * .08;
+    diffuseColor.rgb *= mix(vec3(.84,.88,1.04), vec3(1.13,1.06,.88), value);
   `
         : kind === "bark"
           ? `
-    float rings = .5 + .5 * sin(vPaintPosition.y * 18. + paintNoise(vPaintPosition * 3.) * 1.5);
-    diffuseColor.rgb *= .89 + .19 * smoothstep(.16,.88,rings);
+    float rings = .5 + .5 * sin(vPaintPosition.y * 9. + paintNoise(vPaintPosition * .7) * 2.);
+    diffuseColor.rgb *= mix(vec3(.88,.82,.91), vec3(1.12,1.05,.90), smoothstep(.12,.85,rings));
   `
-          : kind === "stone"
+          : kind === "snow"
             ? `
-    float wash = paintNoise(vPaintPosition * 1.3) * .65 + paintNoise(vPaintPosition * 7.) * .35;
-    diffuseColor.rgb *= .93 + wash * .1;
+    float drift = paintNoise(vPaintPosition * .25);
+    diffuseColor.rgb *= mix(vec3(.79,.85,1.),vec3(1.03,1.,.94),drift);
   `
-            : "";
+            : kind === "ice"
+              ? `
+    float glacial = paintNoise(vPaintPosition * vec3(.22,.85,.22));
+    diffuseColor.rgb *= mix(vec3(.72,.85,1.05),vec3(1.08,1.05,.98),glacial);
+  `
+              : kind === "facade"
+                ? `
+    vec3 facadeNormal = normalize(vPaintNormal);
+    vec3 across = normalize(vec3(facadeNormal.z + .0001, 0., -facadeNormal.x));
+    vec2 panel = vec2(dot(vPaintPosition, across) * .72, vPaintPosition.y * .86);
+    vec2 inside = fract(panel);
+    vec2 edge = smoothstep(vec2(.18,.20),vec2(.25,.28),inside)
+      * (1. - smoothstep(vec2(.70,.71),vec2(.77,.79),inside));
+    float lowerWindows = edge.x * edge.y * (1. - smoothstep(-10.,-7.,vPaintPosition.y));
+    float lit = step(.45,paintHash(vec3(floor(panel),2.)));
+    diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(1.38,1.44,1.64),lowerWindows * lit * .65);
+  `
+                : kind === "painted-metal"
+                  ? `
+    float enamel = paintNoise(vPaintPosition * vec3(.7,2.2,.7));
+    float upward = max(0., normalize(vPaintNormal).y);
+    diffuseColor.rgb *= mix(vec3(.84,.87,1.),vec3(1.10,1.06,.93),enamel * .7 + upward * .3);
+  `
+                  : kind === "stone"
+                    ? `
+    float wash = paintNoise(vPaintPosition * vec3(.30,.60,.30)) * .8 + paintNoise(vPaintPosition * 2.2) * .2;
+    diffuseColor.rgb *= mix(vec3(.84,.86,1.),vec3(1.11,1.05,.91),wash);
+  `
+                    : "";
   material.onBeforeCompile = (shader): void => {
     shader.uniforms.uWindTime = time;
+    shader.uniforms.uSceneryAir = { value: air };
     if (rockTexture) shader.uniforms.uRockTexture = { value: rockTexture };
     shader.vertexShader =
       `varying vec3 vPaintPosition; varying vec3 vPaintNormal; uniform float uWindTime;\n${shader.vertexShader}`.replace(
@@ -106,21 +180,19 @@ export const finishArenaMaterial = (
         `#include <begin_vertex>
       ${
         wind
-          ? `float breeze = sin(position.y * 1.2 + position.x * .4 + uWindTime * .7);
-      transformed.x += breeze * .035 * clamp((position.y - 3.) * .35,0.,1.);
-      transformed.z += sin(position.y + uWindTime * .55) * .018;`
+          ? `float height = clamp((position.y - 2.8) * .24, 0., 1.);
+      float breeze = sin(position.x * .38 + position.z * .27 + uWindTime * .85);
+      float flutter = sin(position.y * 2.4 + position.z * 1.8 - uWindTime * 1.4);
+      transformed.x += (breeze * .11 + flutter * .018) * height;
+      transformed.z += sin(position.y * .7 + uWindTime * .62) * .045 * height;`
           : ""
       }
-      vPaintPosition = (modelMatrix * vec4(transformed,1.)).xyz;
+      vPaintPosition = (modelMatrix * vec4(position,1.)).xyz;
       vPaintNormal = normalize(mat3(modelMatrix) * normal);`,
       );
     shader.fragmentShader =
-      `varying vec3 vPaintPosition; varying vec3 vPaintNormal; uniform sampler2D uRockTexture;
-      float paintHash(vec3 p) { p=fract(p*.1031); p+=dot(p,p.yzx+33.33); return fract((p.x+p.y)*p.z); }
-      float paintNoise(vec3 p) {
-        vec3 i=floor(p),f=fract(p); f=f*f*(3.-2.*f);
-        return mix(mix(mix(paintHash(i),paintHash(i+vec3(1,0,0)),f.x),mix(paintHash(i+vec3(0,1,0)),paintHash(i+vec3(1,1,0)),f.x),f.y),mix(mix(paintHash(i+vec3(0,0,1)),paintHash(i+vec3(1,0,1)),f.x),mix(paintHash(i+vec3(0,1,1)),paintHash(i+vec3(1,1,1)),f.x),f.y),f.z);
-      }\n${shader.fragmentShader}`
+      `varying vec3 vPaintPosition; varying vec3 vPaintNormal; uniform sampler2D uRockTexture; uniform vec3 uSceneryAir;
+      ${paintNoiseGLSL}\n${shader.fragmentShader}`
         .replace(
           "#include <gradientmap_pars_fragment>",
           `uniform sampler2D gradientMap;
@@ -130,9 +202,22 @@ export const finishArenaMaterial = (
         )
         .replace(
           "#include <color_fragment>",
-          `#include <color_fragment>\n${color}`,
+          `#include <color_fragment>
+${color}
+float paper = paintNoise(vPaintPosition * vec3(2.8, 7., 2.8));
+float pigment = paintNoise(vPaintPosition * .20);
+diffuseColor.rgb *= .965 + paper * .025 + pigment * .045;`,
+        )
+        .replace(
+          "#include <opaque_fragment>",
+          `float facing = max(0., dot(normal, normalize(vViewPosition)));
+outgoingLight *= mix(vec3(.80,.85,.98),vec3(1.),smoothstep(.03,.55,facing));
+${kind === "painted-metal" ? "outgoingLight = mix(outgoingLight, max(outgoingLight, diffuseColor.rgb * vec3(.62,.72,.94)), .36);" : ""}
+float distant = smoothstep(48.,160.,length(vPaintPosition.xz));
+outgoingLight = mix(outgoingLight, uSceneryAir, distant * .20);
+#include <opaque_fragment>`,
         );
   };
   material.customProgramCacheKey = (): string =>
-    `arena-soft-paint-5:${kind}:${wind}`;
+    `arena-painted-surface-8:${kind}:${wind}`;
 };

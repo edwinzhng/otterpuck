@@ -4,11 +4,12 @@ export type CharacterRampStop = {
 };
 
 export const characterRampStops: readonly CharacterRampStop[] = [
-  { position: 0, color: [0.3, 0.35, 0.46] },
-  { position: 0.32, color: [0.39, 0.44, 0.54] },
-  { position: 0.6, color: [0.63, 0.64, 0.68] },
-  { position: 0.84, color: [0.88, 0.85, 0.8] },
-  { position: 1, color: [1, 0.99, 0.95] },
+  { position: 0, color: [0.36, 0.37, 0.52] },
+  { position: 0.42, color: [0.38, 0.39, 0.54] },
+  { position: 0.52, color: [0.66, 0.68, 0.76] },
+  { position: 0.72, color: [0.68, 0.7, 0.77] },
+  { position: 0.82, color: [1, 0.95, 0.83] },
+  { position: 1, color: [1, 0.97, 0.88] },
 ];
 
 export const sampleCharacterRamp = (

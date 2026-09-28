@@ -86,7 +86,7 @@ const posePortraitArms = (model: Object3D): void => {
 const renderPortraits = async (): Promise<void> => {
   await Promise.all(
     [...pending].map(async (species): Promise<void> => {
-      const cacheKey = await previewCacheKey(`portrait-v2-${species}`, [
+      const cacheKey = await previewCacheKey(`portrait-v3-${species}`, [
         `/models/characters/${species}.glb`,
       ]);
       cacheKeys.set(species, cacheKey);
@@ -158,10 +158,10 @@ const renderPortraits = async (): Promise<void> => {
           camera.position.copy(center).add(new Vector3(1.4, 0.25, -2.4));
           camera.lookAt(center);
           const scene = new Scene();
-          scene.add(model, new HemisphereLight(0xe9f8ff, 0x657781, 2.0));
-          const keyLight = new DirectionalLight(0xffedd7, 2.5);
+          scene.add(model, new HemisphereLight(0xe9f8ff, 0x8793ac, 0.85));
+          const keyLight = new DirectionalLight(0xffedd7, 2.65);
           keyLight.position.set(-2, 3, -4);
-          const rim = new DirectionalLight(0xb1e7ff, 1.8);
+          const rim = new DirectionalLight(0xb1e7ff, 0.55);
           rim.position.set(2, 1, 2);
           scene.add(keyLight, rim);
           await renderer.compileAsync(scene, camera);

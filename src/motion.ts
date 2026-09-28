@@ -147,6 +147,28 @@ export const updateSwimMotion = (
     else action.time = (action.time + dt) % action.getClip().duration;
   }
   motion.mixer.update(0);
+  const stroke = motion.phase * Math.PI * 2;
+  const softness = (1 - vertical) * (1 - turning * 0.65);
+  const breathing =
+    Math.sin(time * 2.1 + player.id * 0.7) * 0.012 * (1 - activity);
+  bend(
+    bones,
+    "chest",
+    pitchAxis,
+    Math.sin(stroke - 0.7) * 0.012 * kicking * softness + breathing,
+  );
+  bend(
+    bones,
+    "spineMid",
+    pitchAxis,
+    Math.sin(stroke - 1.3) * 0.019 * kicking * softness,
+  );
+  bend(
+    bones,
+    "spine",
+    pitchAxis,
+    Math.sin(stroke - 1.9) * 0.021 * kicking * softness,
+  );
   bend(bones, "head", turnAxis, motion.turn * 0.033);
   bend(bones, "neck", turnAxis, motion.turn * 0.025);
   bend(bones, "chest", turnAxis, motion.turn * 0.02);
@@ -157,7 +179,13 @@ export const updateSwimMotion = (
   bend(bones, "chest", pitchAxis, pitchLead * 0.35);
   for (const [index, name] of tailBones.entries()) {
     bend(bones, name, turnAxis, -motion.tailTurn * (0.022 + index * 0.003));
-    bend(bones, name, pitchAxis, -pitchLead * 0.08);
+    bend(
+      bones,
+      name,
+      pitchAxis,
+      -pitchLead * 0.08 +
+        Math.sin(stroke - 2.4 - index * 0.45) * 0.018 * activity * softness,
+    );
   }
   for (const [index, name] of tuftBones.entries())
     bend(

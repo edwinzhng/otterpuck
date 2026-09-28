@@ -74,10 +74,12 @@ export const applyCharacterStyle = (
             .replace(
               "#include <color_fragment>",
               `#include <color_fragment>
-float detailFade = 1. - smoothstep(.001, .003, length(fwidth(vCoatPosition)));
+float detailFade = 1. - smoothstep(.001, .004, length(fwidth(vCoatPosition)));
 float relief = coatRelief(vCoatPosition);
-float wash = .5 + .5 * sin(vCoatPosition.y * 19. + sin(vCoatPosition.x * 23.));
-diffuseColor.rgb *= .98 + wash * .04 + (relief - .5) * .07 * detailFade;`,
+float wash = paintNoise(vCoatPosition * vec3(32., 22., 16.));
+float brush = paintNoise(vCoatPosition * vec3(110., 65., 32.) + wash * 2.);
+diffuseColor.rgb *= mix(vec3(.89,.87,.96), vec3(1.12,1.06,.94), wash);
+diffuseColor.rgb *= .97 + brush * .06 + (relief - .5) * .055 * detailFade;`,
             )
             .replace(
               "#include <normal_fragment_maps>",
@@ -100,15 +102,16 @@ vec3 getGradientIrradiance(vec3 surfaceNormal, vec3 lightDirection) {
         )
         .replace(
           "#include <opaque_fragment>",
-          `float softContour = smoothstep(0.0, 0.85, max(0.0, dot(normal, normalize(vViewPosition))));
-outgoingLight *= mix(vec3(.84,.88,.94), vec3(1.0), softContour);
-${coat ? "outgoingLight += diffuseColor.rgb * pow(1. - max(0., dot(normal, normalize(vViewPosition))), 3.) * .10;" : ""}
+          `float facing = max(0., dot(normal, normalize(vViewPosition)));
+float softContour = smoothstep(.02, .48, facing);
+outgoingLight *= mix(vec3(.64,.65,.78), vec3(1.), softContour);
+${coat ? "outgoingLight += diffuseColor.rgb * vec3(1.,.88,.74) * pow(1. - facing, 2.) * .055;" : ""}
 ${
   satin
     ? `
 #if NUM_DIR_LIGHTS > 0
 vec3 sheenHalf = normalize(directionalLights[0].direction + normalize(vViewPosition));
-outgoingLight += vec3(1.,.97,.90) * pow(max(0., dot(normal, sheenHalf)), 24.) * .14;
+outgoingLight += vec3(1.,.94,.82) * pow(max(0., dot(normal, sheenHalf)), 12.) * .075;
 #endif
 `
     : ""
@@ -117,7 +120,7 @@ outgoingLight += vec3(1.,.97,.90) * pow(max(0., dot(normal, sheenHalf)), 24.) * 
         );
     };
     material.customProgramCacheKey = (): string =>
-      `otterpuck-soft-surface-4:${coat ? species : "plain"}:${satin}`;
+      `otterpuck-painted-surface-5:${coat ? species : "plain"}:${satin}`;
     material.name = source.name;
     material.userData = { ...source.userData };
     converted.set(source, material);
