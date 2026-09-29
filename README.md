@@ -4,11 +4,11 @@ A first-person underwater hockey game with eight animal characters and eight sty
 
 [Play in your browser](https://otterpuck.edwinzhang.com)
 
-![Tropical Cove's palm-lined pool and island scenery](docs/images/tropical-cove.jpg)
+![Otterpuck's title screen and game modes](docs/images/title-screen.jpg)
 
 <p>
-  <img src="docs/images/otter-swimming.jpg" alt="An otter swimming underwater with a hockey stick" width="49%">
-  <img src="docs/images/neon-rooftop.jpg" alt="Neon Rooftop's pool among a painted city skyline" width="49%">
+  <img src="docs/images/map-selection.jpg" alt="Map selection with all eight arenas" width="49%">
+  <img src="docs/images/first-person-faceoff.jpg" alt="A first-person 6v6 faceoff with the countdown, score, air, stamina, and minimap visible" width="49%">
 </p>
 
 ## Run locally

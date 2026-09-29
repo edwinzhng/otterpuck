@@ -15,4 +15,4 @@ The alpine, forest, ruins, desert, glacier, and terminal backdrops were generate
 
 ## README screenshots
 
-`images/tropical-cove.jpg`, `images/otter-swimming.jpg`, and `images/neon-rooftop.jpg` were captured by Codex directly from Otterpuck's browser renderer using its Arena and Three quarter cameras. They are game captures, not generated illustrations, and are covered by the project license.
+`images/title-screen.jpg`, `images/map-selection.jpg`, and `images/first-person-faceoff.jpg` were captured by Codex directly from Otterpuck's title screen, map picker, and a first-person 6v6 faceoff. These screenshots are covered by the project license.
