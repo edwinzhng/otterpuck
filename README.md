@@ -20,6 +20,6 @@ bun install --frozen-lockfile
 bun run dev
 ```
 
-Open [localhost:3200](http://127.0.0.1:3200). Blender and a backend are not needed for solo play.
+Open [localhost:3200](http://127.0.0.1:3200).
 
 [MIT License](LICENSE) · [Credits](docs/credits.md) · [Contributing](CONTRIBUTING.md)
