@@ -17,6 +17,7 @@ import {
 import {
   angleDifference,
   type Controls,
+  directionYaw,
   freshControls,
   type Handedness,
   handSide,
@@ -205,9 +206,13 @@ test("charged shots draw behind the blade and fly straight through one clean arc
             expect(Math.abs(normal.y)).toBeLessThan(0.001);
           expect(puck.angularVelocity.length()).toBe(0);
           if (player.shotTime > 0.14 && player.shotTime < 0.25) {
+            // Follow-through stays in the shot's frame while the swimmer turns.
             const tipDirection = bladePoint(player, STICK_TIP)
               .sub(bladePoint(player, STICK_GRIP))
-              .applyAxisAngle(new Vector3(0, 1, 0), -player.yaw);
+              .applyAxisAngle(
+                new Vector3(0, 1, 0),
+                -directionYaw(player.shotDirection.x, player.shotDirection.z),
+              );
             expect(tipDirection.x * handSide(player)).toBeLessThan(0.001);
             if (player.shotTime < 0.17)
               expect(tipDirection.z).toBeLessThan(-0.1);

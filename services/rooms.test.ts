@@ -457,8 +457,9 @@ describe("multiplayer", () => {
           .reduce((sum, [, yaw]) => sum + yaw, 0);
         const applied = (player?.yaw ?? 0) - start;
         const asked = [...sent.values()].reduce((sum, yaw) => sum + yaw, 0);
-        expect(applied + unspent * 1.3 * 1.45).toBeCloseTo(
-          asked * 1.3 * 1.45,
+        expect(match.state.puck.controlOwner).not.toBe(player?.id);
+        expect(applied + unspent * 1.3 * 2.05).toBeCloseTo(
+          asked * 1.3 * 2.05,
           6,
         );
       }

@@ -84,18 +84,23 @@ test("original refills air at the pre-stamina rate", (): void => {
   expect(player.air - 40).toBeCloseTo(13, 1);
 });
 
-test("original turns underwater at no cost to speed", (): void => {
-  const straight = setup("original");
-  drive(straight.state, 180, swimming());
-  const cruising = horizontalSpeed(straight.player);
+test("only alternative adds underwater turning drag", (): void => {
+  for (const ruleset of ["original", "alternative"] as const) {
+    const surface = setup(ruleset);
+    surface.player.position.y = SURFACE_HEIGHT;
+    drive(surface.state, 180, swimming(), 0.008);
 
-  const kept = setup("original");
-  drive(kept.state, 180, swimming(), 0.008);
-  expect(horizontalSpeed(kept.player) / cruising).toBeGreaterThan(0.998);
-
-  const dragged = setup("alternative");
-  drive(dragged.state, 180, swimming(), 0.008);
-  expect(horizontalSpeed(dragged.player) / cruising).toBeLessThan(0.96);
+    const underwater = setup(ruleset);
+    drive(underwater.state, 180, swimming(), 0.008);
+    expect(underwater.player.yaw).toBeCloseTo(surface.player.yaw, 6);
+    expect(underwater.player.position.y).toBe(FLOOR_HEIGHT);
+    expect(surface.player.position.y).toBe(SURFACE_HEIGHT);
+    const retained =
+      horizontalSpeed(underwater.player) / horizontalSpeed(surface.player);
+    // Match turn rates so ordinary steering does not count as underwater drag.
+    if (ruleset === "original") expect(retained).toBeCloseTo(1, 6);
+    else expect(retained).toBeLessThan(0.96);
+  }
 });
 
 test("original never hands a hard turn over to the curl", (): void => {
