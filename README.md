@@ -8,8 +8,10 @@ A first-person underwater hockey game with eight animal characters and eight sty
 
 <p>
   <img src="docs/images/map-selection.jpg" alt="Map selection with all eight arenas" width="49%">
-  <img src="docs/images/first-person-faceoff.jpg" alt="A first-person 6v6 faceoff with the countdown, score, air, stamina, and minimap visible" width="49%">
+  <img src="docs/images/otter-swimming.jpg" alt="An otter swimming toward the puck" width="49%">
 </p>
+
+![First-person faceoff against otters, with the puck and full game HUD visible](docs/images/first-person-faceoff.jpg)
 
 ## Run locally
 
